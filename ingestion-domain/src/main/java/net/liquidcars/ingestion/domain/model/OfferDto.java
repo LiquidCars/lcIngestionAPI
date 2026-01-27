@@ -56,7 +56,7 @@ public class OfferDto {
      * Business logic: Check if the offer is available for purchase
      */
     public boolean isAvailable() {
-        return status == OfferStatus.ACTIVE;
+        return status == OfferStatusDto.ACTIVE;
     }
     
     /**
