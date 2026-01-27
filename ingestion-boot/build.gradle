@@ -9,8 +9,8 @@ dependencies {
     implementation project(':ingestion-infra-input-rest')
     implementation project(':ingestion-infra-input-kafka')
     implementation project(':ingestion-infra-output-kafka')
-    implementation project(':ingestion-infra-output-mongodb')
-    implementation project(':ingestion-infra-output-postgresql')
+    implementation project(':ingestion-infra-mongodb')
+    implementation project(':ingestion-infra-postgresql')
     
     // Spring Boot Starters
     implementation 'org.springframework.boot:spring-boot-starter-web'

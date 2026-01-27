@@ -1,6 +1,13 @@
 spring:
   application:
     name: ingestion-api
+  threads:
+    virtual:
+      enabled: true
+  servlet:
+    multipart:
+      max-file-size: -1
+      max-request-size: -1
   
   # MongoDB Configuration
   data:
@@ -69,16 +76,16 @@ spring:
     baseline-on-migrate: true
   
   # File Upload Configuration
-  servlet:
-    multipart:
-      max-file-size: 500MB
-      max-request-size: 500MB
+
 
 # Server Configuration
 server:
-  port: 8080
+  port: 8090
   compression:
     enabled: true
+  tomcat:
+    max-swallow-size: -1
+
   
 # Management & Actuator
 management:
@@ -104,7 +111,7 @@ logging:
 # Custom Application Properties
 ingestion:
   batch:
-    chunk-size: 100
+    chunk-size: 10
     skip-limit: 100
   kafka:
     topics:
@@ -112,4 +119,4 @@ ingestion:
   scheduler:
     enabled: true
     watch-directory: /data/ingestion
-    cron: "0 */5 * * * *" # Every 5 minutes
+    cron: "0 */15 * * * *" # Every 15 minutes

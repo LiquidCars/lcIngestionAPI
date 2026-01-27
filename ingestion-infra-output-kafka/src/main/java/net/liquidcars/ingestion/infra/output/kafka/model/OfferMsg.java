@@ -1,0 +1,72 @@
+package java.net.liquidcars.ingestion.infra.output.kafka.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+
+/**
+ * Domain entity representing a vehicle offer.
+ * This is a pure domain object with no infrastructure dependencies.
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class OfferMsg {
+    
+    private String id;
+    private String externalId;
+    private VehicleType vehicleType;
+    private String brand;
+    private String model;
+    private Integer year;
+    private BigDecimal price;
+    private OfferStatus status;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime updatedAt;
+    private String source;
+    
+    /**
+     * Vehicle type enumeration
+     */
+    public enum VehicleType {
+        CAR,
+        TRUCK,
+        MOTORCYCLE,
+        VAN,
+        SUV
+    }
+    
+    /**
+     * Offer status enumeration
+     */
+    public enum OfferStatus {
+        ACTIVE,
+        SOLD,
+        RESERVED,
+        INACTIVE
+    }
+    
+    /**
+     * Business logic: Check if the offer is available for purchase
+     */
+    public boolean isAvailable() {
+        return status == OfferStatus.ACTIVE;
+    }
+    
+    /**
+     * Business logic: Validate offer data
+     */
+    public boolean isValid() {
+        return externalId != null && !externalId.isBlank()
+                && brand != null && !brand.isBlank()
+                && model != null && !model.isBlank()
+                && year != null && year >= 1900 && year <= LocalDateTime.now().getYear() + 1
+                && price != null && price.compareTo(BigDecimal.ZERO) > 0;
+    }
+}

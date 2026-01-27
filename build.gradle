@@ -38,8 +38,8 @@ dependencies {
     jacocoAggregation project(':ingestion-infra-input-rest')
     jacocoAggregation project(':ingestion-infra-input-kafka')
     jacocoAggregation project(':ingestion-infra-output-kafka')
-    jacocoAggregation project(':ingestion-infra-output-mongodb')
-    jacocoAggregation project(':ingestion-infra-output-postgresql')
+    jacocoAggregation project(':ingestion-infra-mongodb')
+    jacocoAggregation project(':ingestion-infra-postgresql')
     
     testReportAggregation project(':ingestion-domain')
     testReportAggregation project(':ingestion-application')
@@ -47,8 +47,8 @@ dependencies {
     testReportAggregation project(':ingestion-infra-input-rest')
     testReportAggregation project(':ingestion-infra-input-kafka')
     testReportAggregation project(':ingestion-infra-output-kafka')
-    testReportAggregation project(':ingestion-infra-output-mongodb')
-    testReportAggregation project(':ingestion-infra-output-postgresql')
+    testReportAggregation project(':ingestion-infra-mongodb')
+    testReportAggregation project(':ingestion-infra-postgresql')
 }
 
 allprojects {

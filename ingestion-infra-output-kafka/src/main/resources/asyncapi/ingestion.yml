@@ -1,0 +1,54 @@
+asyncapi: 3.0.0
+info:
+  title: LiquidCars Ingestion API
+  version: 1.0.0
+
+operations:
+  sendOfferCreated:
+    action: send
+    channel:
+      $ref: '#/channels/offerCreationChannel'
+    summary: Publicar una nueva oferta de vehículo.
+    # IMPORTANTE: En 3.0, la operación debe apuntar a mensajes que el CANAL permite
+    messages:
+      - $ref: '#/channels/offerCreationChannel/messages/offerCreatedMessage'
+
+channels:
+  offerCreationChannel:
+    address: liquidcars.ingestion.event.offer.create-action.0
+    messages:
+      offerCreatedMessage:
+        $ref: '#/components/messages/OfferCreated'
+
+components:
+  messages:
+    OfferCreated:
+      name: OfferCreated
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/OfferMsg'
+
+  schemas:
+    OfferMsg:
+      type: object
+      required: [externalId, brand, model, year, price]
+      properties:
+        id: { type: string, format: uuid }
+        externalId: { type: string }
+        vehicleType: { $ref: '#/components/schemas/VehicleTypeMsg' }
+        brand: { type: string }
+        model: { type: string }
+        year: { type: integer, minimum: 1900 }
+        price: { type: number, format: decimal }
+        status: { $ref: '#/components/schemas/OfferStatusMsg' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        source: { type: string }
+
+    VehicleTypeMsg:
+      type: string
+      enum: [CAR, TRUCK, MOTORCYCLE, VAN, SUV]
+
+    OfferStatusMsg:
+      type: string
+      enum: [ACTIVE, SOLD, RESERVED, INACTIVE]

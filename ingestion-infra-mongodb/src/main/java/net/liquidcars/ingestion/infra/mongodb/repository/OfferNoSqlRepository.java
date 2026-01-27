@@ -1,0 +1,11 @@
+package java.net.liquidcars.ingestion.infra.mongodb.repository;
+
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.stereotype.Repository;
+
+import java.net.liquidcars.ingestion.infra.mongodb.entity.OfferNoSQLEntity;
+
+@Repository
+public interface OfferNoSqlRepository extends MongoRepository<OfferNoSQLEntity, String> {
+
+}

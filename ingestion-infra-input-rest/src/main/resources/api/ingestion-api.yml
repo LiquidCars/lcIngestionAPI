@@ -1,0 +1,168 @@
+openapi: 3.0.3
+info:
+  title: Liquidcars Ingestion Service API
+  description: |
+    API for bulk vehicle offer ingestion (LiquidCars).
+    Designed to handle 170k+ records using reactive processing and streaming.
+    
+    **Ingestion Strategies:**
+    1. **Batch**: For small JSON integrations.
+    2. **Stream**: For massive binary files (XML/JSON).
+    3. **URL**: For scheduled remote downloads (Pull).
+  contact:
+    name: Platform Engineering Team
+    email: support@liquidcars.net
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8090/v1/ingestion
+    description: Local development server (Docker/Local)
+
+paths:
+  /batch:
+    post:
+      tags:
+        - Ingestion
+      summary: Ingest JSON Batches
+      description: |
+        Protected by `IngestionSecurityFilter`. 
+        Rejects requests larger than 2MB or without `application/json` Content-Type.
+      operationId: ingestBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/OfferRequest'
+      responses:
+        '200':
+          description: Batch successfully sent to Kafka.
+        '400':
+          description: Invalid data or schema mismatch.
+        '413':
+          description: Payload Too Large. Batch exceeds the 2MB safety limit.
+
+  /stream:
+    post:
+      tags:
+        - Ingestion
+      summary: Ingest via Binary Stream
+      description: |
+        Processes massive files with no size limit using StAX/Jackson Streaming.
+        Maintains a constant memory footprint (<256MB).
+      operationId: ingestStream
+      parameters:
+        - name: format
+          in: query
+          required: true
+          description: Format of the binary content.
+          schema:
+            type: string
+            enum: [xml, json]
+      requestBody:
+        required: true
+        description: Binary content of the file (XML or JSON).
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '202':
+          description: Stream accepted. Processing will continue asynchronously.
+        '415':
+          description: Unsupported Media Type. Requires application/octet-stream.
+
+  /url:
+    post:
+      tags:
+        - Ingestion
+      summary: Ingest via URL (Pull)
+      description: |
+        The microservice downloads the file from the provided URL and processes it internally via streaming.
+        Ideal for Scheduled Jobs.
+      operationId: ingestFromUrl
+      parameters:
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [xml, json]
+        - name: url
+          in: query
+          required: true
+          description: Resource URL (sftp, http, https).
+          schema:
+            type: string
+            format: uri
+      responses:
+        '202':
+          description: Download and ingestion started.
+
+components:
+  schemas:
+    OfferRequest:
+      type: object
+      required:
+        - externalId
+        - vehicleType
+        - brand
+        - model
+        - year
+        - price
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: Internal system-generated ID.
+        externalId:
+          type: string
+          example: "MF-882931"
+          description: Original provider ID (e.g., motorflashid).
+        vehicleType:
+          $ref: '#/components/schemas/VehicleType'
+        brand:
+          type: string
+          example: "BMW"
+        model:
+          type: string
+          example: "3 Series"
+        year:
+          type: integer
+          minimum: 1900
+          example: 2023
+        price:
+          type: number
+          format: decimal
+          minimum: 0.1
+          example: 34500.50
+        status:
+          $ref: '#/components/schemas/OfferStatus'
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-01-27T10:00:00+01:00"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-01-27T12:00:00+01:00"
+        source:
+          type: string
+          example: "motorflash"
+          description: Origin of the offer for traceability.
+
+    VehicleType:
+      type: string
+      enum: [CAR, TRUCK, MOTORCYCLE, VAN, SUV]
+      description: Type of vehicle.
+
+    OfferStatus:
+      type: string
+      enum: [ACTIVE, SOLD, RESERVED, INACTIVE]
+      description: Current state of the offer in the inventory.
