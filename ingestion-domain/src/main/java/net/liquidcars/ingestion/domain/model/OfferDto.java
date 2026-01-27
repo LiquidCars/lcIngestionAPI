@@ -21,12 +21,12 @@ public class OfferDto {
     
     private String id;
     private String externalId;
-    private VehicleType vehicleType;
+    private VehicleTypeDto vehicleType;
     private String brand;
     private String model;
     private Integer year;
     private BigDecimal price;
-    private OfferStatus status;
+    private OfferStatusDto status;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     private String source;
@@ -34,7 +34,7 @@ public class OfferDto {
     /**
      * Vehicle type enumeration
      */
-    public enum VehicleType {
+    public enum VehicleTypeDto {
         CAR,
         TRUCK,
         MOTORCYCLE,
@@ -45,7 +45,7 @@ public class OfferDto {
     /**
      * Offer status enumeration
      */
-    public enum OfferStatus {
+    public enum OfferStatusDto {
         ACTIVE,
         SOLD,
         RESERVED,
