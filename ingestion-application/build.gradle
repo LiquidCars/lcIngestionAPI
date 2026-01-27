@@ -1,0 +1,27 @@
+dependencies {
+    // Domain dependency
+    implementation project(':ingestion-domain')
+    
+    // Spring Context for dependency injection
+    implementation 'org.springframework:spring-context'
+    implementation 'org.springframework:spring-tx'
+    
+    // Spring Batch for batch processing
+    implementation "org.springframework.batch:spring-batch-core:${springBatchVersion}"
+    
+    // Kafka
+    implementation "org.springframework.kafka:spring-kafka:${springKafkaVersion}"
+    
+    // Jackson for JSON processing
+    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-xml:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${jacksonVersion}"
+    
+    // MapStruct
+    implementation "org.mapstruct:mapstruct:${mapstructVersion}"
+    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+    
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation "org.springframework.batch:spring-batch-test:${springBatchVersion}"
+}

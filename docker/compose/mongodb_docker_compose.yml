@@ -1,0 +1,20 @@
+version: '3.9'
+
+services:
+    mongodb:
+        image: mongo:latest
+        container_name: mongodb_local
+        environment:
+            - MONGO_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
+            - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+            - MONGO_DATABASE=${MONGO_DATABASE}
+        volumes:
+            - "./db/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro"
+        ports:
+            - "27017:27017"
+        healthcheck:
+            test: "mongosh --eval 'db.runCommand({ping: 1})'"
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 30s

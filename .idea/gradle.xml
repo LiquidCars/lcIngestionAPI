@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GradleSettings">
+    <option name="linkedExternalProjectsSettings">
+      <GradleProjectSettings>
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="gradleJvm" value="#JAVA_HOME" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/ingestion-application" />
+            <option value="$PROJECT_DIR$/ingestion-boot" />
+            <option value="$PROJECT_DIR$/ingestion-domain" />
+            <option value="$PROJECT_DIR$/ingestion-factory-data-test" />
+            <option value="$PROJECT_DIR$/ingestion-infra-input-rest" />
+            <option value="$PROJECT_DIR$/ingestion-infra-input-scheduler" />
+            <option value="$PROJECT_DIR$/ingestion-infra-output-kafka" />
+            <option value="$PROJECT_DIR$/ingestion-infra-output-mongodb" />
+            <option value="$PROJECT_DIR$/ingestion-infra-output-postgresql" />
+          </set>
+        </option>
+      </GradleProjectSettings>
+    </option>
+  </component>
+</project>

@@ -1,0 +1,128 @@
+{
+  "realm" : "master",
+  "users" : [ {
+    "id" : "352c8859-ee23-44b3-b82f-d68b3ab79d87",
+    "username" : "alejandro.barreda",
+    "email" : "alejandro@liquidcars.net",
+    "emailVerified" : true,
+    "createdTimestamp" : 1696848069101,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "ffefd383-f5e5-4f62-b5a4-63906496b14b",
+      "type" : "password",
+      "createdDate" : 1696848610422,
+      "secretData" : "{\"value\":\"FhE2LrGXxfKxIVQW6Ty+0wZD9KnSWwcQJDEXX4qyAv4=\",\"salt\":\"kM8p8vtF0inARxDn0XSxFQ==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "create-realm", "offline_access", "admin", "uma_authorization", "default-roles-master" ],
+    "clientRoles" : {
+      "broker" : [ "read-token" ],
+      "account" : [ "manage-account", "view-applications", "view-groups", "manage-consent", "view-profile", "delete-account", "manage-account-links", "view-consent" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "e97c0e39-94fa-4614-8b89-288ebcd3ae0e",
+    "username" : "dani@liquidcars.net",
+    "firstName" : "Daniel",
+    "lastName" : "Martin",
+    "email" : "dani@liquidcars.net",
+    "emailVerified" : true,
+    "createdTimestamp" : 1747133500404,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "6a61f45c-ae72-43fa-8cc0-2ed0db9830f6",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1747133565193,
+      "secretData" : "{\"value\":\"JURP2QfFibQYgG8ykwgTO4huYmp7pwLG+2i84GaI45M=\",\"salt\":\"WrWlUzqtZnQTT2PslYy/Hg==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "create-realm", "offline_access", "uma_authorization", "default-roles-master", "admin" ],
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "e9dc84ed-8491-4ca5-9f95-e3d485004693",
+    "username" : "gael@liquidcars.net",
+    "firstName" : "Gael",
+    "lastName" : "Arhan",
+    "email" : "gael@liquidcars.net",
+    "emailVerified" : true,
+    "createdTimestamp" : 1747133384012,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "9bfce13b-0a87-4acb-b29f-398dbfb43e72",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1747133410091,
+      "secretData" : "{\"value\":\"Aa/VJfzmwOA0Y9U+d8jwzrrmC1AZ4jRG8FqRBcJynck=\",\"salt\":\"/d+prNnsEEiylhgtUWxSNg==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "create-realm", "offline_access", "uma_authorization", "default-roles-master", "admin" ],
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "cc754b15-7bf3-4bc2-a7c3-1e9807289180",
+    "username" : "keycloak",
+    "email" : "pruebas.keycloak@liquidcars.net",
+    "emailVerified" : false,
+    "createdTimestamp" : 1690272134731,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "83385001-eaff-4ade-b058-9b2cab25f176",
+      "type" : "password",
+      "createdDate" : 1690272135368,
+      "secretData" : "{\"value\":\"D5Xq92negShWeCYp4ixHp7nBRLRSgp73Z9QG4Hlz+6A=\",\"salt\":\"lPPet8eqba66sXQ64R2mKg==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":5,\"algorithm\":\"argon2\",\"additionalParameters\":{\"hashLength\":[\"32\"],\"memory\":[\"7168\"],\"type\":[\"id\"],\"version\":[\"1.3\"],\"parallelism\":[\"1\"]}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "admin", "default-roles-master" ],
+    "clientRoles" : {
+      "M2M_System_Partner-realm" : [ "manage-users", "manage-realm", "view-events", "query-realms", "view-authorization", "create-client", "query-clients", "manage-identity-providers", "view-identity-providers", "view-clients", "manage-clients", "query-groups", "manage-events", "view-realm", "view-users", "query-users", "manage-authorization" ],
+      "B2B2C_Channel_User-realm" : [ "view-users", "manage-authorization", "query-groups", "view-events", "query-realms", "manage-clients", "view-identity-providers", "view-clients", "view-authorization", "manage-identity-providers", "create-client", "query-clients", "manage-users", "view-realm", "manage-events", "manage-realm", "query-users" ],
+      "M2M_B2C_Channel-realm" : [ "view-users", "create-client", "manage-realm", "view-identity-providers", "view-authorization", "view-clients", "query-clients", "manage-authorization", "manage-identity-providers", "manage-clients", "query-users", "query-realms", "manage-users", "query-groups", "view-events", "manage-events", "view-realm" ],
+      "M2M_B2B_Channel-realm" : [ "manage-users", "manage-realm", "manage-identity-providers", "manage-authorization", "query-groups", "view-users", "view-identity-providers", "query-users", "view-clients", "manage-events", "view-realm", "manage-clients", "create-client", "view-authorization", "query-realms", "query-clients", "view-events" ],
+      "M2M_Service_Providers-realm" : [ "create-client", "view-clients", "manage-events", "manage-authorization", "query-users", "query-realms", "query-groups", "view-identity-providers", "manage-clients", "manage-identity-providers", "manage-realm", "view-users", "view-events", "query-clients", "view-realm", "manage-users", "view-authorization" ],
+      "B2B2E_System_Partner_Employee-realm" : [ "manage-events", "manage-clients", "manage-realm", "view-users", "manage-users", "query-users", "view-clients", "manage-identity-providers", "query-clients", "manage-authorization", "query-groups", "view-events", "view-identity-providers", "query-realms", "view-realm", "create-client", "view-authorization" ],
+      "M2M_LiquidCars_Module-realm" : [ "view-identity-providers", "manage-realm", "manage-clients", "create-client", "manage-authorization", "view-clients", "manage-events", "query-groups", "view-authorization", "query-clients", "manage-users", "query-users", "view-events", "view-realm", "manage-identity-providers", "query-realms", "view-users" ],
+      "M2M_Vehicle_Seller-realm" : [ "manage-clients", "query-users", "query-clients", "view-users", "manage-authorization", "view-authorization", "manage-users", "create-client", "manage-events", "view-events", "view-clients", "view-identity-providers", "manage-realm", "query-realms", "query-groups", "manage-identity-providers", "view-realm" ],
+      "B2E_LiquidCars_Employee-realm" : [ "manage-identity-providers", "create-client", "view-users", "manage-clients", "query-realms", "view-identity-providers", "query-groups", "manage-events", "manage-authorization", "manage-realm", "view-clients", "view-events", "query-clients", "view-realm", "manage-users", "query-users", "view-authorization" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
+    "id" : "310276dd-8b78-4ebc-8519-c1a26d3aaf6c",
+    "username" : "xavier.rue@liquidcars.net",
+    "firstName" : "Xavier",
+    "lastName" : "Rue",
+    "email" : "xavier.rue@liquidcars.net",
+    "emailVerified" : true,
+    "createdTimestamp" : 1747133536895,
+    "enabled" : true,
+    "totp" : false,
+    "credentials" : [ {
+      "id" : "b08f5f07-70ac-491c-abb0-63c0c9c314a2",
+      "type" : "password",
+      "userLabel" : "My password",
+      "createdDate" : 1747133546179,
+      "secretData" : "{\"value\":\"/upedi+V2wk7ECc7o1hJl+BAVdeMRIbp7fMM4ih8MYA=\",\"salt\":\"QlnShG0KbqRT/kPGNi2+jQ==\",\"additionalParameters\":{}}",
+      "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+    } ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "create-realm", "offline_access", "uma_authorization", "default-roles-master", "admin" ],
+    "notBefore" : 0,
+    "groups" : [ ]
+  } ]
+}

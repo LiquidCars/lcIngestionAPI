@@ -1,0 +1,14 @@
+User->keycloak
+Pass->xe7V^MG^3KL@d92&aK5iFDftiamHUsaN
+
+User->alejandro.barreda
+Password->mtj8uqg@uxp2mxt7AKQ
+
+User->dani@liquidcars.net
+Pass->.Liquidcars1
+
+User->gael@liquidcars.net
+Pass->.Liquidcars1
+
+User->xavier.rue@liquidcars.net
+Pass->.Liquidcars1

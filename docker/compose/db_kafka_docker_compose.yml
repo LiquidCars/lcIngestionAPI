@@ -1,0 +1,78 @@
+services:
+    db:
+        image: postgres:17.2
+        restart: always
+        # set shared memory limit when using docker-compose
+        shm_size: 128mb
+        # or set shared memory limit when deploy via swarm stack
+        #volumes:
+        #  - type: tmpfs
+        #    target: /dev/shm
+        #    tmpfs:
+        #      size: 134217728 # 128*2^20 bytes = 128Mb
+        environment:
+            POSTGRES_PASSWORD: postgres
+            TZ: UTC
+        ports:
+            - 5432:5432
+        volumes:
+            - "./db/init_db.sql:/init_db.sql"
+            - "./db/startup_db.sh:/startup_db.sh"  # Mount the startup script
+        entrypoint: [ "/bin/bash", "/startup_db.sh" ]  # Use the startup script as entrypoint
+        networks:
+            - ingestion_network
+    adminer:
+        image: adminer
+        restart: always
+        ports:
+            - 8081:8080
+    mongodb:
+        image: mongo:latest
+        container_name: mongodb_local
+        environment:
+            - MONGO_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
+            - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+            - MONGO_DATABASE=${MONGO_DATABASE}
+        volumes:
+            - "./db/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro"
+        ports:
+            - "27017:27017"
+        healthcheck:
+            test: "mongosh --eval 'db.runCommand({ping: 1})'"
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
+        networks:
+            - ingestion_network
+    kafdrop:
+        image: obsidiandynamics/kafdrop
+        restart: "no"
+        ports:
+            - "9000:9000"
+        environment:
+            - KAFKA_BROKERCONNECT=${KAFKA_BROKERCONNECT}
+        depends_on:
+            - "kafka"
+        networks:
+            - ingestion_network
+    kafka:
+        image: obsidiandynamics/kafka
+        restart: "no"
+        ports:
+            - "2181:2181"
+            - "9092:9092"
+        environment:
+            - KAFKA_LISTENERS=${KAFKA_LISTENERS}
+            - KAFKA_ADVERTISED_LISTENERS=${KAFKA_ADVERTISED_LISTENERS}
+            - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
+            - KAFKA_INTER_BROKER_LISTENER_NAME=${KAFKA_INTER_BROKER_LISTENER_NAME}
+            - KAFKA_ZOOKEEPER_SESSION_TIMEOUT=${KAFKA_ZOOKEEPER_SESSION_TIMEOUT}
+            - KAFKA_RESTART_ATTEMPTS=${KAFKA_RESTART_ATTEMPTS}
+            - KAFKA_RESTART_DELAY=${KAFKA_RESTART_DELAY}
+            - ZOOKEEPER_AUTOPURGE_PURGE_INTERVAL=${ZOOKEEPER_AUTOPURGE_PURGE_INTERVAL}
+        networks:
+            - ingestion_network
+networks:
+    ingestion_network:
+        driver: bridge

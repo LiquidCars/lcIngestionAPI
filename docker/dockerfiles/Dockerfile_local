@@ -1,0 +1,19 @@
+FROM amazoncorretto:21-alpine-jdk
+
+RUN mkdir /app
+RUN adduser --system --disabled-password --no-create-home --home /app java_app
+RUN addgroup java_app
+RUN chown -R java_app:java_app /app
+RUN mkdir -p /logs && chown -R java_app:java_app /logs
+
+RUN apk update && apk upgrade
+RUN apk add --no-cache curl bash
+
+EXPOSE 8890
+EXPOSE 5005
+
+COPY ./../../build/libs/lcAPI*.jar /app/lcAPI.jar
+COPY ./../../src/main/resources/ /app/resources/
+
+USER java_app
+ENTRYPOINT ["java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "-jar", "/app/lcIngestionAPI.jar", "--spring.config.additional-location=file:/app/resources/"]

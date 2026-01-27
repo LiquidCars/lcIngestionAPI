@@ -1,0 +1,21 @@
+{
+  "realm" : "M2M_Vehicle_Seller",
+  "users" : [ {
+    "id" : "a348670e-8480-44a5-84ab-90262c6a1bea",
+    "username" : "service-account-liquidcars-service",
+    "emailVerified" : false,
+    "createdTimestamp" : 1746783970924,
+    "enabled" : true,
+    "totp" : false,
+    "serviceAccountClientId" : "liquidcars-service",
+    "credentials" : [ ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-M2M_Vehicle_Seller" ],
+    "clientRoles" : {
+      "realm-management" : [ "view-authorization", "view-users", "manage-users", "manage-authorization", "query-users", "query-groups" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  } ]
+}

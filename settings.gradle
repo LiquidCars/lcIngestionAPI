@@ -1,0 +1,11 @@
+rootProject.name = 'ingestion-api'
+
+include 'ingestion-domain'
+include 'ingestion-application'
+include 'ingestion-boot'
+include 'ingestion-infra-input-rest'
+include 'ingestion-infra-input-kafka'
+include 'ingestion-infra-output-kafka'
+include 'ingestion-infra-output-mongodb'
+include 'ingestion-infra-output-postgresql'
+include 'ingestion-factory-data-test'

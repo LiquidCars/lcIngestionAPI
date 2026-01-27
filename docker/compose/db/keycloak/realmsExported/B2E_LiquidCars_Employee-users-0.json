@@ -1,0 +1,21 @@
+{
+  "realm" : "B2E_LiquidCars_Employee",
+  "users" : [ {
+    "id" : "7b70c442-6672-4e90-8b7a-bb3fc4620c3a",
+    "username" : "service-account-liquidcars-service",
+    "emailVerified" : false,
+    "createdTimestamp" : 1746784706697,
+    "enabled" : true,
+    "totp" : false,
+    "serviceAccountClientId" : "liquidcars-service",
+    "credentials" : [ ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-B2E_LiquidCars_Employee" ],
+    "clientRoles" : {
+      "realm-management" : [ "query-groups", "view-authorization", "view-users", "query-users", "manage-authorization", "manage-users" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  } ]
+}

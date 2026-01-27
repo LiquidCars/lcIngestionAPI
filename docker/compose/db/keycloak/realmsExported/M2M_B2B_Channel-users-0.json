@@ -1,0 +1,21 @@
+{
+  "realm" : "M2M_B2B_Channel",
+  "users" : [ {
+    "id" : "1e3abb25-213d-497c-835c-2929416fff61",
+    "username" : "service-account-liquidcars-service",
+    "emailVerified" : false,
+    "createdTimestamp" : 1746784176716,
+    "enabled" : true,
+    "totp" : false,
+    "serviceAccountClientId" : "liquidcars-service",
+    "credentials" : [ ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-M2M_Online_Channel" ],
+    "clientRoles" : {
+      "realm-management" : [ "query-users", "manage-authorization", "manage-users", "query-groups", "view-authorization", "view-users" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
+  } ]
+}

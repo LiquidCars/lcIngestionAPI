@@ -1,0 +1,12 @@
+dependencies {
+    // Domain layer has minimal dependencies
+    // Only pure Java and validation
+    implementation 'jakarta.validation:jakarta.validation-api:3.1.0'
+    
+    // MapStruct for mapping
+    implementation "org.mapstruct:mapstruct:${mapstructVersion}"
+    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+    
+    // Optional: if you need value objects with validation
+    implementation 'org.apache.commons:commons-lang3:3.17.0'
+}
