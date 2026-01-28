@@ -9,7 +9,7 @@ import net.liquidcars.ingestion.infra.input.rest.model.OfferRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,15 +39,10 @@ public class IngestionController implements IngestionApi {
 
     @Override
     public ResponseEntity<Void> ingestStream(String format, org.springframework.core.io.Resource body) {
-        ServletWebRequest servletContainerRequest = (ServletWebRequest) RequestContextHolder.getRequestAttributes();
-        assert servletContainerRequest != null;
-        HttpServletRequest nativeRequest = servletContainerRequest.getRequest();
-
-        try {
-            InputStream inputStream = nativeRequest.getInputStream();
+        try (InputStream inputStream = body.getInputStream()) {
             offerIngestionProcessService.processOffersStream(format, inputStream);
         } catch (IOException e) {
-            log.error("Failed to retrieve input stream from request", e);
+            log.error("Failed to read input stream from Resource", e);
             return ResponseEntity.internalServerError().build();
         }
         return ResponseEntity.accepted().build();

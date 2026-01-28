@@ -1,5 +1,6 @@
 package net.liquidcars.ingestion.application.service;
 
+import net.liquidcars.ingestion.application.service.parser.OfferXmlProcessor;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 
 import java.io.InputStream;

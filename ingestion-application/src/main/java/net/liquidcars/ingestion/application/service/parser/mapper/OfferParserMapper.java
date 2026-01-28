@@ -1,19 +1,16 @@
-package net.liquidcars.ingestion.infra.input.rest.mapper;
+package net.liquidcars.ingestion.application.service.parser.mapper;
+
+import net.liquidcars.ingestion.application.service.parser.model.OfferJSONModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
-import net.liquidcars.ingestion.infra.input.rest.model.OfferRequest;
-
-import java.util.List;
 
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface IngestionControllerMapper {
+public interface OfferParserMapper {
 
     @Mapping(target = "id", expression = "java(java.util.UUID.randomUUID().toString())")
-    OfferDto toOfferDto(OfferRequest offerRequest);
-
-    List<OfferDto> toOfferDtoList(List<OfferRequest> offerRequestList);
+    OfferDto toOfferDto(OfferJSONModel offerJSONModel);
 
 }

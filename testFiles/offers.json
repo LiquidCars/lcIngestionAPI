@@ -1,0 +1,123 @@
+[
+  {
+    "externalId": "MF-882931",
+    "vehicleType": "CAR",
+    "brand": "BMW",
+    "model": "3 Series",
+    "year": 2023,
+    "price": 34500.5,
+    "status": "ACTIVE",
+    "createdAt": "2026-01-27T10:00:00+01:00",
+    "updatedAt": "2026-01-27T12:00:00+01:00",
+    "source": "motorflash"
+  },
+  {
+    "externalId": "MF-882932",
+    "vehicleType": "CAR",
+    "brand": "Audi",
+    "model": "A4",
+    "year": 2022,
+    "price": 32000.0,
+    "status": "ACTIVE",
+    "createdAt": "2026-01-27T11:00:00+01:00",
+    "updatedAt": "2026-01-27T13:00:00+01:00",
+    "source": "motorflash"
+  },
+  {
+    "externalId": "MF-882933",
+    "vehicleType": "CAR",
+    "brand": "Mercedes",
+    "model": "C-Class",
+    "year": 2023,
+    "price": 37000.75,
+    "status": "ACTIVE",
+    "createdAt": "2026-01-27T10:30:00+01:00",
+    "updatedAt": "2026-01-27T12:30:00+01:00",
+    "source": "motorflash"
+  },
+  {
+    "externalId": "MF-882934",
+    "vehicleType": "CAR",
+    "brand": "Volkswagen",
+    "model": "Golf",
+    "year": 2021,
+    "price": 21500.0,
+    "status": "ACTIVE",
+    "createdAt": "2026-01-27T09:00:00+01:00",
+    "updatedAt": "2026-01-27T11:00:00+01:00",
+    "source": "motorflash"
+  },
+  {
+    "externalId": "MF-882935",
+    "vehicleType": "CAR",
+    "brand": "Toyota",
+    "model": "Corolla",
+    "year": 2022,
+    "price": 19500.0,
+    "status": "ACTIVE",
+    "createdAt": "2026-01-27T08:30:00+01:00",
+    "updatedAt": "2026-01-27T10:30:00+01:00",
+    "source": "motorflash"
+  },
+  {
+    "externalId": "MF-882936",
+    "vehicleType": "CAR",
+    "brand": "Honda",
+    "model": "Civic",
+    "year": 2023,
+    "price": 22000.5,
+    "status": "ACTIVE",
+    "createdAt": "2026-01-27T07:45:00+01:00",
+    "updatedAt": "2026-01-27T09:45:00+01:00",
+    "source": "motorflash"
+  },
+  {
+    "externalId": "MF-882937",
+    "vehicleType": "CAR",
+    "brand": "Ford",
+    "model": "Focus",
+    "year": 2021,
+    "price": 18500.0,
+    "status": "ACTIVE",
+    "createdAt": "2026-01-27T10:15:00+01:00",
+    "updatedAt": "2026-01-27T12:15:00+01:00",
+    "source": "motorflash"
+  },
+  {
+    "externalId": "MF-882938",
+    "vehicleType": "CAR",
+    "brand": "Nissan",
+    "model": "Sentra",
+    "year": 2022,
+    "price": 19500.75,
+    "status": "ACTIVE",
+    "createdAt": "2026-01-27T09:30:00+01:00",
+    "updatedAt": "2026-01-27T11:30:00+01:00",
+    "source": "motorflash"
+  },
+  {
+    "externalId": "MF-882939",
+    "vehicleType": "CAR",
+    "brand": "Hyundai",
+    "model": "Elantra",
+    "year": 2023,
+    "price": 21000.0,
+    "status": "ACTIVE",
+    "createdAt": "2026-01-27T08:00:00+01:00",
+    "updatedAt": "2026-01-27T10:00:00+01:00",
+    "source": "motorflash"
+  },
+  {
+    "externalId": "MF-882940",
+    "vehicleType": "CAR",
+    "brand": "Kia",
+    "model": "Cerato",
+    "year": 2022,
+    "price": 20000.0,
+    "status": "ACTIVE",
+    "createdAt": "2026-01-27T07:00:00+01:00",
+    "updatedAt": "2026-01-27T09:00:00+01:00",
+    "source": "motorflash"
+  }
+]
+

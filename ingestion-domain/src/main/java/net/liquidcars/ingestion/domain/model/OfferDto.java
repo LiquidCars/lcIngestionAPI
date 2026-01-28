@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 /**
  * Domain entity representing a vehicle offer.
@@ -19,7 +20,7 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 public class OfferDto {
     
-    private String id;
+    private String id = String.valueOf(UUID.randomUUID());
     private String externalId;
     private VehicleTypeDto vehicleType;
     private String brand;

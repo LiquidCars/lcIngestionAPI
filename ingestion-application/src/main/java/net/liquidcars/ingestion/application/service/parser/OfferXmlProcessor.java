@@ -1,4 +1,4 @@
-package net.liquidcars.ingestion.application.service;
+package net.liquidcars.ingestion.application.service.parser;
 
 import lombok.RequiredArgsConstructor;
 import net.liquidcars.ingestion.domain.model.OfferDto;
@@ -10,7 +10,6 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 import java.io.InputStream;
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.function.Consumer;
 
 @Service
@@ -19,7 +18,6 @@ public class OfferXmlProcessor implements IOfferParserService {
 
     @Override
     public boolean supports(String format) {
-        // Este procesador solo se activa si el formato es XML
         return "xml".equalsIgnoreCase(format);
     }
 
@@ -65,10 +63,8 @@ public class OfferXmlProcessor implements IOfferParserService {
 
 
     private void fillOfferData(String tagName, XMLStreamReader reader, OfferDto offer) throws Exception {
-        // Obtenemos el texto dentro de la etiqueta (gestiona CDATA automáticamente)
         String content = "";
 
-        // El switch mapea etiquetas del XML -> campos del DTO
         switch (tagName) {
             case "motorflashid":
                 offer.setExternalId(reader.getElementText());
@@ -86,7 +82,6 @@ public class OfferXmlProcessor implements IOfferParserService {
                 }
                 break;
             case "fechamatriculacion":
-                // El XML viene como "31 / 07 / 2015". Extraemos el año (los últimos 4 caracteres)
                 String dateStr = reader.getElementText();
                 if (dateStr.length() >= 4) {
                     offer.setYear(Integer.parseInt(dateStr.substring(dateStr.length() - 4).trim()));
