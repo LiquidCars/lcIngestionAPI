@@ -1,6 +1,7 @@
 dependencies {
     implementation project(':ingestion-domain')
     implementation project(':ingestion-application')
+    implementation project(':ingestion-infra-output-kafka')
     
     // Kafka
     implementation "org.springframework.kafka:spring-kafka:${springKafkaVersion}"

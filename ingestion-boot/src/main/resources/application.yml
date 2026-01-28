@@ -53,7 +53,7 @@ spring:
         linger.ms: 10
         batch.size: 16384
     consumer:
-      group-id: ingestion-consumer-group
+      group-id: liquidcars-ingestion-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       auto-offset-reset: earliest

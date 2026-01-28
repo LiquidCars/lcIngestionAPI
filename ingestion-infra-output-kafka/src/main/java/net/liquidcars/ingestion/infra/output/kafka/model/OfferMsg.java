@@ -1,4 +1,4 @@
-package java.net.liquidcars.ingestion.infra.output.kafka.model;
+package net.liquidcars.ingestion.infra.output.kafka.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
