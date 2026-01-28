@@ -1,4 +1,15 @@
 package net.liquidcars.ingestion.infra.postgresql.repository;
 
-public interface OfferSQLRepository {
+import net.liquidcars.ingestion.infra.postgresql.entity.OfferEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface OfferSQLRepository extends JpaRepository<OfferEntity, String> {
+
+    Optional<OfferEntity> findByExternalId(String externalId);
+
+    boolean existsByExternalId(String externalId);
 }
