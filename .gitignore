@@ -1,0 +1,50 @@
+/.gradle/
+build/
+logs/
+ai/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+!**/src/test/**/db.migration/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+/.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Local Configuration for https://github.com/paulschwarz/spring-dotenv ###
+### TODO - UNTIL WE HAVE THE AZURE KV IN PLACE, WE'LL ADD TO GIT RESOURCES/ENV/ENV FILES - WE NEED TO TRANSFORM IT TO
+###      src/main/resources/env/*, SO TO IGNORE EVERYTHING HERE. THIS WAY, WE COULD WORK IN LOCAL WITHOUT DANGER
+### !src/main/resources/env/*
+### !src/main/resources/env/setEnv.sh
+### 2024.01.17 - env files correctly configured in AKS deployment, not anymore in code.
+src/main/resources/env/*
+!src/main/resources/env/setEnv*.sh
+docker/compose/.env

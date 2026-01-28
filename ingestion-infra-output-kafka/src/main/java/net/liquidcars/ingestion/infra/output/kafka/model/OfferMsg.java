@@ -21,12 +21,12 @@ public class OfferMsg {
     
     private String id;
     private String externalId;
-    private VehicleType vehicleType;
+    private VehicleTypeMsg vehicleType;
     private String brand;
     private String model;
     private Integer year;
     private BigDecimal price;
-    private OfferStatus status;
+    private OfferStatusMsg status;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     private String source;
@@ -34,7 +34,7 @@ public class OfferMsg {
     /**
      * Vehicle type enumeration
      */
-    public enum VehicleType {
+    public enum VehicleTypeMsg {
         CAR,
         TRUCK,
         MOTORCYCLE,
@@ -45,7 +45,7 @@ public class OfferMsg {
     /**
      * Offer status enumeration
      */
-    public enum OfferStatus {
+    public enum OfferStatusMsg {
         ACTIVE,
         SOLD,
         RESERVED,
@@ -56,7 +56,7 @@ public class OfferMsg {
      * Business logic: Check if the offer is available for purchase
      */
     public boolean isAvailable() {
-        return status == OfferStatus.ACTIVE;
+        return status == OfferStatusMsg.ACTIVE;
     }
     
     /**
