@@ -6,7 +6,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Main entry point for the Ingestion API microservice.
- * 
  * This application handles vehicle offer ingestion from multiple sources
  * using Spring Batch, Kafka, MongoDB, and PostgreSQL.
  */
