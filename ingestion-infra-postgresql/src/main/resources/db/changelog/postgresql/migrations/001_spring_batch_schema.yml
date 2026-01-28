@@ -1,0 +1,89 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1-spring-batch-sequences
+      author: liquidcars
+      changes:
+        - createSequence:
+            sequenceName: BATCH_JOB_SEQ
+        - createSequence:
+            sequenceName: BATCH_JOB_EXECUTION_SEQ
+        - createSequence:
+            sequenceName: BATCH_STEP_EXECUTION_SEQ
+
+  - changeSet:
+      id: 2-spring-batch-tables
+      author: liquidcars
+      changes:
+        - createTable:
+            tableName: BATCH_JOB_INSTANCE
+            columns:
+              - column:
+                  name: JOB_INSTANCE_ID
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: VERSION
+                  type: BIGINT
+              - column:
+                  name: JOB_NAME
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: JOB_KEY
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: BATCH_JOB_INSTANCE
+            columnNames: JOB_NAME, JOB_KEY
+            constraintName: JOB_INST_UN
+
+        - createTable:
+            tableName: BATCH_JOB_EXECUTION
+            columns:
+              - column:
+                  name: JOB_EXECUTION_ID
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: VERSION
+                  type: BIGINT
+              - column:
+                  name: JOB_INSTANCE_ID
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: CREATE_TIME
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: START_TIME
+                  type: TIMESTAMP
+              - column:
+                  name: END_TIME
+                  type: TIMESTAMP
+              - column:
+                  name: STATUS
+                  type: VARCHAR(10)
+              - column:
+                  name: EXIT_CODE
+                  type: VARCHAR(2500)
+              - column:
+                  name: EXIT_MESSAGE
+                  type: VARCHAR(2500)
+              - column:
+                  name: LAST_UPDATED
+                  type: TIMESTAMP
+        - addForeignKeyConstraint:
+            baseTableName: BATCH_JOB_EXECUTION
+            baseColumnNames: JOB_INSTANCE_ID
+            referencedTableName: BATCH_JOB_INSTANCE
+            referencedColumnNames: JOB_INSTANCE_ID
+            constraintName: JOB_INST_EXEC_FK

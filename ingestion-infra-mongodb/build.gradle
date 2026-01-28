@@ -13,8 +13,20 @@ dependencies {
     // Jackson (for document mapping if needed)
     implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
     implementation "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${jacksonVersion}"
-    
+
+    //Liquibase
+    implementation 'org.liquibase:liquibase-core'
+    implementation 'org.liquibase.ext:liquibase-mongodb:4.23.1'
+
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation "org.testcontainers:mongodb:${testcontainersVersion}"
+}
+
+sourceSets {
+    main {
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+    }
 }

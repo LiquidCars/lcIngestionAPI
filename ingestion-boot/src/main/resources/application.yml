@@ -12,10 +12,8 @@ spring:
   # MongoDB Configuration
   data:
     mongodb:
-      host: localhost
-      port: 27017
-      database: ingestion_db
-      auto-index-creation: true
+      url: mongodb://ingestion_service:mongo@localhost:27017/ingestion_service?authSource=admin
+      database: ingestion_service
   
   # PostgreSQL Configuration
   datasource:
@@ -66,21 +64,27 @@ spring:
     job:
       enabled: false # Don't auto-start jobs on application startup
     jdbc:
-      initialize-schema: always
+      initialize-schema: never
       table-prefix: BATCH_
   
-  # Flyway Migration
-  flyway:
+  # Liquibase Migration
+  liquibase:
     enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-  
+    change-log: classpath:db/changelog/postgresql/db.changelog-master.xml
   # File Upload Configuration
 
+#Liquibase Mongo config
+liquibase:
+  mongodb:
+    enabled: true
+    change-log: classpath:db/changelog/mongodb/db.changelog-master.xml
+    url: mongodb://localhost:27017/ingestion_service?authSource=admin
+    user: ingestion_service
+    password: mongo
 
 # Server Configuration
 server:
-  port: 8090
+  port: 8890
   compression:
     enabled: true
   tomcat:
@@ -102,9 +106,11 @@ management:
 logging:
   level:
     root: INFO
-    com.orbyn.ingestion: DEBUG
+    com.orbyn.ingestion: INFO
     org.springframework.batch: INFO
     org.springframework.kafka: INFO
+    liquibase: INFO
+    org.liquibase: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 

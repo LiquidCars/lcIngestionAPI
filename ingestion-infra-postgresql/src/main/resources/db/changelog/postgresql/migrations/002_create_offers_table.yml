@@ -1,0 +1,79 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1-create-offers-table
+      author: liquidcars
+      changes:
+        - createTable:
+            tableName: offers
+            columns:
+              - column:
+                  name: id
+                  type: VARCHAR(255)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: external_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: vehicle_type
+                  type: VARCHAR(50)
+              - column:
+                  name: brand
+                  type: VARCHAR(100)
+              - column:
+                  name: model
+                  type: VARCHAR(100)
+              - column:
+                  name: year
+                  type: INTEGER
+              - column:
+                  name: price
+                  type: DECIMAL(15,2)
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: ACTIVE
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: source
+                  type: VARCHAR(100)
+
+        - createIndex:
+            indexName: idx_offers_external_id
+            tableName: offers
+            columns:
+              - column:
+                  name: external_id
+
+        - createIndex:
+            indexName: idx_offers_brand_model
+            tableName: offers
+            columns:
+              - column: { name: brand }
+              - column: { name: model }
+
+        - createIndex:
+            indexName: idx_offers_status
+            tableName: offers
+            columns:
+              - column: { name: status }
+
+        - createIndex:
+            indexName: idx_offers_created_at
+            tableName: offers
+            columns:
+              - column: { name: created_at }
+
+        - sql:
+            sql: "ALTER TABLE offers ADD CONSTRAINT chk_year CHECK (year >= 1900 AND year <= 2100);"

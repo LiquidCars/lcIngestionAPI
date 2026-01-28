@@ -1,28 +1,35 @@
 dependencies {
     implementation project(':ingestion-domain')
     implementation project(':ingestion-application')
-    
+
     // JPA / Hibernate
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    
+
     // PostgreSQL Driver
     runtimeOnly "org.postgresql:postgresql:${postgresqlVersion}"
-    
+
     // Spring Batch (for job repository)
     implementation "org.springframework.batch:spring-batch-core:${springBatchVersion}"
-    
+
     // MapStruct
     implementation "org.mapstruct:mapstruct:${mapstructVersion}"
     annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
-    
-    // Hibernate Types (for JSON support, etc.)
+
+    // Hibernate Types
     implementation 'io.hypersistence:hypersistence-utils-hibernate-63:3.9.0'
-    
-    // Flyway for migrations
-    implementation 'org.flywaydb:flyway-core'
-    implementation 'org.flywaydb:flyway-database-postgresql'
-    
+
+    // --- LIQUIBASE (Sustituyendo a Flyway) ---
+    implementation "org.liquibase:liquibase-core:4.23.1"
+
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation "org.testcontainers:postgresql:${testcontainersVersion}"
+}
+
+sourceSets {
+    main {
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+    }
 }
