@@ -24,4 +24,5 @@ dependencies {
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation "org.springframework.batch:spring-batch-test:${springBatchVersion}"
+    testImplementation "org.testcontainers:junit-jupiter:${testcontainersVersion}"
 }
