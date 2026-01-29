@@ -84,7 +84,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                 OfferStreamItemReader realReader = new OfferStreamItemReader(parser, inputStream);
 
                 Step dynamicStep = new StepBuilder("ingestionStep-" + format, jobRepository)
-                        .<OfferDto, OfferDto>chunk(chunkSize, transactionManager) // Usamos la variable inyectada
+                        .<OfferDto, OfferDto>chunk(chunkSize, transactionManager)
                         .reader(realReader)
                         .writer(offerItemWriter)
                         .build();
