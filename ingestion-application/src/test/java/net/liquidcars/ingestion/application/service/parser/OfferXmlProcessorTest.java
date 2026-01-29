@@ -1,6 +1,5 @@
-package net.liquidcars.ingestion.application.service;
+package net.liquidcars.ingestion.application.service.parser;
 
-import net.liquidcars.ingestion.application.service.parser.OfferXmlProcessor;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.OfferXMLModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
@@ -12,7 +11,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -26,7 +24,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)

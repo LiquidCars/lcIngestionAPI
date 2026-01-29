@@ -1,8 +1,7 @@
-package net.liquidcars.ingestion.application.service;
+package net.liquidcars.ingestion.application.service.parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import net.liquidcars.ingestion.application.service.parser.OfferJSONProcessor;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.OfferJSONModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;

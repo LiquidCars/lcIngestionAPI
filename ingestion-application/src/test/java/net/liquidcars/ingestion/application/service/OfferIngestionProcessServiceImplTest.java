@@ -37,17 +37,23 @@ public class OfferIngestionProcessServiceImplTest {
     @Mock
     private List<IOfferParserService> parsers;
 
-    @Mock private IOfferParserService mockParser;
+    @Mock
+    private IOfferParserService mockParser;
 
-    @Mock private IOfferInfraKafkaProducerService offerInfraKafkaProducerService;
+    @Mock
+    private IOfferInfraKafkaProducerService offerInfraKafkaProducerService;
 
-    @Mock private OfferItemWriter offerItemWriter;
+    @Mock
+    private OfferItemWriter offerItemWriter;
 
-    @Mock private JobLauncher jobLauncher;
+    @Mock
+    private JobLauncher jobLauncher;
 
-    @Mock private JobRepository jobRepository;
+    @Mock
+    private JobRepository jobRepository;
 
-    @Mock private PlatformTransactionManager transactionManager;
+    @Mock
+    private PlatformTransactionManager transactionManager;
 
     @Captor
     private ArgumentCaptor<OfferDto> offerCaptor;
