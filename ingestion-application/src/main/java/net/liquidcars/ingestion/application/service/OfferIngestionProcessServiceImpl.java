@@ -2,11 +2,23 @@ package net.liquidcars.ingestion.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.liquidcars.ingestion.application.service.batch.OfferItemWriter;
+import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.io.InputStream;
 import java.net.URI;
@@ -23,6 +35,13 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
 
     private final List<IOfferParserService> parsers;
     private final IOfferInfraKafkaProducerService offerInfraKafkaProducerService;
+    private final OfferItemWriter offerItemWriter;
+    private final JobLauncher jobLauncher;
+    private final JobRepository jobRepository;
+    private final PlatformTransactionManager transactionManager;
+
+    @Value("${ingestion.batch.chunk-size:10}")
+    private int chunkSize;
 
     @Override
     public void processOffers(List<OfferDto> offers) {
@@ -53,7 +72,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         });
     }
 
-    @Override
+   /* @Override
     public void processOffersStream(String format, InputStream inputStream) {
         log.info("Process ingestion from InputStream with format: {}", format);
 
@@ -78,8 +97,37 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                 log.error("Error processing stream", e);
             }
         });
-    }
+    }*/
 
+    @Override
+    public void processOffersStream(String format, InputStream inputStream) {
+        IOfferParserService parser = parsers.stream()
+                .filter(p -> p.supports(format))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Format not supported: " + format));
+
+        Thread.ofVirtual().start(() -> {
+            try {
+                OfferStreamItemReader realReader = new OfferStreamItemReader(parser, inputStream);
+
+                Step dynamicStep = new StepBuilder("ingestionStep-" + format, jobRepository)
+                        .<OfferDto, OfferDto>chunk(chunkSize, transactionManager) // Usamos la variable inyectada
+                        .reader(realReader)
+                        .writer(offerItemWriter)
+                        .build();
+
+                Job dynamicJob = new JobBuilder("ingestionJob-" + System.currentTimeMillis(), jobRepository)
+                        .start(dynamicStep)
+                        .build();
+
+                jobLauncher.run(dynamicJob, new JobParameters());
+
+                log.info("Batch job started successfully for format: {}", format);
+            } catch (Exception e) {
+                log.error("Failed to execute batch job", e);
+            }
+        });
+    }
     private void processOffer(OfferDto offerDto){
         offerInfraKafkaProducerService.sendOffer(offerDto);
     }
