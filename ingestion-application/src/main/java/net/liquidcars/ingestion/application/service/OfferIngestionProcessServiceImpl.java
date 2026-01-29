@@ -72,33 +72,6 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         });
     }
 
-   /* @Override
-    public void processOffersStream(String format, InputStream inputStream) {
-        log.info("Process ingestion from InputStream with format: {}", format);
-
-        IOfferParserService parser = parsers.stream()
-                .filter(p -> p.supports(format))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unsupported format: " + format));
-
-        Thread.ofVirtual().start(() -> {
-            try (inputStream) {
-                log.info("Starting ingestion for format: {}", format);
-                parser.parseAndProcess(inputStream, offer -> {
-                    if (offer.isValid()) {
-                        processOffer(offer);
-                    } else {
-                        log.warn("Invalid offer skipped: {}", offer.getExternalId());
-                    }
-                });
-
-                log.info("Ingestion completed for format: {}", format);
-            } catch (Exception e) {
-                log.error("Error processing stream", e);
-            }
-        });
-    }*/
-
     @Override
     public void processOffersStream(String format, InputStream inputStream) {
         IOfferParserService parser = parsers.stream()
