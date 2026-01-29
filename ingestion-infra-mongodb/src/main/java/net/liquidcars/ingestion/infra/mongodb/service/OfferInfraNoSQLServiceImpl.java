@@ -16,15 +16,9 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     private final OfferInfraNoSQLMapper offerInfraNoSQLMapper;
 
     @Override
-    public OfferDto save(OfferDto offer) {
-        // 1. Dominio -> Entidad NoSQL
+    public void save(OfferDto offer) {
         OfferNoSQLEntity entity = offerInfraNoSQLMapper.toEntity(offer);
-
-        // 2. Persistencia
-        OfferNoSQLEntity savedEntity = repository.save(entity);
-
-        // 3. Entidad NoSQL -> Dominio
-        return offerInfraNoSQLMapper.toDto(savedEntity);
+        repository.save(entity);
     }
 
 }
