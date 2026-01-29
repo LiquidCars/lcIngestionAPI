@@ -1,6 +1,9 @@
 package net.liquidcars.ingestion.application.service.parser;
 
 import lombok.RequiredArgsConstructor;
+import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
+import net.liquidcars.ingestion.application.service.parser.model.OfferJSONModel;
+import net.liquidcars.ingestion.application.service.parser.model.OfferXMLModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
 import org.springframework.stereotype.Service;
@@ -17,6 +20,8 @@ import java.util.function.Consumer;
 @RequiredArgsConstructor
 public class OfferXmlProcessor implements IOfferParserService {
 
+    private final OfferParserMapper offerParserMapper;
+
     @Override
     public boolean supports(String format) {
         return "xml".equalsIgnoreCase(format);
@@ -28,27 +33,13 @@ public class OfferXmlProcessor implements IOfferParserService {
 
         try {
             XMLStreamReader reader = factory.createXMLStreamReader(inputStream);
-            OfferDto currentOffer = null;
-
             while (reader.hasNext()) {
                 int event = reader.next();
-
-                switch (event) {
-                    case XMLStreamConstants.START_ELEMENT:
-                        String tagName = reader.getLocalName();
-                        if ("vehicle".equals(tagName)) {
-                            currentOffer = new OfferDto();
-                        }
-                        else if (currentOffer != null) {
-                            fillOfferData(tagName, reader, currentOffer);
-                        }
-                        break;
-                    case XMLStreamConstants.END_ELEMENT:
-                        if ("vehicle".equals(reader.getLocalName()) && currentOffer != null) {
-                            action.accept(currentOffer);
-                            currentOffer = null;
-                        }
-                        break;
+                if (event == XMLStreamConstants.START_ELEMENT && "vehicle".equals(reader.getLocalName())) {
+                    OfferXMLModel xmlModel = buildModelFromXml(reader);
+                    if (xmlModel != null && xmlModel.isValid()) {
+                        action.accept(offerParserMapper.toOfferDto(xmlModel));
+                    }
                 }
             }
             reader.close();
@@ -57,41 +48,38 @@ public class OfferXmlProcessor implements IOfferParserService {
         }
     }
 
-    private void fillOfferData(String tagName, XMLStreamReader reader, OfferDto offer) throws Exception {
+    private OfferXMLModel buildModelFromXml(XMLStreamReader reader) throws Exception {
+        OfferXMLModel model = new OfferXMLModel();
+        while (reader.hasNext()) {
+            int event = reader.next();
+
+            if (event == XMLStreamConstants.START_ELEMENT) {
+                String tagName = reader.getLocalName();
+                fillOfferData(tagName, reader, model);
+            }
+            else if (event == XMLStreamConstants.END_ELEMENT && "vehicle".equals(reader.getLocalName())) {
+                // Hemos terminado de leer este vehículo
+                return model;
+            }
+        }
+        return model;
+    }
+
+    private void fillOfferData(String tagName, XMLStreamReader reader, OfferXMLModel model) throws Exception {
         String content = reader.getElementText();
         if (content == null || content.isBlank()) return;
 
         switch (tagName) {
-            case "externalId":
-                offer.setExternalId(content);
-                break;
-            case "vehicleType":
-                offer.setVehicleType(OfferDto.VehicleTypeDto.valueOf(content.toUpperCase()));
-                break;
-            case "brand":
-                offer.setBrand(content);
-                break;
-            case "model":
-                offer.setModel(content);
-                break;
-            case "year":
-                offer.setYear(Integer.parseInt(content));
-                break;
-            case "price":
-                offer.setPrice(new BigDecimal(content));
-                break;
-            case "status":
-                offer.setStatus(OfferDto.OfferStatusDto.valueOf(content.toUpperCase()));
-                break;
-            case "createdAt":
-                offer.setCreatedAt(OffsetDateTime.parse(content));
-                break;
-            case "updatedAt":
-                offer.setUpdatedAt(OffsetDateTime.parse(content));
-                break;
-            case "source":
-                offer.setSource(content);
-                break;
+            case "externalId"  -> model.setExternalId(content);
+            case "brand"       -> model.setBrand(content);
+            case "model"       -> model.setModel(content);
+            case "year"        -> model.setYear(Integer.parseInt(content));
+            case "price"       -> model.setPrice(new BigDecimal(content));
+            case "source"      -> model.setSource(content);
+            case "vehicleType" -> model.setVehicleType(OfferXMLModel.VehicleTypeXML.valueOf(content.toUpperCase()));
+            case "status"      -> model.setStatus(OfferXMLModel.OfferStatusXML.valueOf(content.toUpperCase()));
+            case "createdAt"   -> model.setCreatedAt(OffsetDateTime.parse(content));
+            case "updatedAt"   -> model.setUpdatedAt(OffsetDateTime.parse(content));
         }
     }
 }
