@@ -13,7 +13,7 @@
 
         <ext:createIndex collectionName="offers_raw">
             <ext:keys>
-                { externalId: 1 }
+                { external_id: 1 }
             </ext:keys>
             <ext:options>
                 { unique: true, name: "idx_offers_external_id" }

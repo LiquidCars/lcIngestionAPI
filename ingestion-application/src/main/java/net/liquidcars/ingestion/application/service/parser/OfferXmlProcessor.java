@@ -10,6 +10,7 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.function.Consumer;
 
 @Service
@@ -35,22 +36,17 @@ public class OfferXmlProcessor implements IOfferParserService {
                 switch (event) {
                     case XMLStreamConstants.START_ELEMENT:
                         String tagName = reader.getLocalName();
-
-                        // En el XML de MotorFlash, cada oferta empieza con <anuncio>
-                        if ("anuncio".equals(tagName)) {
+                        if ("vehicle".equals(tagName)) {
                             currentOffer = new OfferDto();
                         }
-                        // Si ya tenemos un objeto creado, rellenamos sus datos
                         else if (currentOffer != null) {
                             fillOfferData(tagName, reader, currentOffer);
                         }
                         break;
-
                     case XMLStreamConstants.END_ELEMENT:
-                        // Cuando se cierra </anuncio>, enviamos la oferta al Consumer
-                        if ("anuncio".equals(reader.getLocalName()) && currentOffer != null) {
+                        if ("vehicle".equals(reader.getLocalName()) && currentOffer != null) {
                             action.accept(currentOffer);
-                            currentOffer = null; // Reiniciamos para el siguiente anuncio
+                            currentOffer = null;
                         }
                         break;
                 }
@@ -61,31 +57,40 @@ public class OfferXmlProcessor implements IOfferParserService {
         }
     }
 
-
     private void fillOfferData(String tagName, XMLStreamReader reader, OfferDto offer) throws Exception {
-        String content = "";
+        String content = reader.getElementText();
+        if (content == null || content.isBlank()) return;
 
         switch (tagName) {
-            case "motorflashid":
-                offer.setExternalId(reader.getElementText());
+            case "externalId":
+                offer.setExternalId(content);
                 break;
-            case "marca":
-                offer.setBrand(reader.getElementText());
+            case "vehicleType":
+                offer.setVehicleType(OfferDto.VehicleTypeDto.valueOf(content.toUpperCase()));
                 break;
-            case "modelo":
-                offer.setModel(reader.getElementText());
+            case "brand":
+                offer.setBrand(content);
                 break;
-            case "precio":
-                String priceStr = reader.getElementText();
-                if (!priceStr.isEmpty()) {
-                    offer.setPrice(new BigDecimal(priceStr));
-                }
+            case "model":
+                offer.setModel(content);
                 break;
-            case "fechamatriculacion":
-                String dateStr = reader.getElementText();
-                if (dateStr.length() >= 4) {
-                    offer.setYear(Integer.parseInt(dateStr.substring(dateStr.length() - 4).trim()));
-                }
+            case "year":
+                offer.setYear(Integer.parseInt(content));
+                break;
+            case "price":
+                offer.setPrice(new BigDecimal(content));
+                break;
+            case "status":
+                offer.setStatus(OfferDto.OfferStatusDto.valueOf(content.toUpperCase()));
+                break;
+            case "createdAt":
+                offer.setCreatedAt(OffsetDateTime.parse(content));
+                break;
+            case "updatedAt":
+                offer.setUpdatedAt(OffsetDateTime.parse(content));
+                break;
+            case "source":
+                offer.setSource(content);
                 break;
         }
     }

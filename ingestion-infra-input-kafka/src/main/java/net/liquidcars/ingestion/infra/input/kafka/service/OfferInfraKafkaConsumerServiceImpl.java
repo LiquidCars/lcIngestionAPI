@@ -18,14 +18,15 @@ public class OfferInfraKafkaConsumerServiceImpl implements IOfferInfraKafkaConsu
 
     @Override
     public void processOfferSave(OfferDto offerDto) {
-        try{
+        try {
             offerInfraNoSQLService.save(offerDto);
-            log.info("Offer guardada en Mongo");
-            offerInfraSQLService.save(offerDto);
-            log.info("Offer guardada en PostgreSQL");
+        } catch (Exception e) {
+            log.error("Fallo crítico en MongoDB para oferta {}: {}", offerDto.getExternalId(), e.getMessage());
         }
-        catch(Exception e){
-            log.error("Error al guardar la oferta:{}", e.getMessage());
+        try {
+            offerInfraSQLService.save(offerDto);
+        } catch (Exception e) {
+            log.error("Fallo crítico en Postgres para oferta {}: {}", offerDto.getExternalId(), e.getMessage());
         }
     }
 }

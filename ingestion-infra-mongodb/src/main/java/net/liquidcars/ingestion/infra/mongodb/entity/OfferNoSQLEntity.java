@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.FieldType;
@@ -20,6 +22,11 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "offers_raw")
+@CompoundIndex(
+        name = "idx_offers_external_id",
+        def = "{ 'external_id': 1 }",
+        unique = true
+)
 public class OfferNoSQLEntity {
 
     @Id

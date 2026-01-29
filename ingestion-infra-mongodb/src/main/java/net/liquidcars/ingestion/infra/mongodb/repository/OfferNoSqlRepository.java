@@ -5,7 +5,10 @@ import org.springframework.stereotype.Repository;
 
 import net.liquidcars.ingestion.infra.mongodb.entity.OfferNoSQLEntity;
 
+import java.util.Optional;
+
 @Repository
 public interface OfferNoSqlRepository extends MongoRepository<OfferNoSQLEntity, String> {
 
+    Optional<OfferNoSQLEntity> findByExternalId(String externalId);
 }

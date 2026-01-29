@@ -3,6 +3,7 @@ package net.liquidcars.ingestion.infra.mongodb.service.mapper;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.infra.mongodb.entity.OfferNoSQLEntity;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
 import java.time.Instant;
@@ -12,6 +13,7 @@ import java.time.ZoneOffset;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface OfferInfraNoSQLMapper {
 
+    @Mapping(source = "externalId", target = "externalId")
     OfferNoSQLEntity toEntity(OfferDto offerDto);
 
     OfferDto toDto(OfferNoSQLEntity offerNoSQLEntity);
