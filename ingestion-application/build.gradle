@@ -3,8 +3,7 @@ dependencies {
     implementation project(':ingestion-domain')
     
     // Spring Context for dependency injection
-    implementation 'org.springframework:spring-context'
-    implementation 'org.springframework:spring-tx'
+    implementation 'org.springframework.boot:spring-boot-starter'
     
     // Spring Batch for batch processing
     implementation "org.springframework.batch:spring-batch-core:${springBatchVersion}"

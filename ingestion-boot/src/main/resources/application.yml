@@ -124,5 +124,6 @@ ingestion:
       offers: vehicle-offers
   scheduler:
     enabled: true
-    watch-directory: /data/ingestion
+    remoteUrl: http://localhost:8083/offers.json
     cron: "0 */15 * * * *" # Every 15 minutes
+    format: json
