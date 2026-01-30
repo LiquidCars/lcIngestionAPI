@@ -15,24 +15,24 @@ databaseChangeLog:
       author: liquidcars
       changes:
         - createTable:
-            tableName: BATCH_JOB_INSTANCE
+            tableName: BATCH_JOB_INSTANCE # Esta tabla representa la instancia de un trabajo
             columns:
               - column:
-                  name: JOB_INSTANCE_ID
+                  name: JOB_INSTANCE_ID # Id de referencia
                   type: BIGINT
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: VERSION
+                  name: VERSION # Control de concurrencia
                   type: BIGINT
               - column:
-                  name: JOB_NAME
+                  name: JOB_NAME # Nombre del trabajo
                   type: VARCHAR(100)
                   constraints:
                     nullable: false
               - column:
-                  name: JOB_KEY
+                  name: JOB_KEY # Un hash de los parámetros de identificación para asegurar que no se repita la misma instancia.
                   type: VARCHAR(32)
                   constraints:
                     nullable: false
@@ -42,44 +42,44 @@ databaseChangeLog:
             constraintName: JOB_INST_UN
 
         - createTable:
-            tableName: BATCH_JOB_EXECUTION
+            tableName: BATCH_JOB_EXECUTION # Esta tabla representa el intento real de correr el trabajo. Si un trabajo falla y se ejecuta de nuevo habrá 1 instancia y 2 ejecuciones.
             columns:
               - column:
-                  name: JOB_EXECUTION_ID
+                  name: JOB_EXECUTION_ID # Id de referencia
                   type: BIGINT
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: VERSION
+                  name: VERSION # Control de concurrencia
                   type: BIGINT
               - column:
-                  name: JOB_INSTANCE_ID
+                  name: JOB_INSTANCE_ID # Llave foránea que apunta a la instancia
                   type: BIGINT
                   constraints:
                     nullable: false
               - column:
-                  name: CREATE_TIME
+                  name: CREATE_TIME # Fecha de creación
                   type: TIMESTAMP
                   constraints:
                     nullable: false
               - column:
-                  name: START_TIME
+                  name: START_TIME # Momento en el que empieza
                   type: TIMESTAMP
               - column:
-                  name: END_TIME
+                  name: END_TIME # Fecha de fin del trabajo
                   type: TIMESTAMP
               - column:
-                  name: STATUS
+                  name: STATUS # Estado actual
                   type: VARCHAR(10)
               - column:
-                  name: EXIT_CODE
+                  name: EXIT_CODE # Código de salida
                   type: VARCHAR(2500)
               - column:
-                  name: EXIT_MESSAGE
+                  name: EXIT_MESSAGE # Descripción del error si hubo
                   type: VARCHAR(2500)
               - column:
-                  name: LAST_UPDATED
+                  name: LAST_UPDATED # Última actualización
                   type: TIMESTAMP
         - addForeignKeyConstraint:
             baseTableName: BATCH_JOB_EXECUTION
@@ -93,13 +93,13 @@ databaseChangeLog:
       author: liquidcars
       changes:
         - createTable:
-            tableName: BATCH_JOB_EXECUTION_PARAMS
+            tableName: BATCH_JOB_EXECUTION_PARAMS # Esta tabla guarda los parámetros que se le pasaron al trabajo al momento de ejecutarlo
             columns:
-              - column: { name: JOB_EXECUTION_ID, type: BIGINT, constraints: { nullable: false } }
-              - column: { name: PARAMETER_NAME, type: VARCHAR(100), constraints: { nullable: false } }
-              - column: { name: PARAMETER_TYPE, type: VARCHAR(100), constraints: { nullable: false } }
-              - column: { name: PARAMETER_VALUE, type: VARCHAR(2500) }
-              - column: { name: IDENTIFYING, type: CHAR(1), constraints: { nullable: false } }
+              - column: { name: JOB_EXECUTION_ID, type: BIGINT, constraints: { nullable: false } } # Id de referencia
+              - column: { name: PARAMETER_NAME, type: VARCHAR(100), constraints: { nullable: false } } # Nombre del parámetro
+              - column: { name: PARAMETER_TYPE, type: VARCHAR(100), constraints: { nullable: false } } # Tipo de dato
+              - column: { name: PARAMETER_VALUE, type: VARCHAR(2500) } #Valor del dato
+              - column: { name: IDENTIFYING, type: CHAR(1), constraints: { nullable: false } } # Y/N. Si es Y ayuda a distinguir una instancia de otra
         - addForeignKeyConstraint:
             baseTableName: BATCH_JOB_EXECUTION_PARAMS
             baseColumnNames: JOB_EXECUTION_ID
@@ -108,27 +108,27 @@ databaseChangeLog:
             constraintName: JOB_EXEC_PARAMS_FK
 
         - createTable:
-            tableName: BATCH_STEP_EXECUTION
+            tableName: BATCH_STEP_EXECUTION # Instancia de un paso dentro del trabajo
             columns:
-              - column: { name: STEP_EXECUTION_ID, type: BIGINT, constraints: { primaryKey: true, nullable: false } }
-              - column: { name: VERSION, type: BIGINT, constraints: { nullable: false } }
-              - column: { name: STEP_NAME, type: VARCHAR(100), constraints: { nullable: false } }
-              - column: { name: JOB_EXECUTION_ID, type: BIGINT, constraints: { nullable: false } }
-              - column: { name: CREATE_TIME, type: TIMESTAMP, constraints: { nullable: false } }
-              - column: { name: START_TIME, type: TIMESTAMP }
-              - column: { name: END_TIME, type: TIMESTAMP }
-              - column: { name: STATUS, type: VARCHAR(10) }
-              - column: { name: COMMIT_COUNT, type: BIGINT }
-              - column: { name: READ_COUNT, type: BIGINT }
-              - column: { name: FILTER_COUNT, type: BIGINT }
-              - column: { name: WRITE_COUNT, type: BIGINT }
-              - column: { name: READ_SKIP_COUNT, type: BIGINT }
-              - column: { name: WRITE_SKIP_COUNT, type: BIGINT }
-              - column: { name: PROCESS_SKIP_COUNT, type: BIGINT }
-              - column: { name: ROLLBACK_COUNT, type: BIGINT }
-              - column: { name: EXIT_CODE, type: VARCHAR(2500) }
-              - column: { name: EXIT_MESSAGE, type: VARCHAR(2500) }
-              - column: { name: LAST_UPDATED, type: TIMESTAMP }
+              - column: { name: STEP_EXECUTION_ID, type: BIGINT, constraints: { primaryKey: true, nullable: false } } # Id de referencia de este intento de ejecución de este paso
+              - column: { name: VERSION, type: BIGINT, constraints: { nullable: false } } # Control de bloqueo optimista para evitar colisiones en actualizaciones
+              - column: { name: STEP_NAME, type: VARCHAR(100), constraints: { nullable: false } } # Nombre del paso
+              - column: { name: JOB_EXECUTION_ID, type: BIGINT, constraints: { nullable: false } } # Id del trabajo al que pertenece este paso
+              - column: { name: CREATE_TIME, type: TIMESTAMP, constraints: { nullable: false } } # Fecha de creación
+              - column: { name: START_TIME, type: TIMESTAMP } # Momento de inicio
+              - column: { name: END_TIME, type: TIMESTAMP } # Fecha de fin del trabajo
+              - column: { name: STATUS, type: VARCHAR(10) } # Estado actual
+              - column: { name: COMMIT_COUNT, type: BIGINT } # Cuántas veces se hizo guardado de un chunk en la base de datos
+              - column: { name: READ_COUNT, type: BIGINT } # Total de ítems leídos con éxito desde la fuente
+              - column: { name: FILTER_COUNT, type: BIGINT } # Ítems que el ItemProcessor decidió ignorar
+              - column: { name: WRITE_COUNT, type: BIGINT } # Total de ítems escritos con éxito en el destino.
+              - column: { name: READ_SKIP_COUNT, type: BIGINT } # Errores al leer
+              - column: { name: WRITE_SKIP_COUNT, type: BIGINT } # Errores al intentar insertar/guardar los datos.
+              - column: { name: PROCESS_SKIP_COUNT, type: BIGINT } # Errores en la lógica de negocio
+              - column: { name: ROLLBACK_COUNT, type: BIGINT } # Cuántas veces se tuvo que deshacer una transacción por un error.
+              - column: { name: EXIT_CODE, type: VARCHAR(2500) } # Código de salida
+              - column: { name: EXIT_MESSAGE, type: VARCHAR(2500) } # Descripción del error si hubo
+              - column: { name: LAST_UPDATED, type: TIMESTAMP } # Última actualización
         - addForeignKeyConstraint:
             baseTableName: BATCH_STEP_EXECUTION
             baseColumnNames: JOB_EXECUTION_ID
@@ -141,11 +141,11 @@ databaseChangeLog:
       author: liquidcars
       changes:
         - createTable:
-            tableName: BATCH_JOB_EXECUTION_CONTEXT
+            tableName: BATCH_JOB_EXECUTION_CONTEXT # Guarda datos que quieres que estén disponibles para todo el Job
             columns:
-              - column: { name: JOB_EXECUTION_ID, type: BIGINT, constraints: { primaryKey: true, nullable: false } }
-              - column: { name: SHORT_CONTEXT, type: VARCHAR(2500), constraints: { nullable: false } }
-              - column: { name: SERIALIZED_CONTEXT, type: TEXT }
+              - column: { name: JOB_EXECUTION_ID, type: BIGINT, constraints: { primaryKey: true, nullable: false } } # Id de la ejecución al que pertenece
+              - column: { name: SHORT_CONTEXT, type: VARCHAR(2500), constraints: { nullable: false } } # Versión simplificada y legible en texto de los datos guardados.
+              - column: { name: SERIALIZED_CONTEXT, type: TEXT } # Spring Batch agarra un objeto Java, lo convierte en JSON o formato serializado y lo guarda aquí como un texto largo
         - addForeignKeyConstraint:
             baseTableName: BATCH_JOB_EXECUTION_CONTEXT
             baseColumnNames: JOB_EXECUTION_ID
@@ -154,11 +154,11 @@ databaseChangeLog:
             constraintName: JOB_EXEC_CTX_FK
 
         - createTable:
-            tableName: BATCH_STEP_EXECUTION_CONTEXT
+            tableName: BATCH_STEP_EXECUTION_CONTEXT # Guarda datos que solo le importan a un paso específico
             columns:
-              - column: { name: STEP_EXECUTION_ID, type: BIGINT, constraints: { primaryKey: true, nullable: false } }
-              - column: { name: SHORT_CONTEXT, type: VARCHAR(2500), constraints: { nullable: false } }
-              - column: { name: SERIALIZED_CONTEXT, type: TEXT }
+              - column: { name: STEP_EXECUTION_ID, type: BIGINT, constraints: { primaryKey: true, nullable: false } } # Id de la ejecución al que pertenece
+              - column: { name: SHORT_CONTEXT, type: VARCHAR(2500), constraints: { nullable: false } } # Versión simplificada y legible en texto de los datos guardados.
+              - column: { name: SERIALIZED_CONTEXT, type: TEXT } # Spring Batch agarra un objeto Java, lo convierte en JSON o formato serializado y lo guarda aquí como un texto largo
         - addForeignKeyConstraint:
             baseTableName: BATCH_STEP_EXECUTION_CONTEXT
             baseColumnNames: STEP_EXECUTION_ID
