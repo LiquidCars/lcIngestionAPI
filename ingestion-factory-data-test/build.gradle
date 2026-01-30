@@ -4,5 +4,5 @@ dependencies {
     implementation project(':ingestion-infra-mongodb')
     implementation project(':ingestion-infra-input-rest')
     implementation project(':ingestion-infra-output-kafka')
-    testImplementation('org.instancio:instancio-junit:4.0.0')
+    implementation('org.instancio:instancio-junit:4.0.0')
 }

@@ -4,6 +4,7 @@ import net.liquidcars.ingestion.application.service.batch.OfferItemWriter;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
+import net.liquidcars.ingestion.factory.OfferDtoFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -60,7 +61,7 @@ public class OfferIngestionProcessServiceImplTest {
 
     @Test
     void processOffers_ShouldSendEachOfferToKafka() {
-        OfferDto offer1 = new OfferDto();
+        OfferDto offer1 = OfferDtoFactory.getOfferDto();
         OfferDto offer2 = new OfferDto();
         List<OfferDto> offers = List.of(offer1, offer2);
 
