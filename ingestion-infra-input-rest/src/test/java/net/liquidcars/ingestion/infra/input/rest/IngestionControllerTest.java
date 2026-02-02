@@ -40,7 +40,7 @@ public class IngestionControllerTest {
         when(mapper.toOfferDtoList(any())).thenReturn(List.of());
 
         mockMvc.perform(post("/batch")
-                        .content("[]") // Simula un JSON vacío
+                        .content("[]")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
 
@@ -59,7 +59,7 @@ public class IngestionControllerTest {
 
     @Test
     void ingestStream_ShouldReturnAccepted() throws Exception {
-        // Simulamos un envío de archivo/binario
+
         byte[] content = "<offers></offers>".getBytes();
 
         mockMvc.perform(post("/stream")
@@ -68,7 +68,6 @@ public class IngestionControllerTest {
                         .contentType(MediaType.APPLICATION_OCTET_STREAM))
                 .andExpect(status().isAccepted());
 
-        // Verificamos que se llamó al servicio con un InputStream
         verify(ingestionService).processOffersStream(eq("xml"), any(InputStream.class));
     }
 }

@@ -4,6 +4,7 @@ import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMap
 import net.liquidcars.ingestion.application.service.parser.model.OfferXMLModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -11,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -40,6 +42,53 @@ class OfferXmlProcessorTest {
 
     @Captor
     private ArgumentCaptor<OfferDto> offerCaptor;
+
+    @Test
+    void supports_ShouldReturnTrueOnlyForXml() {
+        assertTrue(processor.supports("xml"));
+        assertTrue(processor.supports("XML"));
+        assertFalse(processor.supports("json"));
+        assertFalse(processor.supports(null));
+    }
+
+    @Test
+    void parseAndProcess_ShouldProcessValidXml() {
+        String xml = """
+            <inventory>
+                <vehicle>
+                  <externalId>MF-882931</externalId>
+                  <vehicleType>CAR</vehicleType>
+                  <brand>BMW</brand>
+                  <model>3 Series</model>
+                  <year>2023</year>
+                  <price>34500.5</price>
+                  <status>ACTIVE</status>
+                  <createdAt>2026-01-27T10:00:00+01:00</createdAt>
+                  <updatedAt>2026-01-27T12:00:00+01:00</updatedAt>
+                  <source>motorflash</source>
+              </vehicle>
+            </inventory>
+            """;
+
+        when(offerParserMapper.toOfferDto(any(OfferXMLModel.class))).thenReturn(new OfferDto());
+
+        List<OfferDto> results = new ArrayList<>();
+        processor.parseAndProcess(new ByteArrayInputStream(xml.getBytes()), results::add);
+
+        assertEquals(1, results.size());
+        verify(offerParserMapper).toOfferDto(any(OfferXMLModel.class));
+    }
+
+    @Test
+    void parseAndProcess_ShouldThrowRuntimeException_OnInvalidXml() {
+        InputStream invalidIs = new ByteArrayInputStream("<vehicle><externalId>123".getBytes());
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () ->
+                processor.parseAndProcess(invalidIs, dto -> {})
+        );
+
+        assertTrue(ex.getMessage().contains("Error procesando XML"));
+    }
 
     @Test
     void testParseAndProcessMultipleOffers() throws IOException {

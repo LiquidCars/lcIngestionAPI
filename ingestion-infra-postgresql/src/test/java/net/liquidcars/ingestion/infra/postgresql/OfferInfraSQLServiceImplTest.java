@@ -1,6 +1,8 @@
 package net.liquidcars.ingestion.infra.postgresql;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.factory.OfferDtoFactory;
+import net.liquidcars.ingestion.factory.OfferEntityFactory;
 import net.liquidcars.ingestion.infra.postgresql.entity.OfferEntity;
 import net.liquidcars.ingestion.infra.postgresql.repository.OfferSQLRepository;
 import net.liquidcars.ingestion.infra.postgresql.service.OfferInfraSQLServiceImpl;
@@ -27,8 +29,8 @@ public class OfferInfraSQLServiceImplTest {
 
     @Test
     void save_ShouldMapAndSaveInRepository() {
-        OfferDto dto = new OfferDto();
-        OfferEntity entity = new OfferEntity();
+        OfferDto dto = OfferDtoFactory.getOfferDto();
+        OfferEntity entity = OfferEntityFactory.getOfferEntity();
 
         when(mapper.toEntity(dto)).thenReturn(entity);
 

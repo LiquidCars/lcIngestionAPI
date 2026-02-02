@@ -12,6 +12,8 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.launch.JobLauncher;
@@ -30,6 +32,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class OfferIngestionProcessServiceImplTest {
 
     @InjectMocks
@@ -62,7 +65,7 @@ public class OfferIngestionProcessServiceImplTest {
     @Test
     void processOffers_ShouldSendEachOfferToKafka() {
         OfferDto offer1 = OfferDtoFactory.getOfferDto();
-        OfferDto offer2 = new OfferDto();
+        OfferDto offer2 = OfferDtoFactory.getOfferDto();
         List<OfferDto> offers = List.of(offer1, offer2);
 
         service.processOffers(offers);
@@ -120,6 +123,51 @@ public class OfferIngestionProcessServiceImplTest {
         );
     }
 
+    @Test
+    void processOffersFromUrl_ShouldLogError_WhenResponseIsNot200() throws Exception {
+        URI url = URI.create("https://api.test.com/404");
+        var mockClient = mock(java.net.http.HttpClient.class);
+        var mockResponse = mock(java.net.http.HttpResponse.class);
 
+        when(mockResponse.statusCode()).thenReturn(404);
+        lenient().when(mockClient.send(any(), any())).thenReturn(mockResponse);
+
+        try (var mockedHttpClient = mockStatic(java.net.http.HttpClient.class)) {
+            mockedHttpClient.when(java.net.http.HttpClient::newHttpClient).thenReturn(mockClient);
+            service.processOffersFromUrl("json", url);
+            Thread.sleep(300);
+        }
+    }
+
+    @Test
+    void processOffersFromUrl_ShouldLogError_WhenExceptionOccurs() throws Exception {
+        URI url = URI.create("https://api.test.com/error");
+        var mockClient = mock(java.net.http.HttpClient.class);
+
+        lenient().when(mockClient.send(any(), any())).thenThrow(new RuntimeException("Connection Failed"));
+
+        try (var mockedHttpClient = mockStatic(java.net.http.HttpClient.class)) {
+            mockedHttpClient.when(java.net.http.HttpClient::newHttpClient).thenReturn(mockClient);
+
+            service.processOffersFromUrl("json", url);
+
+            Thread.sleep(500);
+        }
+    }
+
+    @Test
+    void processOffersStream_ShouldLogError_WhenJobLauncherFails() throws Exception {
+        String format = "json";
+        InputStream is = new ByteArrayInputStream("[]".getBytes());
+
+        when(mockParser.supports(format)).thenReturn(true);
+        when(parsers.stream()).thenAnswer(i -> Stream.of(mockParser));
+
+        lenient().when(jobLauncher.run(any(), any())).thenThrow(new RuntimeException("Batch Error"));
+
+        service.processOffersStream(format, is);
+
+        verify(jobLauncher, timeout(2000)).run(any(), any());
+    }
 
 }

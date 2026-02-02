@@ -1,6 +1,7 @@
 package net.liquidcars.ingestion.infra.mongodb;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.factory.OfferNoSQLEntityFactory;
 import net.liquidcars.ingestion.infra.mongodb.entity.OfferNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.repository.OfferNoSqlRepository;
 import net.liquidcars.ingestion.infra.mongodb.service.OfferInfraNoSQLServiceImpl;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import net.liquidcars.ingestion.factory.OfferDtoFactory;
 
 import static org.mockito.Mockito.*;
 
@@ -27,9 +29,8 @@ public class OfferInfraNoSQLServiceImplTest {
 
     @Test
     void save_ShouldMapAndPersistInMongo() {
-        OfferDto dto = new OfferDto();
-        OfferNoSQLEntity entity = new OfferNoSQLEntity();
-        entity.setExternalId("TEST-MONGO-1");
+        OfferDto dto = OfferDtoFactory.getOfferDto();
+        OfferNoSQLEntity entity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
 
         when(mapper.toEntity(dto)).thenReturn(entity);
 

@@ -2,6 +2,7 @@ package net.liquidcars.ingestion.application.service.batch;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
+import net.liquidcars.ingestion.factory.OfferDtoFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,14 +27,11 @@ class OfferItemWriterTest {
 
     @Test
     void write_ShouldSendAllOffersInChunk() throws Exception {
-        // GIVEN
-        List<OfferDto> offers = List.of(new OfferDto(), new OfferDto(), new OfferDto());
+        List<OfferDto> offers = List.of(OfferDtoFactory.getOfferDto(), OfferDtoFactory.getOfferDto(), OfferDtoFactory.getOfferDto());
         Chunk<OfferDto> chunk = new Chunk<>(offers);
 
-        // WHEN
         writer.write(chunk);
 
-        // THEN
         verify(kafkaProducer, times(3)).sendOffer(any(OfferDto.class));
     }
 }

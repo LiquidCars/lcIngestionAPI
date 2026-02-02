@@ -24,6 +24,7 @@ dependencies {
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation "org.testcontainers:postgresql:${testcontainersVersion}"
+    testImplementation project(':ingestion-factory-data-test')
 }
 
 sourceSets {

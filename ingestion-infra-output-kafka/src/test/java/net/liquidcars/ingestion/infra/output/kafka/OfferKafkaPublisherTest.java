@@ -1,5 +1,6 @@
 package net.liquidcars.ingestion.infra.output.kafka;
 
+import net.liquidcars.ingestion.factory.OfferMsgFactory;
 import net.liquidcars.ingestion.infra.output.kafka.client.OfferKafkaPublisher;
 import net.liquidcars.ingestion.infra.output.kafka.model.OfferMsg;
 import org.junit.jupiter.api.DisplayName;
@@ -28,7 +29,7 @@ public class OfferKafkaPublisherTest {
     @Test
     @DisplayName("Debe enviar la oferta al topic de Kafka con el ID como clave")
     void sendOffer_ShouldCallKafkaTemplate() {
-        OfferMsg msg = new OfferMsg();
+        OfferMsg msg = OfferMsgFactory.getOfferMsg();
         msg.setId("OFF-999");
 
         publisher.sendOffer(msg);

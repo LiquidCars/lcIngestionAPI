@@ -3,6 +3,7 @@ package net.liquidcars.ingestion.infra.input.kafka.service;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
+import net.liquidcars.ingestion.factory.OfferDtoFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,11 +28,8 @@ class OfferInfraKafkaConsumerServiceImplTest {
     @Test
     @DisplayName("Debe guardar en ambos repositorios cuando todo va bien")
     void processOfferSave_ShouldSaveInBothSystems() {
-        // GIVEN
-        OfferDto offer = new OfferDto();
-        offer.setExternalId("TEST-1");
+        OfferDto offer = OfferDtoFactory.getOfferDto();
 
-        // WHEN
         service.processOfferSave(offer);
 
         // THEN
@@ -61,7 +59,6 @@ class OfferInfraKafkaConsumerServiceImplTest {
         OfferDto offer = new OfferDto();
         doThrow(new RuntimeException("Postgres Down")).when(offerInfraSQLService).processOffer(any());
 
-        // WHEN
         service.processOfferSave(offer);
 
         // THEN

@@ -21,4 +21,5 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation "org.springframework.kafka:spring-kafka-test:${springKafkaVersion}"
     testImplementation "org.testcontainers:kafka:${testcontainersVersion}"
+    testImplementation project(':ingestion-factory-data-test')
 }

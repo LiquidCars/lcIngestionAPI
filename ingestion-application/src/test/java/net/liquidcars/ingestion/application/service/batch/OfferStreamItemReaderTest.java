@@ -2,6 +2,7 @@ package net.liquidcars.ingestion.application.service.batch;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
+import net.liquidcars.ingestion.factory.OfferDtoFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -23,17 +24,15 @@ public class OfferStreamItemReaderTest {
 
     @Test
     void read_ShouldReturnAllOffersAndThenNull() throws Exception {
-        // GIVEN: Un parser que añade dos ofertas y termina
         doAnswer(inv -> {
             Consumer<OfferDto> action = inv.getArgument(1);
-            action.accept(new OfferDto());
-            action.accept(new OfferDto());
+            action.accept(OfferDtoFactory.getOfferDto());
+            action.accept(OfferDtoFactory.getOfferDto());
             return null;
         }).when(parser).parseAndProcess(any(), any());
 
         OfferStreamItemReader reader = new OfferStreamItemReader(parser, InputStream.nullInputStream());
 
-        // WHEN & THEN
         assertNotNull(reader.read());
         assertNotNull(reader.read());
         assertNull(reader.read(), "Debe retornar null cuando el parseo termina");
@@ -41,14 +40,12 @@ public class OfferStreamItemReaderTest {
 
     @Test
     void read_ShouldThrowException_WhenParserFails() {
-        // GIVEN: Un parser que explota
         doThrow(new RuntimeException("Crash!")).when(parser).parseAndProcess(any(), any());
 
         OfferStreamItemReader reader = new OfferStreamItemReader(parser, InputStream.nullInputStream());
 
-        // WHEN & THEN: Esperamos un poco a que el hilo virtual falle
         assertThrows(RuntimeException.class, () -> {
-            for(int i=0; i<100; i++) { // Reintentos cortos por la naturaleza asíncrona
+            for(int i=0; i<100; i++) {
                 reader.read();
                 Thread.sleep(10);
             }
