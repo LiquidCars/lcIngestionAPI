@@ -18,10 +18,22 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     private final OfferInfraNoSQLMapper offerInfraNoSQLMapper;
 
     @Override
-    public void save(OfferDto offer) {
+    public void processOffer(OfferDto offer) {
+        log.info("Processing offer with externalId={}", offer.getExternalId());
         OfferNoSQLEntity entity = offerInfraNoSQLMapper.toEntity(offer);
-        log.info("Saving offer with externalId={}", entity.getExternalId());
-        repository.save(entity);
+        repository.findByExternalId(offer.getExternalId())
+                .ifPresentOrElse(
+                        existingOffer -> {
+                            if (entity.getCreatedAt().isAfter(existingOffer.getCreatedAt())) {
+                                entity.setId(existingOffer.getId());
+                                repository.save(entity);
+                            }
+                        },
+                        () -> {
+                            // Si no existe, se inserta directamente
+                            repository.save(entity);
+                        }
+                );
     }
 
 }

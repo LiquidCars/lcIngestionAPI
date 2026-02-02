@@ -35,8 +35,8 @@ class OfferInfraKafkaConsumerServiceImplTest {
         service.processOfferSave(offer);
 
         // THEN
-        verify(offerInfraNoSQLService, times(1)).save(offer);
-        verify(offerInfraSQLService, times(1)).save(offer);
+        verify(offerInfraNoSQLService, times(1)).processOffer(offer);
+        verify(offerInfraSQLService, times(1)).processOffer(offer);
     }
 
     @Test
@@ -44,14 +44,14 @@ class OfferInfraKafkaConsumerServiceImplTest {
     void processOfferSave_ShouldSaveInSQL_EvenIfNoSQLFails() {
         // GIVEN
         OfferDto offer = new OfferDto();
-        doThrow(new RuntimeException("Mongo Down")).when(offerInfraNoSQLService).save(any());
+        doThrow(new RuntimeException("Mongo Down")).when(offerInfraNoSQLService).processOffer(any());
 
         // WHEN
         service.processOfferSave(offer);
 
         // THEN
-        verify(offerInfraNoSQLService, times(1)).save(offer);
-        verify(offerInfraSQLService, times(1)).save(offer); // Se ejecuta a pesar del error anterior
+        verify(offerInfraNoSQLService, times(1)).processOffer(offer);
+        verify(offerInfraSQLService, times(1)).processOffer(offer); // Se ejecuta a pesar del error anterior
     }
 
     @Test
@@ -59,13 +59,13 @@ class OfferInfraKafkaConsumerServiceImplTest {
     void processOfferSave_ShouldSaveInNoSQL_EvenIfSQLFails() {
         // GIVEN
         OfferDto offer = new OfferDto();
-        doThrow(new RuntimeException("Postgres Down")).when(offerInfraSQLService).save(any());
+        doThrow(new RuntimeException("Postgres Down")).when(offerInfraSQLService).processOffer(any());
 
         // WHEN
         service.processOfferSave(offer);
 
         // THEN
-        verify(offerInfraNoSQLService, times(1)).save(offer);
-        verify(offerInfraSQLService, times(1)).save(offer);
+        verify(offerInfraNoSQLService, times(1)).processOffer(offer);
+        verify(offerInfraSQLService, times(1)).processOffer(offer);
     }
 }

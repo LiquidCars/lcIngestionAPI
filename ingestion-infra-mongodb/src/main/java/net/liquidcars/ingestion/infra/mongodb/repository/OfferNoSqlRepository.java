@@ -10,4 +10,5 @@ import java.util.Optional;
 @Repository
 public interface OfferNoSqlRepository extends MongoRepository<OfferNoSQLEntity, String> {
 
+    Optional<OfferNoSQLEntity> findByExternalId(String externalId);
 }

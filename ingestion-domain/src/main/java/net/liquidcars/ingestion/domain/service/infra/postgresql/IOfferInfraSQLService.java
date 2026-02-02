@@ -4,6 +4,6 @@ import net.liquidcars.ingestion.domain.model.OfferDto;
 
 public interface IOfferInfraSQLService {
 
-    void save(OfferDto offer);
+    void processOffer(OfferDto offer);
 
 }

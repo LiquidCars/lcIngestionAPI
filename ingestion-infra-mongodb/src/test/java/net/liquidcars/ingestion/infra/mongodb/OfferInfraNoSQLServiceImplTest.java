@@ -33,7 +33,7 @@ public class OfferInfraNoSQLServiceImplTest {
 
         when(mapper.toEntity(dto)).thenReturn(entity);
 
-        service.save(dto);
+        service.processOffer(dto);
 
         verify(mapper, times(1)).toEntity(dto);
         verify(repository, times(1)).save(entity);
