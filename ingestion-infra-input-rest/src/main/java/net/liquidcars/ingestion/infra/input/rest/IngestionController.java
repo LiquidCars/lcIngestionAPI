@@ -1,6 +1,5 @@
 package net.liquidcars.ingestion.infra.input.rest;
 
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
@@ -8,8 +7,6 @@ import net.liquidcars.ingestion.infra.input.rest.mapper.IngestionControllerMappe
 import net.liquidcars.ingestion.infra.input.rest.model.OfferRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.io.IOException;
 import java.io.InputStream;
