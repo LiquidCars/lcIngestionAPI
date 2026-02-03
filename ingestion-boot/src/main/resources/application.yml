@@ -107,6 +107,10 @@ security:
   exposed-headers: Authorization
   allow-credentials: true
   max-age-seconds: 3600
+  # List of paths to monitor size
+  size-restricted-paths:
+    - /batch
+  max-batch-size: ${SECURITY_MAX_BATCH_SIZE:0MB}
   
 # Management & Actuator
 management:
