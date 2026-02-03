@@ -14,7 +14,7 @@ services:
             POSTGRES_PASSWORD: postgres
             TZ: UTC
         ports:
-            - 5432:5432
+            - 5435:5432
         volumes:
             - "./db/init_db.sql:/init_db.sql"
             - "./db/startup_db.sh:/startup_db.sh"  # Mount the startup script
@@ -25,7 +25,7 @@ services:
         image: adminer
         restart: always
         ports:
-            - 8081:8080
+            - 8085:8080
     mongodb:
         image: mongo:latest
         container_name: mongodb_local

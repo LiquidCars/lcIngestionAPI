@@ -1,8 +1,10 @@
 package net.liquidcars.ingestion.infra.input.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.liquidcars.ingestion.domain.model.security.AccessRoleEnum;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
 import net.liquidcars.ingestion.infra.input.rest.mapper.IngestionControllerMapper;
 import net.liquidcars.ingestion.infra.input.rest.model.OfferRequest;
@@ -25,18 +27,21 @@ public class IngestionController implements IngestionApi {
     private final IngestionControllerMapper ingestionControllerMapper;
 
 
+    @RolesAllowed({AccessRoleEnum.LCSupport_role, AccessRoleEnum.M2M_role})
     @Override
     public ResponseEntity<Void> ingestBatch(List<OfferRequest> offerRequest) {
         offerIngestionProcessService.processOffers(ingestionControllerMapper.toOfferDtoList(offerRequest));
         return ResponseEntity.ok().build();
     }
 
+    @RolesAllowed({AccessRoleEnum.LCSupport_role, AccessRoleEnum.M2M_role})
     @Override
     public ResponseEntity<Void> ingestFromUrl(String format, URI url) {
         offerIngestionProcessService.processOffersFromUrl(format, url);
         return ResponseEntity.accepted().build();
     }
 
+    @RolesAllowed({AccessRoleEnum.LCSupport_role, AccessRoleEnum.M2M_role})
     @Override
     public ResponseEntity<Void> ingestStream(String format, org.springframework.core.io.Resource body) {
         try (InputStream inputStream = body.getInputStream()) {
