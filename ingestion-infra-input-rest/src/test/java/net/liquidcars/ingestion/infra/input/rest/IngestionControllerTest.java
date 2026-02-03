@@ -3,22 +3,26 @@ package net.liquidcars.ingestion.infra.input.rest;
 import net.liquidcars.ingestion.IngestionApiApplication;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
 import net.liquidcars.ingestion.infra.input.rest.mapper.IngestionControllerMapper;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -70,4 +74,33 @@ public class IngestionControllerTest {
 
         verify(ingestionService).processOffersStream(eq("xml"), any(InputStream.class));
     }
+
+    @Test
+    void ingestStream_ShouldReturnInternalServerError_WhenIOExceptionOccurs() throws Exception {
+        org.springframework.core.io.Resource mockResource = mock(org.springframework.core.io.Resource.class);
+
+        when(mockResource.getInputStream()).thenThrow(new java.io.IOException("Error de lectura simulado"));
+
+        IngestionController controller = new IngestionController(ingestionService, mapper);
+
+        org.springframework.http.ResponseEntity<Void> response =
+                controller.ingestStream("xml", mockResource);
+
+        org.junit.jupiter.api.Assertions.assertEquals(500, response.getStatusCode().value());
+    }
+
+    @Test
+    void ingestStream_ShouldReturn500_WhenIOExceptionOccurs() throws IOException {
+        IngestionController controller = new IngestionController(ingestionService, mapper);
+
+        Resource mockResource = mock(Resource.class);
+        when(mockResource.getInputStream()).thenThrow(new IOException("Forced failure"));
+
+        ResponseEntity<Void> response = controller.ingestStream("xml", mockResource);
+
+        Assertions.assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+    }
+
+
+
 }

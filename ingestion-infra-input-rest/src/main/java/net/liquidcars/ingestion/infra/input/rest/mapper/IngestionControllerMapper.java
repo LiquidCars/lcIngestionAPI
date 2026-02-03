@@ -1,5 +1,7 @@
 package net.liquidcars.ingestion.infra.input.rest.mapper;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.infra.input.rest.model.OfferStatus;
+import net.liquidcars.ingestion.infra.input.rest.model.VehicleType;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -15,5 +17,9 @@ public interface IngestionControllerMapper {
     OfferDto toOfferDto(OfferRequest offerRequest);
 
     List<OfferDto> toOfferDtoList(List<OfferRequest> offerRequestList);
+
+    OfferDto.VehicleTypeDto mapVehicleType(VehicleType source);
+
+    OfferDto.OfferStatusDto mapOfferStatus(OfferStatus source);
 
 }
