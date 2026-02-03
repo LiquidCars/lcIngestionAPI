@@ -1,5 +1,6 @@
 dependencies {
     implementation project(':ingestion-domain')
+    implementation project(':ingestion-application')
     implementation project(':ingestion-infra-postgresql')
     implementation project(':ingestion-infra-mongodb')
     implementation project(':ingestion-infra-input-rest')
