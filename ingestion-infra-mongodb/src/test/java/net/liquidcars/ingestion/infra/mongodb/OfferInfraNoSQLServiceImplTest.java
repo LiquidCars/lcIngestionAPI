@@ -13,6 +13,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import net.liquidcars.ingestion.factory.OfferDtoFactory;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Optional;
+
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,5 +44,44 @@ public class OfferInfraNoSQLServiceImplTest {
 
         verify(mapper, times(1)).toEntity(dto);
         verify(repository, times(1)).save(entity);
+    }
+
+    @Test
+    void processOffer_WhenOfferExistsAndIsNewer_ShouldUpdate() {
+        OfferDto dto = OfferDtoFactory.getOfferDto();
+        OfferNoSQLEntity newEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
+        OfferNoSQLEntity existingEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
+
+        // Instant usa ChronoUnit para cálculos temporales
+        existingEntity.setCreatedAt(Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS));
+        newEntity.setCreatedAt(Instant.now());
+        existingEntity.setId("existing-id");
+
+        when(mapper.toEntity(dto)).thenReturn(newEntity);
+        when(repository.findByExternalId(dto.getExternalId()))
+                .thenReturn(Optional.of(existingEntity));
+
+        service.processOffer(dto);
+
+        verify(repository, times(1)).save(newEntity);
+        assert(newEntity.getId().equals("existing-id"));
+    }
+
+    @Test
+    void processOffer_WhenOfferExistsButIsOlder_ShouldNotUpdate() {
+        OfferDto dto = OfferDtoFactory.getOfferDto();
+        OfferNoSQLEntity newEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
+        OfferNoSQLEntity existingEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
+
+        existingEntity.setCreatedAt(Instant.now());
+        newEntity.setCreatedAt(Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS));
+
+        when(mapper.toEntity(dto)).thenReturn(newEntity);
+        when(repository.findByExternalId(dto.getExternalId()))
+                .thenReturn(Optional.of(existingEntity));
+
+        service.processOffer(dto);
+
+        verify(repository, never()).save(any(OfferNoSQLEntity.class));
     }
 }
