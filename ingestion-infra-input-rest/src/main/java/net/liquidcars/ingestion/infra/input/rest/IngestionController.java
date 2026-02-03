@@ -10,8 +10,6 @@ import net.liquidcars.ingestion.infra.input.rest.mapper.IngestionControllerMappe
 import net.liquidcars.ingestion.infra.input.rest.model.OfferRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.io.IOException;
 import java.io.InputStream;
