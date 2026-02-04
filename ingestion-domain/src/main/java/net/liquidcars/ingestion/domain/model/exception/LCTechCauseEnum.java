@@ -15,7 +15,8 @@ public enum LCTechCauseEnum {
     // Errores de Servidor (5xx)
     DATABASE(1, 500, "LCException.Global.database"),
     INTERNAL_ERROR(8, 500, "LCException.Global.not_specified"),
-    NOT_IMPLEMENTED(18, 501, "LCException.Global.NotImplemented");
+    NOT_IMPLEMENTED(18, 501, "LCException.Global.NotImplemented"),
+    MESSAGING_BROKER_ERROR(43, 500, "LCException.Global.messaging_broker_error");
 
     public final int code;
     public final int httpStatus;

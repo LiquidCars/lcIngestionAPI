@@ -1,10 +1,13 @@
 package net.liquidcars.ingestion.application.service.parser;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.OfferJSONModel;
 import net.liquidcars.ingestion.application.service.parser.model.OfferXMLModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
+import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.function.Consumer;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OfferXmlProcessor implements IOfferParserService {
@@ -44,7 +48,12 @@ public class OfferXmlProcessor implements IOfferParserService {
             }
             reader.close();
         } catch (Exception e) {
-            throw new RuntimeException("Error procesando XML de MotorFlash", e);
+            log.error("Streaming XML error: {}", e.getMessage());
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.CONVERSION_ERROR)
+                    .message("Error during XML stream parsing: " + e.getMessage())
+                    .cause(e)
+                    .build();
         }
     }
 
@@ -58,7 +67,6 @@ public class OfferXmlProcessor implements IOfferParserService {
                 fillOfferData(tagName, reader, model);
             }
             else if (event == XMLStreamConstants.END_ELEMENT && "vehicle".equals(reader.getLocalName())) {
-                // Hemos terminado de leer este vehículo
                 return model;
             }
         }
