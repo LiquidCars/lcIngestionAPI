@@ -32,6 +32,7 @@ dependencies {
     testImplementation 'io.rest-assured:rest-assured:5.5.0'
     testImplementation project(':ingestion-boot')
     testImplementation project(':ingestion-factory-data-test')
+    testImplementation 'org.springframework.security:spring-security-test'
 }
 
 sourceSets {
