@@ -26,42 +26,36 @@ class OfferInfraKafkaConsumerServiceImplTest {
     private IOfferInfraSQLService offerInfraSQLService;
 
     @Test
-    @DisplayName("Debe guardar en ambos repositorios cuando todo va bien")
+    @DisplayName("Should save to both repositories when everything goes well")
     void processOfferSave_ShouldSaveInBothSystems() {
         OfferDto offer = OfferDtoFactory.getOfferDto();
 
         service.processOfferSave(offer);
 
-        // THEN
         verify(offerInfraNoSQLService, times(1)).processOffer(offer);
         verify(offerInfraSQLService, times(1)).processOffer(offer);
     }
 
     @Test
-    @DisplayName("Debe intentar guardar en SQL aunque NoSQL falle")
+    @DisplayName("Should attempt to save to SQL even if NoSQL fails")
     void processOfferSave_ShouldSaveInSQL_EvenIfNoSQLFails() {
-        // GIVEN
         OfferDto offer = new OfferDto();
         doThrow(new RuntimeException("Mongo Down")).when(offerInfraNoSQLService).processOffer(any());
 
-        // WHEN
         service.processOfferSave(offer);
 
-        // THEN
         verify(offerInfraNoSQLService, times(1)).processOffer(offer);
-        verify(offerInfraSQLService, times(1)).processOffer(offer); // Se ejecuta a pesar del error anterior
+        verify(offerInfraSQLService, times(1)).processOffer(offer);
     }
 
     @Test
-    @DisplayName("Debe intentar guardar en NoSQL aunque SQL falle")
+    @DisplayName("Should attempt to save to NoSQL even if SQL fails")
     void processOfferSave_ShouldSaveInNoSQL_EvenIfSQLFails() {
-        // GIVEN
         OfferDto offer = new OfferDto();
         doThrow(new RuntimeException("Postgres Down")).when(offerInfraSQLService).processOffer(any());
 
         service.processOfferSave(offer);
 
-        // THEN
         verify(offerInfraNoSQLService, times(1)).processOffer(offer);
         verify(offerInfraSQLService, times(1)).processOffer(offer);
     }

@@ -27,7 +27,7 @@ public class OfferKafkaPublisherTest {
     private static final String TOPIC = "liquidcars.ingestion.event.offer.create-action.0";
 
     @Test
-    @DisplayName("Debe enviar la oferta al topic de Kafka con el ID como clave")
+    @DisplayName("Should send the offer to the Kafka topic with the ID as the key")
     void sendOffer_ShouldCallKafkaTemplate() {
         OfferMsg msg = OfferMsgFactory.getOfferMsg();
         msg.setId("OFF-999");

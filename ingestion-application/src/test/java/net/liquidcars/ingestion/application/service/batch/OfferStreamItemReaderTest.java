@@ -35,7 +35,7 @@ public class OfferStreamItemReaderTest {
 
         assertNotNull(reader.read());
         assertNotNull(reader.read());
-        assertNull(reader.read(), "Debe retornar null cuando el parseo termina");
+        assertNull(reader.read(), "Should return null when the parsing is finished");
     }
 
     @Test

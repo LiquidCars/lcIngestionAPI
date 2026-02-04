@@ -14,13 +14,11 @@ class IngestionApiTest {
 
     private MockMvc mockMvc;
 
-    // Creamos un controlador real para el test que use los métodos default
     @RestController
     static class TestIngestionController implements IngestionApi {}
 
     @BeforeEach
     void setUp() {
-        // Inicializamos MockMvc con el controlador de test
         mockMvc = MockMvcBuilders.standaloneSetup(new TestIngestionController()).build();
     }
 
@@ -29,7 +27,7 @@ class IngestionApiTest {
         mockMvc.perform(post("/batch")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("[]"))
-                .andExpect(status().isNotImplemented()); // Ahora sí devolverá 501
+                .andExpect(status().isNotImplemented());
     }
 
     @Test
@@ -51,9 +49,6 @@ class IngestionApiTest {
 
     @Test
     void ingestBatch_ShouldFailWhenContentTypeIsMissing() throws Exception {
-        // Al no enviar Content-Type, MockMvc debería dar error de mapeo (415)
-        // o 404 si el mapping es estricto.
-        // Nota: StandaloneSetup es a veces laxo, si falla cámbialo a is4xxClientError()
         mockMvc.perform(post("/batch")
                         .content("[]"))
                 .andExpect(status().isUnsupportedMediaType());
@@ -61,13 +56,10 @@ class IngestionApiTest {
 
     @Test
     void getRequest_ShouldReturnEmptyOptionalByDefault() {
-        // GIVEN
         IngestionApi api = new TestIngestionController();
 
-        // WHEN
         java.util.Optional<org.springframework.web.context.request.NativeWebRequest> result = api.getRequest();
 
-        // THEN
-        org.junit.jupiter.api.Assertions.assertTrue(result.isEmpty(), "El request por defecto debe ser Optional.empty()");
+        org.junit.jupiter.api.Assertions.assertTrue(result.isEmpty(), "The default request should be Optional.empty()");
     }
 }

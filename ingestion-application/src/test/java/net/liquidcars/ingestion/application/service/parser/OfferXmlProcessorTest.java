@@ -87,13 +87,13 @@ class OfferXmlProcessorTest {
                 processor.parseAndProcess(invalidIs, dto -> {})
         );
 
-        assertTrue(ex.getMessage().contains("Error procesando XML"));
+        assertTrue(ex.getMessage().contains("Error processing XML"));
     }
 
     @Test
     void testParseAndProcessMultipleOffers() throws IOException {
         Path path = Paths.get("..", "testFiles", "offers.xml");
-        assertTrue(Files.exists(path), "El archivo no existe en: " + path.toAbsolutePath());
+        assertTrue(Files.exists(path), "File not found at: " + path.toAbsolutePath());
 
         when(offerParserMapper.toOfferDto(any(OfferXMLModel.class))).thenAnswer(invocation -> {
             OfferXMLModel xml = invocation.getArgument(0);
@@ -118,7 +118,7 @@ class OfferXmlProcessorTest {
         verify(offerConsumer, times(10)).accept(offerCaptor.capture());
         List<OfferDto> results = offerCaptor.getAllValues();
 
-        assertEquals(10, results.size(), "Debería haber procesado exactamente 4 anuncios");
+        assertEquals(10, results.size(), "Should have processed exactly 4 offers");
 
         // 1. BMW
         assertEquals("MF-882931", results.get(0).getExternalId());

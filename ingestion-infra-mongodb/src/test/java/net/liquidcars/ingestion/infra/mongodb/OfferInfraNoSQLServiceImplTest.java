@@ -52,7 +52,6 @@ public class OfferInfraNoSQLServiceImplTest {
         OfferNoSQLEntity newEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
         OfferNoSQLEntity existingEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
 
-        // Instant usa ChronoUnit para cálculos temporales
         existingEntity.setCreatedAt(Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS));
         newEntity.setCreatedAt(Instant.now());
         existingEntity.setId("existing-id");

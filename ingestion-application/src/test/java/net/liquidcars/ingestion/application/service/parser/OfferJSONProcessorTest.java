@@ -46,7 +46,7 @@ public class OfferJSONProcessorTest {
     @Test
     void testParseAndProcessMultipleJsonOffers() throws IOException {
         Path path = Paths.get("..", "testFiles", "offers.json");
-        assertTrue(Files.exists(path), "El archivo no existe en: " + path.toAbsolutePath());
+        assertTrue(Files.exists(path), "File not found at: " + path.toAbsolutePath());
 
         when(offerParserMapper.toOfferDto(any(OfferJSONModel.class))).thenAnswer(invocation -> {
             OfferJSONModel model = invocation.getArgument(0);
@@ -75,7 +75,7 @@ public class OfferJSONProcessorTest {
             processor.parseAndProcess(inputStream, results::add);
         }
 
-        assertEquals(10, results.size(), "Debería haber procesado 10 anuncios del JSON");
+        assertEquals(10, results.size(), "Should have processed 10 advertisements from the JSON");
 
         // 1. BMW
         assertEquals("MF-882931", results.get(0).getExternalId());

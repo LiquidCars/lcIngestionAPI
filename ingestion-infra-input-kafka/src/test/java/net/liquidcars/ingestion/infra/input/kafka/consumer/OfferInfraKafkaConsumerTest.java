@@ -29,7 +29,7 @@ public class OfferInfraKafkaConsumerTest {
     private IOfferInfraKafkaConsumerService service;
 
     @Test
-    @DisplayName("Debe mapear y procesar la oferta cuando llega un mensaje de Kafka")
+    @DisplayName("Should map and process the offer when a Kafka message arrives")
     void consumeOffer_ShouldMapAndProcessSuccessfully() {
         OfferMsg message = OfferMsgFactory.getOfferMsg();
         OfferDto mappedDto = OfferDtoFactory.getOfferDto();
@@ -43,7 +43,7 @@ public class OfferInfraKafkaConsumerTest {
     }
 
     @Test
-    @DisplayName("Debe capturar la excepción y loguear el error si falla el proceso")
+    @DisplayName("Should capture the exception and log the error if the process fails")
     void consumeOffer_ShouldHandleException() {
         OfferMsg message = OfferMsgFactory.getOfferMsg();
         when(mapper.toOfferDto(any())).thenThrow(new RuntimeException("Mapping error"));

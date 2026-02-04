@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 public class VehicleTypeTest {
 
     @Test
-    @DisplayName("Debería generar un VehicleType aleatorio no nulo usando Instancio")
+    @DisplayName("Should generate a non-null random VehicleType using Instancio")
     void shouldGenerateRandomVehicleType() {
         VehicleType type = VehicleTypeFactory.getVehicleType();
 
@@ -22,7 +22,7 @@ public class VehicleTypeTest {
 
     @ParameterizedTest
     @EnumSource(VehicleType.class)
-    @DisplayName("Debería retornar el Enum correcto desde su valor String (fromValue)")
+    @DisplayName("Should return the correct Enum from its String value (fromValue)")
     void fromValueShouldReturnCorrectEnum(VehicleType expectedType) {
         String valueToTest = expectedType.getValue();
 
@@ -32,7 +32,7 @@ public class VehicleTypeTest {
     }
 
     @Test
-    @DisplayName("Debería lanzar excepción cuando el valor String no es válido")
+    @DisplayName("Should throw an exception when the String value is invalid")
     void fromValueShouldThrowExceptionOnInvalidValue() {
         String invalidValue = VehicleTypeFactory.getInvalidVehicleType();
 
@@ -42,7 +42,7 @@ public class VehicleTypeTest {
     }
 
     @Test
-    @DisplayName("toString debería devolver el mismo valor que getValue")
+    @DisplayName("toString should return the same value as getValue")
     void toStringShouldMatchGetValue() {
         VehicleType type = VehicleTypeFactory.getVehicleType();
 

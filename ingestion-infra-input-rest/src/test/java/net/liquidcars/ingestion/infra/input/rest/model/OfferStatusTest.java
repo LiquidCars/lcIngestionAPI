@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 public class OfferStatusTest {
 
     @RepeatedTest(5)
-    @DisplayName("Debería generar un OfferStatus aleatorio válido desde la factoría")
+    @DisplayName("Should generate a valid random OfferStatus from the factory")
     void shouldGetRandomStatusFromFactory() {
         OfferStatus status = OfferStatusFactory.getOfferStatus();
 
@@ -23,7 +23,7 @@ public class OfferStatusTest {
 
     @ParameterizedTest
     @EnumSource(OfferStatus.class)
-    @DisplayName("fromValue debería mapear cada String al Enum correspondiente")
+    @DisplayName("fromValue should map each String to the corresponding Enum")
     void fromValueShouldReturnCorrectEnum(OfferStatus expectedStatus) {
         String valueToTest = expectedStatus.getValue();
 
@@ -33,7 +33,7 @@ public class OfferStatusTest {
     }
 
     @Test
-    @DisplayName("Debería lanzar excepción al usar un valor inválido de la factoría")
+    @DisplayName("Should throw an exception when using an invalid value from the factory")
     void fromValueShouldThrowExceptionOnInvalidValue() {
         String invalidValue = OfferStatusFactory.getInvalidOfferStatus();
 
@@ -43,7 +43,7 @@ public class OfferStatusTest {
     }
 
     @Test
-    @DisplayName("toString debería devolver el valor exacto del String asociado")
+    @DisplayName("toString should return the exact associated string value")
     void toStringShouldMatchValue() {
         OfferStatus status = OfferStatusFactory.getOfferStatus();
 

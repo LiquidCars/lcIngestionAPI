@@ -44,7 +44,7 @@ class IngestionURLSchedulerTest {
 
     @Test
     void scheduleIngestionFromUrl_ShouldHandleException_WhenUriIsInvalid() {
-        ReflectionTestUtils.setField(scheduler, "remoteUrl", "esto no es una url");
+        ReflectionTestUtils.setField(scheduler, "remoteUrl", "This is not a URL");
 
         scheduler.scheduleIngestionFromUrl();
 

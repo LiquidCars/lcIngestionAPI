@@ -62,34 +62,27 @@ public class OfferInfraKafkaConsumerMapperTest {
     @ParameterizedTest
     @EnumSource(OfferMsg.VehicleTypeMsg.class)
     void shouldMapAllVehicleTypes(OfferMsg.VehicleTypeMsg type) {
-        // Given
         OfferMsg msg = new OfferMsg();
         msg.setVehicleType(type);
 
-        // When
         OfferDto result = mapper.toOfferDto(msg);
 
-        // Then
         assertThat(result.getVehicleType().name()).isEqualTo(type.name());
     }
 
     @ParameterizedTest
     @EnumSource(OfferMsg.OfferStatusMsg.class)
     void shouldMapAllOfferStatuses(OfferMsg.OfferStatusMsg status) {
-        // Given
         OfferMsg msg = new OfferMsg();
         msg.setStatus(status);
 
-        // When
         OfferDto result = mapper.toOfferDto(msg);
 
-        // Then
         assertThat(result.getStatus().name()).isEqualTo(status.name());
     }
 
     @Test
     void shouldHandleNullEnums() {
-        // Esto cubre la rama 'default' o 'null' dentro de los métodos de soporte
         OfferMsg msg = new OfferMsg();
         msg.setVehicleType(null);
         msg.setStatus(null);

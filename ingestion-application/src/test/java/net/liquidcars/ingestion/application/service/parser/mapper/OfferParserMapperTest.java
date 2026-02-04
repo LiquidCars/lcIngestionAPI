@@ -80,57 +80,48 @@ class OfferParserMapperTest {
         }
     }
 
-    // ========== TESTS DIRECTOS PARA LOS MÉTODOS GENERADOS DE ENUM ==========
 
     @Test
     void shouldMapVehicleTypeJSONToDto() {
-        // Llamada directa a los métodos generados de enum
         for (OfferJSONModel.VehicleTypeJSON type : OfferJSONModel.VehicleTypeJSON.values()) {
             OfferDto.VehicleTypeDto result = mapper.vehicleTypeJSONToVehicleTypeDto(type);
             assertThat(result).isNotNull();
             assertThat(result.name()).isEqualTo(type.name());
         }
 
-        // Caso null
         assertThat(mapper.vehicleTypeJSONToVehicleTypeDto(null)).isNull();
     }
 
     @Test
     void shouldMapVehicleTypeXMLToDto() {
-        // Llamada directa a los métodos generados de enum
         for (OfferXMLModel.VehicleTypeXML type : OfferXMLModel.VehicleTypeXML.values()) {
             OfferDto.VehicleTypeDto result = mapper.vehicleTypeXMLToVehicleTypeDto(type);
             assertThat(result).isNotNull();
             assertThat(result.name()).isEqualTo(type.name());
         }
 
-        // Caso null
         assertThat(mapper.vehicleTypeXMLToVehicleTypeDto(null)).isNull();
     }
 
     @Test
     void shouldMapOfferStatusJSONToDto() {
-        // Llamada directa a los métodos generados de enum
         for (OfferJSONModel.OfferStatusJSON status : OfferJSONModel.OfferStatusJSON.values()) {
             OfferDto.OfferStatusDto result = mapper.offerStatusJSONToOfferStatusDto(status);
             assertThat(result).isNotNull();
             assertThat(result.name()).isEqualTo(status.name());
         }
 
-        // Caso null
         assertThat(mapper.offerStatusJSONToOfferStatusDto(null)).isNull();
     }
 
     @Test
     void shouldMapOfferStatusXMLToDto() {
-        // Llamada directa a los métodos generados de enum
         for (OfferXMLModel.OfferStatusXML status : OfferXMLModel.OfferStatusXML.values()) {
             OfferDto.OfferStatusDto result = mapper.offerStatusXMLToOfferStatusDto(status);
             assertThat(result).isNotNull();
             assertThat(result.name()).isEqualTo(status.name());
         }
 
-        // Caso null
         assertThat(mapper.offerStatusXMLToOfferStatusDto(null)).isNull();
     }
 
