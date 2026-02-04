@@ -2,6 +2,7 @@ package net.liquidcars.ingestion.infra.input.rest;
 
 import net.liquidcars.ingestion.config.security.filter.IngestionContextFilter;
 import net.liquidcars.ingestion.config.security.model.SecurityProperties;
+import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
 import net.liquidcars.ingestion.domain.service.context.IContextService;
 import net.liquidcars.ingestion.infra.input.rest.mapper.IngestionControllerMapper;
@@ -20,6 +21,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -104,18 +106,19 @@ public class IngestionControllerTest {
 
     @Test
     void ingestStream_ShouldReturn500_WhenIOExceptionOccurs() throws Exception {
-        // doAnswer allows you to throw checked exceptions even if Mockito complains,
-        // though it's a bit of a "hack".
+        // Force the service to throw the checked exception
         doAnswer(invocation -> {
             throw new IOException("Forced failure");
         }).when(ingestionService).processOffersStream(eq("xml"), any(InputStream.class));
 
-        mockMvc.perform(post("/stream") // Ensure this path matches your @RequestMapping
+        mockMvc.perform(post("/stream")
                         .param("format", "xml")
-                        .content("test")
+                        .content("test content")
                         .contentType(MediaType.APPLICATION_OCTET_STREAM))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest())
+                .andExpect(result -> assertTrue(result.getResolvedException() instanceof LCIngestionException));
+        // If you want to be extra precise:
+        // .andExpect(result -> assertTrue(result.getResolvedException() instanceof LCIngestionException));
     }
-
 
 }

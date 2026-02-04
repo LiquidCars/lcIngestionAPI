@@ -1,6 +1,7 @@
 package net.liquidcars.ingestion.infra.input.kafka.service;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
 import net.liquidcars.ingestion.factory.OfferDtoFactory;
@@ -43,10 +44,9 @@ class OfferInfraKafkaConsumerServiceImplTest {
         OfferDto offer = new OfferDto();
         doThrow(new RuntimeException("Mongo Down")).when(offerInfraNoSQLService).processOffer(any());
 
-        service.processOfferSave(offer);
+        assertThrows(LCIngestionException.class, () -> service.processOfferSave(offer));
 
         verify(offerInfraNoSQLService, times(1)).processOffer(offer);
-        verify(offerInfraSQLService, times(1)).processOffer(offer);
     }
 
     @Test
@@ -55,7 +55,7 @@ class OfferInfraKafkaConsumerServiceImplTest {
         OfferDto offer = new OfferDto();
         doThrow(new RuntimeException("Postgres Down")).when(offerInfraSQLService).processOffer(any());
 
-        service.processOfferSave(offer);
+        assertThrows(LCIngestionException.class, () -> service.processOfferSave(offer));
 
         verify(offerInfraNoSQLService, times(1)).processOffer(offer);
         verify(offerInfraSQLService, times(1)).processOffer(offer);

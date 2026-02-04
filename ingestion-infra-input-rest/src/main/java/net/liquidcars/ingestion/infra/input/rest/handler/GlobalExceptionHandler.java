@@ -22,7 +22,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<LCIngestionExceptionApiResponse> handleLCException(LCIngestionException ex) {
 
         LCIngestionExceptionApiResponse error = LCIngestionExceptionApiResponse.builder()
-                .uid(contextService.getContext().getParticipantId())
+                .uid(contextService.getContext()!=null? contextService.getContext().getParticipantId():null)
                 .code(ex.getErrorCode())
                 .numericCode(ex.getNumericErrorCode())
                 .message(ex.getMessage())
