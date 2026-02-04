@@ -1,12 +1,12 @@
 @echo off
-echo Executing compile_lcApi_service.bat...
-call compile_lcApi_service.bat
+echo Executing compile_lcIngestionApi_service.bat...
+call compile_lcIngestionApi_service.bat
 
-echo Executing run_lcApi_service_image.bat...
-call run_lcApi_service_image.bat
+echo Executing run_lcIngestionApi_service_image.bat...
+call run_lcIngestionApi_service_image.bat
 
-echo Executing run_lcApi_full.bat...
-call run_lcApi_full.bat
+echo Executing run_lcIngestionApi_full.bat...
+call run_lcIngestionApi_full.bat
 
-echo Finish run lcApi Docker.
+echo Finish run lcIngestionApi Docker.
 pause

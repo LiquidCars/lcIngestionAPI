@@ -1,5 +1,0 @@
-###Export
-docker run --rm -v C:\keycloak-export:/opt/keycloak/data/export --network host -e KC_DB=postgres -e KC_DB_URL=jdbc:postgresql://localhost:5433/keycloak -e KC_DB_USERNAME=keycloak -e KC_DB_PASSWORD=keycloak quay.io/keycloak/keycloak:26.0.1 export --dir /opt/keycloak/data/export
-
-###Import
-docker run --rm -v "C:\keycloak-export:/opt/keycloak/data/import" --network host -e KC_DB=postgres -e KC_DB_URL=jdbc:postgresql://localhost:5434/keycloak -e KC_DB_USERNAME=keycloak -e KC_DB_PASSWORD=keycloak quay.io/keycloak/keycloak:26.0.1 import --dir /opt/keycloak/data/import
