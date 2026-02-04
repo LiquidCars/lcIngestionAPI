@@ -13,6 +13,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.OffsetDateTime;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,5 +42,45 @@ public class OfferInfraSQLServiceImplTest {
 
         verify(mapper, times(1)).toEntity(dto);
         verify(sqlRepository, times(1)).save(entity);
+    }
+
+    @Test
+    void processOffer_WhenExistsAndIsNewer_ShouldUpdate() {
+        OfferDto dto = OfferDtoFactory.getOfferDto();
+        OfferEntity newEntity = OfferEntityFactory.getOfferEntity();
+        OfferEntity existingEntity = OfferEntityFactory.getOfferEntity();
+
+        newEntity.setCreatedAt(OffsetDateTime.now());
+        existingEntity.setCreatedAt(OffsetDateTime.now().minusDays(1));
+
+        String existingId = "existing-uuid-123";
+        existingEntity.setId(existingId);
+
+        when(mapper.toEntity(dto)).thenReturn(newEntity);
+        when(sqlRepository.findByExternalId(dto.getExternalId()))
+                .thenReturn(Optional.of(existingEntity));
+
+        service.processOffer(dto);
+
+        verify(sqlRepository, times(1)).save(newEntity);
+        assertEquals(existingId, newEntity.getId(), "The new entity ID should be updated with the existing entity's ID");
+    }
+
+    @Test
+    void processOffer_WhenExistsButIsOlder_ShouldNotUpdate() {
+        OfferDto dto = OfferDtoFactory.getOfferDto();
+        OfferEntity newEntity = OfferEntityFactory.getOfferEntity();
+        OfferEntity existingEntity = OfferEntityFactory.getOfferEntity();
+
+        newEntity.setCreatedAt(OffsetDateTime.now().minusDays(10));
+        existingEntity.setCreatedAt(OffsetDateTime.now());
+
+        when(mapper.toEntity(dto)).thenReturn(newEntity);
+        when(sqlRepository.findByExternalId(dto.getExternalId()))
+                .thenReturn(Optional.of(existingEntity));
+
+        service.processOffer(dto);
+
+        verify(sqlRepository, never()).save(any());
     }
 }
