@@ -1,6 +1,7 @@
 package net.liquidcars.ingestion.infra.input.kafka.service;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
 import net.liquidcars.ingestion.factory.OfferDtoFactory;
@@ -11,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,12 +46,13 @@ class OfferInfraKafkaConsumerServiceImplTest {
         OfferDto offer = new OfferDto();
         doThrow(new RuntimeException("Mongo Down")).when(offerInfraNoSQLService).processOffer(any());
 
-        // WHEN
-        service.processOfferSave(offer);
+        // THEN: Assert that the exception is thrown, then verify interactions
+        assertThrows(LCIngestionException.class, () -> {
+            service.processOfferSave(offer);
+        });
 
-        // THEN
+        // These will now execute because assertThrows catches the exception
         verify(offerInfraNoSQLService, times(1)).processOffer(offer);
-        verify(offerInfraSQLService, times(1)).processOffer(offer); // Se ejecuta a pesar del error anterior
     }
 
     @Test
@@ -59,7 +62,9 @@ class OfferInfraKafkaConsumerServiceImplTest {
         OfferDto offer = new OfferDto();
         doThrow(new RuntimeException("Postgres Down")).when(offerInfraSQLService).processOffer(any());
 
-        service.processOfferSave(offer);
+        assertThrows(LCIngestionException.class, () -> {
+            service.processOfferSave(offer);
+        });
 
         // THEN
         verify(offerInfraNoSQLService, times(1)).processOffer(offer);

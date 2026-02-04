@@ -35,7 +35,7 @@ public class ContextServiceImpl implements IContextService {
         LCContext ctx = new LCContext();
         ctx.setName("SYSTEM_SCHEDULER");
         ctx.setParticipantId("SYSTEM");
-        ctx.setRoles(java.util.List.of("ROLE_ADMIN"));
+        ctx.setRoles(java.util.List.of("LCAdmin"));
         return ctx;
     }
 }

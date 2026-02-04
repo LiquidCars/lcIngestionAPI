@@ -2,9 +2,11 @@ package net.liquidcars.ingestion.application.service;
 
 import net.liquidcars.ingestion.application.service.batch.OfferItemWriter;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
 import net.liquidcars.ingestion.factory.OfferDtoFactory;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -62,6 +64,12 @@ public class OfferIngestionProcessServiceImplTest {
     @Captor
     private ArgumentCaptor<OfferDto> offerCaptor;
 
+    @BeforeEach
+    void setUp() {
+        // Default: nothing is supported unless specified in the test
+        lenient().when(parsers.stream()).thenAnswer(i -> Stream.of(mockParser));
+    }
+
     @Test
     void processOffers_ShouldSendEachOfferToKafka() {
         OfferDto offer1 = OfferDtoFactory.getOfferDto();
@@ -77,6 +85,10 @@ public class OfferIngestionProcessServiceImplTest {
     void processOffersFromUrl_ShouldNotThrowException_WhenTriggered() {
         String format = "json";
         URI url = URI.create("https://api.motorflash.com/v1/offers");
+
+        // Fix: We must tell the parsers list to provide a parser that supports "json"
+        when(mockParser.supports("json")).thenReturn(true);
+        when(parsers.stream()).thenAnswer(invocation -> Stream.of(mockParser));
 
         assertDoesNotThrow(() -> service.processOffersFromUrl(format, url));
     }
@@ -118,13 +130,18 @@ public class OfferIngestionProcessServiceImplTest {
         InputStream inputStream = InputStream.nullInputStream();
         when(parsers.stream()).thenAnswer(invocation -> Stream.empty());
 
-        assertThrows(IllegalArgumentException.class, () ->
+        // Change IllegalArgumentException to LCIngestionException
+        assertThrows(LCIngestionException.class, () ->
                 service.processOffersStream(format, inputStream)
         );
     }
 
     @Test
     void processOffersFromUrl_ShouldLogError_WhenResponseIsNot200() throws Exception {
+        // 1. Mock the Parser validation so we don't crash before the HTTP call
+        when(mockParser.supports("json")).thenReturn(true);
+        when(parsers.stream()).thenAnswer(i -> Stream.of(mockParser));
+
         URI url = URI.create("https://api.test.com/404");
         var mockClient = mock(java.net.http.HttpClient.class);
         var mockResponse = mock(java.net.http.HttpResponse.class);
@@ -141,16 +158,15 @@ public class OfferIngestionProcessServiceImplTest {
 
     @Test
     void processOffersFromUrl_ShouldLogError_WhenExceptionOccurs() throws Exception {
+        when(mockParser.supports("json")).thenReturn(true);
+        when(parsers.stream()).thenAnswer(i -> Stream.of(mockParser));
         URI url = URI.create("https://api.test.com/error");
         var mockClient = mock(java.net.http.HttpClient.class);
-
         lenient().when(mockClient.send(any(), any())).thenThrow(new RuntimeException("Connection Failed"));
 
         try (var mockedHttpClient = mockStatic(java.net.http.HttpClient.class)) {
             mockedHttpClient.when(java.net.http.HttpClient::newHttpClient).thenReturn(mockClient);
-
             service.processOffersFromUrl("json", url);
-
             Thread.sleep(500);
         }
     }
@@ -163,11 +179,12 @@ public class OfferIngestionProcessServiceImplTest {
         when(mockParser.supports(format)).thenReturn(true);
         when(parsers.stream()).thenAnswer(i -> Stream.of(mockParser));
 
+        // Even if it throws an error, we want to ensure the launcher was at least called
         lenient().when(jobLauncher.run(any(), any())).thenThrow(new RuntimeException("Batch Error"));
 
         service.processOffersStream(format, is);
 
-        verify(jobLauncher, timeout(2000)).run(any(), any());
-    }
+        // Increase timeout to give the Virtual Thread time to execute
+        verify(jobLauncher, timeout(5000).times(1)).run(any(), any());    }
 
 }

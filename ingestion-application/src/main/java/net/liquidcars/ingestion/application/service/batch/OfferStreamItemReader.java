@@ -1,6 +1,8 @@
 package net.liquidcars.ingestion.application.service.batch;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
+import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
 import org.springframework.batch.item.ItemReader;
 import java.io.InputStream;
@@ -27,12 +29,26 @@ public class OfferStreamItemReader implements ItemReader<OfferDto> {
     }
 
     @Override
-    public OfferDto read() throws Exception {
-        if (error != null) throw new RuntimeException("Error en el parser", error);
-
-        while (queue.isEmpty()) {
-            if (isParsingFinished) return null;
-            TimeUnit.MILLISECONDS.sleep(10);
+    public OfferDto read() {
+        if (error != null) {
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.CONVERSION_ERROR)
+                    .message("Error during stream parsing: " + error.getMessage())
+                    .cause(error)
+                    .build();
+        }
+        try {
+            while (queue.isEmpty()) {
+                if (isParsingFinished) return null;
+                TimeUnit.MILLISECONDS.sleep(50);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.INTERNAL_ERROR)
+                    .message("Reader thread interrupted")
+                    .cause(e)
+                    .build();
         }
         return queue.poll();
     }
