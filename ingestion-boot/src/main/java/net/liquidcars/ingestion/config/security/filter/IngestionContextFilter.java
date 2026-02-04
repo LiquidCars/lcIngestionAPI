@@ -1,15 +1,14 @@
 package net.liquidcars.ingestion.config.security.filter;
 
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.config.security.model.SecurityProperties;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
-import net.liquidcars.ingestion.domain.model.security.LCContext;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
+import net.liquidcars.ingestion.domain.model.security.LCContext;
 import net.liquidcars.ingestion.domain.service.context.IContextService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.Authentication;
@@ -18,8 +17,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
-
-import java.io.IOException;
 
 @Slf4j
 @Component
@@ -63,8 +60,13 @@ public class IngestionContextFilter extends OncePerRequestFilter {
             LCContext ctx = new LCContext();
             ctx.setRawToken(jwt.getTokenValue());
             ctx.setParticipantId(jwt.getClaimAsString("participant_id"));
+            ctx.setRguId(jwt.getClaimAsString("rgu_id"));
             ctx.setLanguage(jwt.getClaimAsString("participant_default_language"));
             ctx.setName(jwt.getClaimAsString("name"));
+            ctx.setEmail(jwt.getClaimAsString("email"));
+            ctx.setGivenName(jwt.getClaimAsString("given_name"));
+            ctx.setPreferredUserName(jwt.getClaimAsString("preferred_username"));
+            ctx.setFamilyName(jwt.getClaimAsString("family_name"));
             ctx.setRoles(jwt.getClaimAsStringList("roles"));
             contextService.setContext(ctx);
         }

@@ -4,6 +4,8 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
+import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.model.security.AccessRoleEnum;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
 import net.liquidcars.ingestion.infra.input.rest.mapper.IngestionControllerMapper;
@@ -46,7 +48,10 @@ public class IngestionController implements IngestionApi {
             offerIngestionProcessService.processOffersStream(format, inputStream);
         } catch (IOException e) {
             log.error("Failed to read input stream from Resource", e);
-            return ResponseEntity.internalServerError().build();
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.INVALID_REQUEST)
+                    .message("Error opening input stream from file")
+                    .build();
         }
         return ResponseEntity.accepted().build();
     }
