@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.OfferJSONModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
+import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
 import org.springframework.stereotype.Service;
 
@@ -44,8 +46,12 @@ public class OfferJSONProcessor implements IOfferParserService {
             }
 
         } catch (Exception e) {
-            log.error("Error en el streaming de JSON: {}", e.getMessage());
-            throw new RuntimeException("Fallo en la ingesta", e);
+            log.error("Streaming JSON error: {}", e.getMessage());
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.CONVERSION_ERROR)
+                    .message("Error during JSON stream parsing: " + e.getMessage())
+                    .cause(e)
+                    .build();
         }
     }
 }
