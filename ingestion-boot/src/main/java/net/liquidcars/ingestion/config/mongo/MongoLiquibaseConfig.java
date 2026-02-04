@@ -1,4 +1,4 @@
-package net.liquidcars.ingestion.config;
+package net.liquidcars.ingestion.config.mongo;
 
 import liquibase.Contexts;
 import liquibase.Liquibase;
