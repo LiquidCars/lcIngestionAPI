@@ -12,7 +12,7 @@ spring:
   # MongoDB Configuration
   data:
     mongodb:
-      url: ${SPRING_MONGO_URL:mongodb://ingestion_service:mongo@localhost:27017/ingestion_service?authSource=admin}
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://ingestion_service:mongo@mongodb:27017/ingestion_service?authSource=admin}
       database: ingestion_service
   
   # PostgreSQL Configuration
@@ -84,7 +84,7 @@ liquibase:
   mongodb:
     enabled: true
     change-log: classpath:db/changelog/mongodb/db.changelog-master.xml
-    url: ${LIQUIBASE_MONGO_URL:mongodb://localhost:27017/ingestion_service?authSource=admin}
+    url: ${LIQUIBASE_MONGO_URL:mongodb://mongodb:27017/ingestion_service?authSource=admin}
     user: ingestion_service
     password: mongo
 
