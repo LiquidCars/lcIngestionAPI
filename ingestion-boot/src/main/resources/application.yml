@@ -12,12 +12,12 @@ spring:
   # MongoDB Configuration
   data:
     mongodb:
-      url: mongodb://ingestion_service:mongo@localhost:27017/ingestion_service?authSource=admin
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://ingestion_service:mongo@mongodb:27017/ingestion_service?authSource=admin}
       database: ingestion_service
   
   # PostgreSQL Configuration
   datasource:
-    url: jdbc:postgresql://localhost:5435/ingestion_db
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/liquidcars?charSet=UTF8}
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
@@ -41,7 +41,7 @@ spring:
   
   # Kafka Configuration
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -69,8 +69,8 @@ spring:
   
   # Liquibase Migration
   liquibase:
-    enabled: true
-    change-log: classpath:db/changelog/postgresql/db.changelog-master.xml
+    enabled: false
+  # change-log: classpath:db/changelog/postgresql/db.changelog-master.xml
   # File Upload Configuration
 
   security:
@@ -84,7 +84,7 @@ liquibase:
   mongodb:
     enabled: true
     change-log: classpath:db/changelog/mongodb/db.changelog-master.xml
-    url: mongodb://localhost:27017/ingestion_service?authSource=admin
+    url: ${LIQUIBASE_MONGO_URL:mongodb://mongodb:27017/ingestion_service?authSource=admin}
     user: ingestion_service
     password: mongo
 
@@ -146,6 +146,6 @@ ingestion:
       offers: vehicle-offers
   scheduler:
     enabled: true
-    remoteUrl: http://localhost:8083/offers.json
+    remoteUrl: ${OFFERS_TEST_URL:http://localhost:8083/offers.json}
     cron: "0 */15 * * * *" # Every 15 minutes
     format: json

@@ -30,7 +30,7 @@ public class MongoLiquibaseConfig {
     private String changeLog;
 
     @Bean
-    @DependsOn("liquibase") // Ejecuta después de Liquibase de PostgreSQL
+    //@DependsOn("liquibase") // Ejecuta después de Liquibase de PostgreSQL
     public Liquibase mongoLiquibase() throws Exception {
         log.info("Initializing MongoDB Liquibase with changelog: {}", changeLog);
         log.info("MongoDB URL: {}", url);

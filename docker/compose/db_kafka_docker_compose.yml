@@ -1,31 +1,4 @@
 services:
-    db:
-        image: postgres:17.2
-        restart: always
-        # set shared memory limit when using docker-compose
-        shm_size: 128mb
-        # or set shared memory limit when deploy via swarm stack
-        #volumes:
-        #  - type: tmpfs
-        #    target: /dev/shm
-        #    tmpfs:
-        #      size: 134217728 # 128*2^20 bytes = 128Mb
-        environment:
-            POSTGRES_PASSWORD: postgres
-            TZ: UTC
-        ports:
-            - 5435:5432
-        volumes:
-            - "./db/init_db.sql:/init_db.sql"
-            - "./db/startup_db.sh:/startup_db.sh"  # Mount the startup script
-        entrypoint: [ "/bin/bash", "/startup_db.sh" ]  # Use the startup script as entrypoint
-        networks:
-            - ingestion_network
-    adminer:
-        image: adminer
-        restart: always
-        ports:
-            - 8085:8080
     mongodb:
         image: mongo:latest
         container_name: mongodb_local
