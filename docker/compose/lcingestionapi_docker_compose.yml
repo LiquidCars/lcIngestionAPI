@@ -63,6 +63,8 @@ services:
                 condition: service_started
         networks:
             - lcingestionapi_network
+        extra_hosts:
+            - "keycloak:host-gateway"
         ports:
             - "${SERVER_PORT}:8890" # Mapeo dinámico usando el .env
             - "5006:5006"
