@@ -2,11 +2,13 @@ package net.liquidcars.ingestion.application.service.parser;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.OfferJSONModel;
 import net.liquidcars.ingestion.application.service.parser.model.OfferXMLModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
+import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ import java.util.function.Consumer;
 public class OfferXmlProcessor implements IOfferParserService {
 
     private final OfferParserMapper offerParserMapper;
+    private final OfferStreamItemReader offerReader;
 
     @Override
     public boolean supports(String format) {
@@ -34,26 +37,53 @@ public class OfferXmlProcessor implements IOfferParserService {
     @Override
     public void parseAndProcess(InputStream inputStream, Consumer<OfferDto> action) {
         XMLInputFactory factory = XMLInputFactory.newInstance();
-
         try {
             XMLStreamReader reader = factory.createXMLStreamReader(inputStream);
             while (reader.hasNext()) {
                 int event = reader.next();
+
                 if (event == XMLStreamConstants.START_ELEMENT && "vehicle".equals(reader.getLocalName())) {
-                    OfferXMLModel xmlModel = buildModelFromXml(reader);
-                    if (xmlModel != null && xmlModel.isValid()) {
-                        action.accept(offerParserMapper.toOfferDto(xmlModel));
+                    OfferXMLModel xmlModel = new OfferXMLModel();
+                    try {
+                        fillModelFromXml(reader, xmlModel);
+
+                        if (xmlModel.isValid()) {
+                            action.accept(offerParserMapper.toOfferDto(xmlModel));
+                        }
+                    } catch (Exception e) {
+                        String failedId = (xmlModel.getExternalId() != null) ? xmlModel.getExternalId() : null;
+
+                        log.warn("XML Record {} failed parsing: {}", failedId, e.getMessage());
+
+                        offerReader.addErrorToQueue(new LCIngestionParserException(
+                                LCTechCauseEnum.CONVERSION_ERROR,
+                                "XML item error: " + e.getMessage(),
+                                e,
+                                failedId
+                        ));
                     }
                 }
             }
             reader.close();
         } catch (Exception e) {
-            log.error("Streaming XML error: {}", e.getMessage());
+            log.error("Fatal error reading XML stream", e);
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.CONVERSION_ERROR)
                     .message("Error during XML stream parsing: " + e.getMessage())
                     .cause(e)
                     .build();
+        }
+    }
+
+    private void fillModelFromXml(XMLStreamReader reader, OfferXMLModel model) throws Exception {
+        while (reader.hasNext()) {
+            int event = reader.next();
+            if (event == XMLStreamConstants.START_ELEMENT) {
+                String tagName = reader.getLocalName();
+                fillOfferData(tagName, reader, model);
+            } else if (event == XMLStreamConstants.END_ELEMENT && "vehicle".equals(reader.getLocalName())) {
+                return;
+            }
         }
     }
 

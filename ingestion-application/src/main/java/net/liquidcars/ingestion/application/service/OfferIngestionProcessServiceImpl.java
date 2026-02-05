@@ -2,6 +2,8 @@ package net.liquidcars.ingestion.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.liquidcars.ingestion.application.service.batch.IngestionSkipListener;
+import net.liquidcars.ingestion.application.service.batch.JobCompletionNotificationListener;
 import net.liquidcars.ingestion.application.service.batch.OfferItemWriter;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.domain.model.OfferDto;
@@ -12,11 +14,9 @@ import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKaf
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.Step;
-import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
-import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -40,6 +40,10 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     private final JobLauncher jobLauncher;
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
+    private final IngestionSkipListener ingestionSkipListener;
+    private final JobCompletionNotificationListener jobCompletionListener;
+    private final Job offerIngestionJob;
+    private final OfferStreamItemReader offerReader;
 
     @Value("${ingestion.batch.chunk-size:10}")
     private int chunkSize;
@@ -125,19 +129,13 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     private void processOffersStream(String format, IOfferParserService parser, InputStream inputStream) {
         Thread.ofVirtual().start(() -> {
             try {
-                OfferStreamItemReader realReader = new OfferStreamItemReader(parser, inputStream);
+                offerReader.start(parser, inputStream);
+                JobParameters params = new JobParametersBuilder()
+                        .addString("format", format)
+                        .addLong("time", System.currentTimeMillis())
+                        .toJobParameters();
 
-                Step dynamicStep = new StepBuilder("ingestionStep-" + format, jobRepository)
-                        .<OfferDto, OfferDto>chunk(chunkSize, transactionManager)
-                        .reader(realReader)
-                        .writer(offerItemWriter)
-                        .build();
-
-                Job dynamicJob = new JobBuilder("ingestionJob-" + System.currentTimeMillis(), jobRepository)
-                        .start(dynamicStep)
-                        .build();
-
-                jobLauncher.run(dynamicJob, new JobParameters());
+                jobLauncher.run(offerIngestionJob, params);
 
                 log.info("Batch job started successfully for format: {}", format);
             } catch (Exception e) {

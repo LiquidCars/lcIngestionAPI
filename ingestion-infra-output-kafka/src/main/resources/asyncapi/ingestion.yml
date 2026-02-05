@@ -1,4 +1,5 @@
 asyncapi: 3.0.0
+
 info:
   title: LiquidCars Ingestion API
   version: 1.0.0
@@ -9,9 +10,16 @@ operations:
     channel:
       $ref: '#/channels/offerCreationChannel'
     summary: Publicar una nueva oferta de vehículo.
-    # IMPORTANTE: En 3.0, la operación debe apuntar a mensajes que el CANAL permite
     messages:
       - $ref: '#/channels/offerCreationChannel/messages/offerCreatedMessage'
+
+  sendIngestionReport:
+    action: send
+    channel:
+      $ref: '#/channels/ingestionReportChannel'
+    summary: Publicar el resultado de un proceso de ingestión.
+    messages:
+      - $ref: '#/channels/ingestionReportChannel/messages/ingestionReportMessage'
 
 channels:
   offerCreationChannel:
@@ -19,6 +27,12 @@ channels:
     messages:
       offerCreatedMessage:
         $ref: '#/components/messages/OfferCreated'
+
+  ingestionReportChannel:
+    address: liquidcars.ingestion.event.report.executed-action.0
+    messages:
+      ingestionReportMessage:
+        $ref: '#/components/messages/IngestionReport'
 
 components:
   messages:
@@ -28,22 +42,80 @@ components:
       payload:
         $ref: '#/components/schemas/OfferMsg'
 
+    IngestionReport:
+      name: IngestionReport
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/IngestionReportMsg'
+
   schemas:
     OfferMsg:
       type: object
       required: [externalId, brand, model, year, price]
       properties:
-        id: { type: string, format: uuid }
-        externalId: { type: string }
-        vehicleType: { $ref: '#/components/schemas/VehicleTypeMsg' }
-        brand: { type: string }
-        model: { type: string }
-        year: { type: integer, minimum: 1900 }
-        price: { type: number, format: decimal }
-        status: { $ref: '#/components/schemas/OfferStatusMsg' }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
-        source: { type: string }
+        id:
+          type: string
+          format: uuid
+        externalId:
+          type: string
+        vehicleType:
+          $ref: '#/components/schemas/VehicleTypeMsg'
+        brand:
+          type: string
+        model:
+          type: string
+        year:
+          type: integer
+          minimum: 1900
+        price:
+          type: number
+          format: decimal
+        status:
+          $ref: '#/components/schemas/OfferStatusMsg'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        source:
+          type: string
+
+    IngestionReportMsg:
+      type: object
+      required:
+        - jobId
+        - status
+        - readCount
+        - writeCount
+        - skipCount
+        - startTime
+        - endTime
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+          description: Estado final del job de ingestión
+        readCount:
+          type: integer
+          format: int64
+        writeCount:
+          type: integer
+          format: int64
+        skipCount:
+          type: integer
+          format: int64
+        failedExternalIds:
+          type: array
+          items:
+            type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
 
     VehicleTypeMsg:
       type: string

@@ -17,38 +17,45 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 
 @ExtendWith(MockitoExtension.class)
-public class OfferStreamItemReaderTest {
+class OfferStreamItemReaderTest {
 
     @Mock
     private IOfferParserService parser;
 
     @Test
     void read_ShouldReturnAllOffersAndThenNull() throws Exception {
+        // Mock del parser para que produzca dos OfferDto
         doAnswer(inv -> {
             Consumer<OfferDto> action = inv.getArgument(1);
             action.accept(OfferDtoFactory.getOfferDto());
             action.accept(OfferDtoFactory.getOfferDto());
             return null;
-        }).when(parser).parseAndProcess(any(), any());
+        }).when(parser).parseAndProcess(any(InputStream.class), any());
 
-        OfferStreamItemReader reader = new OfferStreamItemReader(parser, InputStream.nullInputStream());
+        OfferStreamItemReader reader = new OfferStreamItemReader();
+        reader.start(parser, InputStream.nullInputStream());
 
-        assertNotNull(reader.read());
-        assertNotNull(reader.read());
-        assertNull(reader.read(), "Should return null when the parsing is finished");
+        OfferDto first = reader.read();
+        OfferDto second = reader.read();
+        OfferDto third = reader.read();
+
+        assertNotNull(first, "First offer should not be null");
+        assertNotNull(second, "Second offer should not be null");
+        assertNull(third, "Should return null when the parsing is finished");
     }
 
     @Test
-    void read_ShouldThrowException_WhenParserFails() {
-        doThrow(new RuntimeException("Crash!")).when(parser).parseAndProcess(any(), any());
+    void read_ShouldThrowException_WhenParserFails() throws Exception {
+        // Mock del parser para que lance excepción
+        doThrow(new RuntimeException("Crash!")).when(parser).parseAndProcess(any(InputStream.class), any());
 
-        OfferStreamItemReader reader = new OfferStreamItemReader(parser, InputStream.nullInputStream());
+        OfferStreamItemReader reader = new OfferStreamItemReader();
+        reader.start(parser, InputStream.nullInputStream());
 
-        assertThrows(RuntimeException.class, () -> {
-            for(int i=0; i<100; i++) {
-                reader.read();
-                Thread.sleep(10);
-            }
-        });
+        // Como el hilo es asíncrono, hay que esperar un poco hasta que la excepción esté en error
+        Thread.sleep(100);
+
+        RuntimeException thrown = assertThrows(RuntimeException.class, reader::read);
+        assertTrue(thrown.getMessage().contains("Crash!"));
     }
 }

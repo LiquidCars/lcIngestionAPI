@@ -2,6 +2,7 @@ package net.liquidcars.ingestion.application.service.parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.OfferJSONModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
@@ -33,6 +34,9 @@ public class OfferJSONProcessorTest {
     @Mock
     private OfferParserMapper offerParserMapper;
 
+    @Mock
+    private OfferStreamItemReader offerReader;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
@@ -40,7 +44,7 @@ public class OfferJSONProcessorTest {
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         objectMapper.disable(com.fasterxml.jackson.databind.DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE);
-        processor = new OfferJSONProcessor(objectMapper, offerParserMapper);
+        processor = new OfferJSONProcessor(objectMapper, offerParserMapper, offerReader);
     }
 
     @Test

@@ -3,10 +3,13 @@ package net.liquidcars.ingestion.infra.output.kafka.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
+import net.liquidcars.ingestion.infra.output.kafka.client.IngestionReportKafkaPublisher;
 import net.liquidcars.ingestion.infra.output.kafka.client.OfferKafkaPublisher;
+import net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportMsg;
 import net.liquidcars.ingestion.infra.output.kafka.model.OfferMsg;
 import net.liquidcars.ingestion.infra.output.kafka.service.mapper.OfferInfraKafkaProducerMapper;
 import org.springframework.stereotype.Service;
@@ -18,6 +21,7 @@ public class OfferInfraKafkaProducerServiceImpl implements IOfferInfraKafkaProdu
 
     private final OfferInfraKafkaProducerMapper offerInfraKafkaProducerMapper;
     private final OfferKafkaPublisher offerKafkaPublisher;
+    private final IngestionReportKafkaPublisher ingestionReportKafkaPublisher;
 
     @Override
     public void sendOffer(OfferDto offer) {
@@ -26,6 +30,21 @@ public class OfferInfraKafkaProducerServiceImpl implements IOfferInfraKafkaProdu
             offerKafkaPublisher.sendOffer(offerMsg);
         } catch (Exception e) {
             log.error("Failed to dispatch offer to Kafka topic. OfferId: {}", offer.getId(), e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.MESSAGING_BROKER_ERROR)
+                    .message("Infrastructure failure: Kafka publisher is unavailable")
+                    .cause(e)
+                    .build();
+        }
+    }
+
+    @Override
+    public void sendJobReport(IngestionReportDto ingestionReportDto) {
+        try {
+            IngestionReportMsg ingestionReportMsg = offerInfraKafkaProducerMapper.toIngestionReportMsg(ingestionReportDto);
+            ingestionReportKafkaPublisher.sendIngestionReport(ingestionReportMsg);
+        } catch (Exception e) {
+            log.error("Failed to dispatch offer to Kafka topic. JobId: {}", ingestionReportDto.getJobId(), e);
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.MESSAGING_BROKER_ERROR)
                     .message("Infrastructure failure: Kafka publisher is unavailable")

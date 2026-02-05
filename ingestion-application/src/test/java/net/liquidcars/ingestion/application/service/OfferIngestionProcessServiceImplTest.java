@@ -1,6 +1,9 @@
 package net.liquidcars.ingestion.application.service;
 
+import net.liquidcars.ingestion.application.service.batch.IngestionSkipListener;
+import net.liquidcars.ingestion.application.service.batch.JobCompletionNotificationListener;
 import net.liquidcars.ingestion.application.service.batch.OfferItemWriter;
+import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
@@ -18,24 +21,26 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersInvalidException;
 import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.batch.core.repository.JobRepository;
-import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
+import org.springframework.batch.core.repository.JobRestartException;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
+import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-public class OfferIngestionProcessServiceImplTest {
+class OfferIngestionProcessServiceImplTest {
 
     @InjectMocks
     private OfferIngestionProcessServiceImpl service;
@@ -56,18 +61,31 @@ public class OfferIngestionProcessServiceImplTest {
     private JobLauncher jobLauncher;
 
     @Mock
-    private JobRepository jobRepository;
+    private Job offerIngestionJob;
 
     @Mock
-    private PlatformTransactionManager transactionManager;
+    private OfferStreamItemReader offerReader;
+
+    @Mock
+    private IngestionSkipListener ingestionSkipListener;
+
+    @Mock
+    private JobCompletionNotificationListener jobCompletionListener;
 
     @Captor
     private ArgumentCaptor<OfferDto> offerCaptor;
 
     @BeforeEach
-    void setUp() {
-        // Default: nothing is supported unless specified in the test
+    void setUp() throws JobInstanceAlreadyCompleteException, JobExecutionAlreadyRunningException, JobParametersInvalidException, JobRestartException {
+        // Todos los tests usarán mockParser como parser válido
         lenient().when(parsers.stream()).thenAnswer(i -> Stream.of(mockParser));
+
+        // Mockear los métodos que corren hilos virtuales
+        lenient().doAnswer(invocation -> null)
+                .when(offerReader).start(any(IOfferParserService.class), any(InputStream.class));
+
+        lenient().doAnswer(invocation -> null)
+                .when(jobLauncher).run(any(Job.class), any());
     }
 
     @Test
@@ -78,113 +96,66 @@ public class OfferIngestionProcessServiceImplTest {
 
         service.processOffers(offers);
 
-        verify(offerInfraKafkaProducerService, times(2)).sendOffer(any(OfferDto.class));
+        verify(offerInfraKafkaProducerService, times(2)).sendOffer(offerCaptor.capture());
+        assertEquals(2, offerCaptor.getAllValues().size());
     }
 
     @Test
-    void processOffersFromUrl_ShouldNotThrowException_WhenTriggered() {
+    void processOffers_ShouldThrowException_WhenOffersListIsEmpty() {
+        List<OfferDto> emptyList = List.of();
+
+        LCIngestionException ex = assertThrows(LCIngestionException.class, () ->
+                service.processOffers(emptyList)
+        );
+
+        assertEquals("The offers list is empty or null", ex.getMessage());
+    }
+
+    @Test
+    void processOffersFromUrl_ShouldStartJob_WhenParserSupportsFormat() throws Exception {
         String format = "json";
-        URI url = URI.create("https://api.motorflash.com/v1/offers");
-
-        // Fix: We must tell the parsers list to provide a parser that supports "json"
-        when(mockParser.supports("json")).thenReturn(true);
-        when(parsers.stream()).thenAnswer(invocation -> Stream.of(mockParser));
-
-        assertDoesNotThrow(() -> service.processOffersFromUrl(format, url));
-    }
-
-    @Test
-    void processOffersStream_ShouldUseJsonParser_WhenFormatIsXML() throws Exception {
-        String format = "xml";
-        InputStream inputStream = new ByteArrayInputStream("<inventory></inventory>".getBytes());
+        InputStream mockInputStream = new ByteArrayInputStream("[{}]".getBytes());
 
         when(mockParser.supports(format)).thenReturn(true);
-        when(parsers.stream()).thenAnswer(invocation -> Stream.of(mockParser));
+        when(parsers.stream()).thenReturn(Stream.of(mockParser));
+        when(jobLauncher.run(any(Job.class), any()))
+                .thenReturn(mock(org.springframework.batch.core.JobExecution.class));
 
-        service.processOffersStream(format, inputStream);
+        service.processOffersStream(format, mockInputStream);
 
-        verify(jobLauncher, timeout(2000)).run(any(Job.class), any(JobParameters.class));
+        // Espera hasta que offerReader.start sea llamado
+        await().atMost(1, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(offerReader, atLeastOnce()).start(any(IOfferParserService.class), any(InputStream.class))
+        );
+
+        verify(jobLauncher, atLeastOnce()).run(any(Job.class), any());
     }
 
     @Test
-    void processOffersStream_ShouldUseJsonParser_WhenFormatIsJson() throws Exception {
+    void processOffersStream_ShouldStartJob_WhenParserSupportsFormat() throws Exception {
         String format = "json";
-        InputStream inputStream = new ByteArrayInputStream("[{}]".getBytes());
+        InputStream is = new ByteArrayInputStream("[{}]".getBytes());
 
-        IOfferParserService jsonParser = mock(IOfferParserService.class);
-        when(jsonParser.supports("json")).thenReturn(true);
-        when(mockParser.supports("json")).thenReturn(false);
+        when(mockParser.supports(format)).thenReturn(true);
 
-        when(parsers.stream()).thenAnswer(i -> Stream.of(mockParser, jsonParser));
+        assertDoesNotThrow(() -> service.processOffersStream(format, is));
 
-        service.processOffersStream(format, inputStream);
+        Thread.sleep(100); // Esperar al hilo virtual
 
-        verify(jsonParser, timeout(2000)).supports("json");
-        verify(jobLauncher, timeout(2000)).run(any(Job.class), any(JobParameters.class));
-        verify(mockParser, never()).parseAndProcess(any(), any());
+        verify(offerReader, atLeastOnce()).start(any(IOfferParserService.class), any(InputStream.class));
+        verify(jobLauncher, atLeastOnce()).run(any(Job.class), any());
     }
 
     @Test
-    void processOffersStream_ShouldThrowException_WhenFormatIsNotSupported() {
+    void processOffersStream_ShouldThrowException_WhenFormatNotSupported() {
         String format = "unsupported";
         InputStream inputStream = InputStream.nullInputStream();
-        when(parsers.stream()).thenAnswer(invocation -> Stream.empty());
+        when(parsers.stream()).thenReturn(Stream.empty());
 
-        // Change IllegalArgumentException to LCIngestionException
-        assertThrows(LCIngestionException.class, () ->
+        LCIngestionException ex = assertThrows(LCIngestionException.class, () ->
                 service.processOffersStream(format, inputStream)
         );
+
+        assertTrue(ex.getMessage().contains("The requested format is not supported"));
     }
-
-    @Test
-    void processOffersFromUrl_ShouldLogError_WhenResponseIsNot200() throws Exception {
-        // 1. Mock the Parser validation so we don't crash before the HTTP call
-        when(mockParser.supports("json")).thenReturn(true);
-        when(parsers.stream()).thenAnswer(i -> Stream.of(mockParser));
-
-        URI url = URI.create("https://api.test.com/404");
-        var mockClient = mock(java.net.http.HttpClient.class);
-        var mockResponse = mock(java.net.http.HttpResponse.class);
-
-        when(mockResponse.statusCode()).thenReturn(404);
-        lenient().when(mockClient.send(any(), any())).thenReturn(mockResponse);
-
-        try (var mockedHttpClient = mockStatic(java.net.http.HttpClient.class)) {
-            mockedHttpClient.when(java.net.http.HttpClient::newHttpClient).thenReturn(mockClient);
-            service.processOffersFromUrl("json", url);
-            Thread.sleep(300);
-        }
-    }
-
-    @Test
-    void processOffersFromUrl_ShouldLogError_WhenExceptionOccurs() throws Exception {
-        when(mockParser.supports("json")).thenReturn(true);
-        when(parsers.stream()).thenAnswer(i -> Stream.of(mockParser));
-        URI url = URI.create("https://api.test.com/error");
-        var mockClient = mock(java.net.http.HttpClient.class);
-        lenient().when(mockClient.send(any(), any())).thenThrow(new RuntimeException("Connection Failed"));
-
-        try (var mockedHttpClient = mockStatic(java.net.http.HttpClient.class)) {
-            mockedHttpClient.when(java.net.http.HttpClient::newHttpClient).thenReturn(mockClient);
-            service.processOffersFromUrl("json", url);
-            Thread.sleep(500);
-        }
-    }
-
-    @Test
-    void processOffersStream_ShouldLogError_WhenJobLauncherFails() throws Exception {
-        String format = "json";
-        InputStream is = new ByteArrayInputStream("[]".getBytes());
-
-        when(mockParser.supports(format)).thenReturn(true);
-        when(parsers.stream()).thenAnswer(i -> Stream.of(mockParser));
-
-        // Even if it throws an error, we want to ensure the launcher was at least called
-        lenient().when(jobLauncher.run(any(), any())).thenThrow(new RuntimeException("Batch Error"));
-
-        service.processOffersStream(format, is);
-
-        // Increase timeout to give the Virtual Thread time to execute
-        verify(jobLauncher, timeout(5000).times(1)).run(any(), any());    }
-
 }

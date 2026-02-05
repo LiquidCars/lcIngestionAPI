@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inventory>
+    <vehicle>
+        <externalId>MF-882931</externalId>
+        <vehicleType>CAR</vehicleType>
+        <brand>BMW</brand>
+        <model>3 Series</model>
+        <year>2023</year>
+        <price>34500.5</price>
+        <status>ACTIVE</status>
+        <createdAt>2026-01-27T10:00:00+01:00</createdAt>
+        <updatedAt>2026-01-27T12:00:00+01:00</updatedAt>
+        <source>motorflash</source>
+    </vehicle>
+
+    <vehicle>
+        <externalId>XML-ERR-PRICE</externalId>
+        <vehicleType>CAR</vehicleType>
+        <brand>Audi</brand>
+        <model>A4</model>
+        <year>2022</year>
+        <price>GRATIS</price>
+        <status>ACTIVE</status>
+        <createdAt>2026-01-27T11:00:00+01:00</createdAt>
+        <updatedAt>2026-01-27T13:00:00+01:00</updatedAt>
+        <source>motorflash</source>
+    </vehicle>
+
+    <vehicle>
+        <externalId>MF-882933</externalId>
+        <vehicleType>CAR</vehicleType>
+        <brand>Mercedes</brand>
+        <model>C-Class</model>
+        <year>2023</year>
+        <price>37000.75</price>
+        <status>ACTIVE</status>
+        <createdAt>2026-01-27T10:30:00+01:00</createdAt>
+        <updatedAt>2026-01-27T12:30:00+01:00</updatedAt>
+        <source>motorflash</source>
+    </vehicle>
+
+    <vehicle>
+        <externalId>XML-ERR-DATE</externalId>
+        <vehicleType>CAR</vehicleType>
+        <brand>Volkswagen</brand>
+        <model>Golf</model>
+        <year>2021</year>
+        <price>21500.0</price>
+        <status>ACTIVE</status>
+        <createdAt>esto-no-es-una-fecha</createdAt>
+        <updatedAt>2026-01-27T11:00:00+01:00</updatedAt>
+        <source>motorflash</source>
+    </vehicle>
+
+    <vehicle>
+        <externalId>MF-882935</externalId>
+        <vehicleType>CAR</vehicleType>
+        <brand>Toyota</brand>
+        <model>Corolla</model>
+        <year>2022</year>
+        <price>19500.0</price>
+        <status>ACTIVE</status>
+        <createdAt>2026-01-27T08:30:00+01:00</createdAt>
+        <updatedAt>2026-01-27T10:30:00+01:00</updatedAt>
+        <source>motorflash</source>
+    </vehicle>
+
+    <vehicle>
+        <externalId>XML-ERR-ENUM</externalId>
+        <vehicleType>AVION</vehicleType>
+        <brand>Honda</brand>
+        <model>Civic</model>
+        <year>2023</year>
+        <price>22000.5</price>
+        <status>ACTIVE</status>
+        <createdAt>2026-01-27T07:45:00+01:00</createdAt>
+        <updatedAt>2026-01-27T09:45:00+01:00</updatedAt>
+        <source>motorflash</source>
+    </vehicle>
+
+    <vehicle>
+        <externalId>MF-882937</externalId>
+        <vehicleType>CAR</vehicleType>
+        <brand>Ford</brand>
+        <model>Focus</model>
+        <year>2021</year>
+        <price>18500.0</price>
+        <status>ACTIVE</status>
+        <createdAt>2026-01-27T10:15:00+01:00</createdAt>
+        <updatedAt>2026-01-27T12:15:00+01:00</updatedAt>
+        <source>motorflash</source>
+    </vehicle>
+
+    <vehicle>
+        <externalId>XML-ERR-YEAR</externalId>
+        <vehicleType>CAR</vehicleType>
+        <brand>Nissan</brand>
+        <model>Sentra</model>
+        <year>NUEVO</year>
+        <price>19500.75</price>
+        <status>ACTIVE</status>
+        <createdAt>2026-01-27T09:30:00+01:00</createdAt>
+        <updatedAt>2026-01-27T11:30:00+01:00</updatedAt>
+        <source>motorflash</source>
+    </vehicle>
+
+    <vehicle>
+        <externalId>MF-882939</externalId>
+        <vehicleType>CAR</vehicleType>
+        <brand>Hyundai</brand>
+        <model>Elantra</model>
+        <year>2023</year>
+        <price>21000.0</price>
+        <status>ACTIVE</status>
+        <createdAt>2026-01-27T08:00:00+01:00</createdAt>
+        <updatedAt>2026-01-27T10:00:00+01:00</updatedAt>
+        <source>motorflash</source>
+    </vehicle>
+
+    <vehicle>
+        <externalId>MF-882940</externalId>
+        <vehicleType>CAR</vehicleType>
+        <brand>Kia</brand>
+        <model>Cerato</model>
+        <year>2022</year>
+        <price>20000.0</price>
+        <status>ACTIVE</status>
+        <createdAt>2026-01-27T07:00:00+01:00</createdAt>
+        <updatedAt>2026-01-27T09:00:00+01:00</updatedAt>
+        <source>motorflash</source>
+    </vehicle>
+</inventory>
