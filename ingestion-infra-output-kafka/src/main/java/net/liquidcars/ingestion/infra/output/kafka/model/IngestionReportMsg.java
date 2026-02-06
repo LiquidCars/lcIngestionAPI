@@ -1,13 +1,16 @@
 package net.liquidcars.ingestion.infra.output.kafka.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.time.OffsetDateTime;
 import java.util.List;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class IngestionReportMsg {
     private String jobId;
     private String status;
@@ -15,6 +18,6 @@ public class IngestionReportMsg {
     private long writeCount;
     private long skipCount;
     private List<String> failedExternalIds;
-    private OffsetDateTime startTime;
-    private OffsetDateTime endTime;
+    private String startTime;
+    private String endTime;
 }

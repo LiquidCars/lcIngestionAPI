@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.liquidcars.ingestion.infra.postgresql.service.mapper.JsonStringListConverter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -35,6 +37,7 @@ public class IngestionReportEntity {
     private long skipCount;
 
     @Convert(converter = JsonStringListConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "failed_external_ids", columnDefinition = "jsonb")
     private List<String> failedExternalIds;
 

@@ -71,9 +71,12 @@ public class IngestionBatchConfig {
                  * Determines whether to skip a record or fail the entire Job
                  * after retries are exhausted or if the error is non-retryable.
                  */
-                .skipLimit(skipLimit)
                 .skipPolicy((t, skipCount) -> {
-                    // We only skip if it's a known data conversion error (bad JSON/XML)
+                    if (skipCount > skipLimit) {
+                        log.error("Skip limit exceeded! Failing job.");
+                        return false;
+                    }
+
                     if (t instanceof LCIngestionException ex) {
                         boolean isDataError = ex.getTechCause() == LCTechCauseEnum.CONVERSION_ERROR;
                         if (isDataError) {

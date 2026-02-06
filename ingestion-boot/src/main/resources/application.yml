@@ -79,8 +79,6 @@ spring:
         jwt:
           issuer-uri: ${security.security-profile-issuer}
 
-  
-
 #Liquibase Mongo config
 liquibase:
   mongodb:
@@ -142,7 +140,7 @@ logging:
 ingestion:
   batch:
     chunk-size: 10
-    skip-limit: 100
+    skip-limit: 2
   kafka:
     topics:
       offers: vehicle-offers
