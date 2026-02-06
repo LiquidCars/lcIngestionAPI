@@ -80,6 +80,11 @@ components:
           format: date-time
         source:
           type: string
+        jobIdentifier:
+          type: string
+        batchStatus:
+          type: string
+
 
     IngestionReportMsg:
       type: object

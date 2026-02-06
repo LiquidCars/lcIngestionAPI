@@ -30,6 +30,8 @@ public class OfferMsg {
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     private String source;
+    private String jobIdentifier;
+    private String batchStatus;
     
     /**
      * Vehicle type enumeration

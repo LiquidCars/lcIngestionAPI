@@ -31,6 +31,8 @@ public class OfferDto {
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     private String source;
+    private String jobIdentifier;
+    private String batchStatus;
     
     /**
      * Vehicle type enumeration
@@ -52,6 +54,7 @@ public class OfferDto {
         RESERVED,
         INACTIVE
     }
+
     
     /**
      * Business logic: Check if the offer is available for purchase

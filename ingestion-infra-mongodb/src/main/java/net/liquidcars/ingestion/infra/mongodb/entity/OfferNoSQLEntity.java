@@ -55,6 +55,10 @@ public class OfferNoSQLEntity {
 
     private String source;
 
+    private String jobIdentifier;
+
+    private String batchStatus;
+
     /**
      * Vehicle type enumeration
      */

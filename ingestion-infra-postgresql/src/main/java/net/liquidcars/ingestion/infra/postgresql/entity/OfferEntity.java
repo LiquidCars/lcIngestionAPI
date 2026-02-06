@@ -52,6 +52,12 @@ public class OfferEntity {
     @Column(name = "source")
     private String source;
 
+    @Column(name = "jobIdentifier")
+    private String jobIdentifier;
+
+    @Column(name = "batchStatus")
+    private String batchStatus;
+
     /**
      * Vehicle type enumeration
      */
