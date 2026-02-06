@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.application.service.OfferIngestionProcessServiceImpl;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
+import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecutionListener;
@@ -30,6 +31,7 @@ public class IngestionBatchConfig {
     private final OfferItemWriter offerItemWriter;
     private final IngestionSkipListener ingestionSkipListener;
     private final JobCompletionNotificationListener jobCompletionListener;
+    private final JobFailedIdsCollector failedIdsCollector;
 
     @Value("${ingestion.batch.chunk-size:10}")
     private int chunkSize;
@@ -72,6 +74,11 @@ public class IngestionBatchConfig {
                  * after retries are exhausted or if the error is non-retryable.
                  */
                 .skipPolicy((t, skipCount) -> {
+
+                    if (t instanceof LCIngestionParserException ex && ex.getFailedIdentifier() != null) {
+                        failedIdsCollector.addId(ex.getFailedIdentifier());
+                    }
+
                     if (skipCount > skipLimit) {
                         log.error("Skip limit exceeded! Failing job.");
                         return false;
