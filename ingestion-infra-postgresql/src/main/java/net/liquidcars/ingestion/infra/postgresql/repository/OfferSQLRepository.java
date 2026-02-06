@@ -4,12 +4,8 @@ import net.liquidcars.ingestion.infra.postgresql.entity.OfferEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface OfferSQLRepository extends JpaRepository<OfferEntity, String> {
-
-    Optional<OfferEntity> findByExternalId(String externalId);
-
-    boolean existsByExternalId(String externalId);
+public interface OfferSQLRepository extends JpaRepository<OfferEntity, UUID> {
 }

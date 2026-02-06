@@ -1,13 +1,18 @@
 package net.liquidcars.ingestion.infra.output.kafka.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import net.liquidcars.ingestion.domain.model.*;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
+import java.io.Serializable;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Domain entity representing a vehicle offer.
@@ -17,56 +22,93 @@ import java.time.OffsetDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class OfferMsg {
-    
-    private String id;
-    private String externalId;
-    private VehicleTypeMsg vehicleType;
-    private String brand;
-    private String model;
-    private Integer year;
-    private BigDecimal price;
-    private OfferStatusMsg status;
-    private OffsetDateTime createdAt;
-    private OffsetDateTime updatedAt;
-    private String source;
-    
-    /**
-     * Vehicle type enumeration
-     */
-    public enum VehicleTypeMsg {
-        CAR,
-        TRUCK,
-        MOTORCYCLE,
-        VAN,
-        SUV
+@Schema(title="The VehicleOffer Message object", description="This object represents a commercial offer based con a specific vehicle unit, or VehicleInstance" )
+public class OfferMsg implements Serializable {
+
+    @Schema(description = "Offer unique identifier")
+    private UUID id;//Do not add to hashCode implementation
+    @Schema(description = "Type of offer, describing who is the final owner accountable for transaction duties, in case it is not the owner of the inventory (the car seller institution)")
+    private CarOfferSellerTypeEnumMsg sellerType = CarOfferSellerTypeEnumMsg.usedCar_ProfessionalSeller;
+    @Schema(description = "The registered user Id of the final owner accountable for transaction duties")
+    private UUID privateOwnerRegisteredUserId = null;
+    @Schema(description = "The VehicleInstance reference")
+    private VehicleInstanceMsg vehicleInstance;
+    @Schema(description = "The car owner reference")
+    private String ownerReference;
+    @Schema(description = "The dealer reference")
+    private String dealerReference;
+    @Schema(description = "The dealer channel reference")
+    private String channelReference;
+    @Schema(description = "The normal price")
+    private MoneyMsg price;
+    @Schema(description = "The normal price when financing is contracted to buy the car")
+    private MoneyMsg financedPrice;
+    @Schema(description = "If there's a financed price, an approximation to an installment amount, given 48 months and a 20% downpayment")
+    private MoneyMsg financedInstallmentAprox;
+    @Schema(description = "A description of the financed price conditions, advantages, etc.")
+    private String financedText;
+    @Schema(description = "A reference of the price of the car as new")
+    private MoneyMsg priceNew;
+    @Schema(description = "The price for a professional buyer")
+    private MoneyMsg professionalPrice;
+    @Schema(description = "Indicates if taxes a re deductible")
+    private boolean taxDeductible;
+    @Schema(description = "Free text used as observations")
+    private String obs;
+    @Schema(description = "additional notes")
+    private String internalNotes;
+    @Schema(description = "Collection of additional resources, such as images, documents and any other multimedia content")
+    private List<CarOfferResourceMsg> resources;
+    @Schema(description = "Indicates if the car is currently under some kind of guarantee")
+    private boolean guarantee;
+    @Schema(description = "Number of months the guarantee is still available")
+    private int guaranteeMonths;
+    @Schema(description = "A Free text describing the guarantee conditions")
+    private String guaranteeText;
+    @Schema(description = "A flag indicating if the car has been certified by the seller or any other third party")
+    private boolean certified;
+    @Schema(description = "A free text describing the installation")
+    private String installation;
+    @Schema(description = "A contact email")
+    private String mail;
+    @Schema(description = "Pickup location, if described")
+    private ParticipantAddressMsg pickUpAddress;
+    @Schema(description = "A versionning hash code used to detect potential changes of the offer")
+    private int hash; //Do not add to hashCode implementation
+    @Schema(description = "Update date")
+    private long lastUpdated = DateHelperMsg.now().toEpochSecond(ZoneOffset.UTC); //default, now. Do not add to hashCode implementation
+    @Schema(description = "Update date")
+    private UUID jsonCarOfferId;
+
+
+    @JsonIgnore
+    public int getHashCodeCalc(){
+        //Init numbers should be primes, and different for each HashCodeBuilder in different classes
+        return Math.abs(new HashCodeBuilder(61,73)
+                .append(vehicleInstance !=null ? vehicleInstance.hashCode() : 0).append(ownerReference)
+                .append(dealerReference).append(channelReference).append(price).append(financedPrice).append(financedInstallmentAprox)
+                .append(financedText).append(priceNew).append(professionalPrice).append(taxDeductible).append(obs).append(internalNotes)
+                .append(guarantee).append(guaranteeMonths).append(guaranteeText)
+                .append(certified).append(installation).append(mail).append(pickUpAddress)
+                .toHashCode());
     }
-    
-    /**
-     * Offer status enumeration
-     */
-    public enum OfferStatusMsg {
-        ACTIVE,
-        SOLD,
-        RESERVED,
-        INACTIVE
+    @Override
+    public int hashCode(){
+        //Note: the hash is calculated in ingestion time and stored in offer.hash and in the DB;
+        //  by default, it's equal to the function hashCode(), but it can be changed by some transformations
+        //  and / or inheritances of the CarOffer object, that may have the effect of generate a different hashCode()
+        //  So, we use the "hash" value, if any, as it's the original one, except if it's not there, in which case we use the function
+        //  to calculate it (it will not exist only when storing it the first time or if we create a CarOffer instance from scratch)
+
+        if (this.getHash()!=0) return this.getHash();
+        return getHashCodeCalc();
     }
-    
-    /**
-     * Business logic: Check if the offer is available for purchase
-     */
-    public boolean isAvailable() {
-        return status == OfferStatusMsg.ACTIVE;
-    }
-    
-    /**
-     * Business logic: Validate offer data
-     */
-    public boolean isValid() {
-        return externalId != null && !externalId.isBlank()
-                && brand != null && !brand.isBlank()
-                && model != null && !model.isBlank()
-                && year != null && year >= 1900 && year <= LocalDateTime.now().getYear() + 1
-                && price != null && price.compareTo(BigDecimal.ZERO) > 0;
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) return true;
+        if (!(o instanceof OfferMsg)) return false;
+        OfferMsg other = (OfferMsg)o;
+        return other.hashCode()==this.hashCode();
     }
 }

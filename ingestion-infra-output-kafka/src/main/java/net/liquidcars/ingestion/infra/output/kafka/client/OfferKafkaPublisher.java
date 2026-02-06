@@ -13,6 +13,6 @@ public class OfferKafkaPublisher {
     private static final String CREATE_OFFER_TOPIC = "liquidcars.ingestion.event.offer.create-action.0";
 
     public void sendOffer(OfferMsg offer) {
-        kafkaTemplate.send(CREATE_OFFER_TOPIC, offer.getId(), offer);
+        kafkaTemplate.send(CREATE_OFFER_TOPIC, offer.getId().toString(), offer);
     }
 }

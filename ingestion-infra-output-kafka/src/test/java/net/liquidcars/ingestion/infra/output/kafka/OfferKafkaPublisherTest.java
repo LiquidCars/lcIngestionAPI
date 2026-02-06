@@ -11,6 +11,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 
+import java.util.UUID;
+
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -30,10 +32,11 @@ public class OfferKafkaPublisherTest {
     @DisplayName("Should send the offer to the Kafka topic with the ID as the key")
     void sendOffer_ShouldCallKafkaTemplate() {
         OfferMsg msg = OfferMsgFactory.getOfferMsg();
-        msg.setId("OFF-999");
+        UUID id = UUID.randomUUID();
+        msg.setId(id);
 
         publisher.sendOffer(msg);
 
-        verify(kafkaTemplate, times(1)).send(eq(TOPIC), eq("OFF-999"), eq(msg));
+        verify(kafkaTemplate, times(1)).send(eq(TOPIC), eq(id.toString()), eq(msg));
     }
 }

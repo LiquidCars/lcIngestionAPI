@@ -10,15 +10,5 @@
 
     <changeSet id="1-create-offers-collection" author="liquidcars">
         <ext:createCollection collectionName="offers_raw"/>
-
-        <ext:createIndex collectionName="offers_raw">
-            <ext:keys>
-                { external_id: 1 }
-            </ext:keys>
-            <ext:options>
-                { unique: true, name: "idx_offers_external_id" }
-            </ext:options>
-        </ext:createIndex>
     </changeSet>
-
 </databaseChangeLog>

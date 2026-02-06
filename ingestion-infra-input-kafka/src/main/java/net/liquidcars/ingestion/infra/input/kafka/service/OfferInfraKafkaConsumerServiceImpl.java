@@ -23,20 +23,20 @@ public class OfferInfraKafkaConsumerServiceImpl implements IOfferInfraKafkaConsu
         try {
             offerInfraNoSQLService.processOffer(offerDto);
         } catch (Exception e) {
-            log.error("Critical failure in MongoDB for offer {}: {}", offerDto.getExternalId(), e.getMessage());
+            log.error("Critical failure in MongoDB for offer {}: {}", offerDto.getId(), e.getMessage());
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.DATABASE)
-                    .message("NoSQL persistence failed for offer: " + offerDto.getExternalId())
+                    .message("NoSQL persistence failed for offer: " + offerDto.getId())
                     .cause(e)
                     .build();
         }
         try {
             offerInfraSQLService.processOffer(offerDto);
         } catch (Exception e) {
-            log.error("Critical failure in Postgres for offer {}: {}", offerDto.getExternalId(), e.getMessage());
+            log.error("Critical failure in Postgres for offer {}: {}", offerDto.getId(), e.getMessage());
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.DATABASE)
-                    .message("SQL persistence failed for offer: " + offerDto.getExternalId())
+                    .message("SQL persistence failed for offer: " + offerDto.getId())
                     .cause(e)
                     .build();
         }

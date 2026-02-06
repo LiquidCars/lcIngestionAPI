@@ -68,7 +68,9 @@ tasks.register('openApiIngestion', GenerateTask) {
             useJakartaEe : "true",
             java8LocalDateTime: "true",
             skipFormModel      : "true",
-            useSpringBoot3    : "true"
+            useSpringBoot3    : "true",
+            modelNameSuffix   : "",
+            enumNameSuffix    : ""
     ]
     typeMappings = [
             DateTime: "java.time.OffsetDateTime"
