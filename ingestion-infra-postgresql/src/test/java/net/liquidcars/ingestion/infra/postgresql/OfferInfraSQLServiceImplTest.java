@@ -36,11 +36,11 @@ public class OfferInfraSQLServiceImplTest {
         OfferDto dto = OfferDtoFactory.getOfferDto();
         OfferEntity entity = OfferEntityFactory.getOfferEntity();
 
-        when(mapper.toEntity(dto)).thenReturn(entity);
+        when(mapper.toOfferEntity(dto)).thenReturn(entity);
 
         service.processOffer(dto);
 
-        verify(mapper, times(1)).toEntity(dto);
+        verify(mapper, times(1)).toOfferEntity(dto);
         verify(sqlRepository, times(1)).save(entity);
     }
 
@@ -56,7 +56,7 @@ public class OfferInfraSQLServiceImplTest {
         String existingId = "existing-uuid-123";
         existingEntity.setId(existingId);
 
-        when(mapper.toEntity(dto)).thenReturn(newEntity);
+        when(mapper.toOfferEntity(dto)).thenReturn(newEntity);
         when(sqlRepository.findByExternalId(dto.getExternalId()))
                 .thenReturn(Optional.of(existingEntity));
 
@@ -75,7 +75,7 @@ public class OfferInfraSQLServiceImplTest {
         newEntity.setCreatedAt(OffsetDateTime.now().minusDays(10));
         existingEntity.setCreatedAt(OffsetDateTime.now());
 
-        when(mapper.toEntity(dto)).thenReturn(newEntity);
+        when(mapper.toOfferEntity(dto)).thenReturn(newEntity);
         when(sqlRepository.findByExternalId(dto.getExternalId()))
                 .thenReturn(Optional.of(existingEntity));
 

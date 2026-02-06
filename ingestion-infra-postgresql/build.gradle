@@ -21,6 +21,9 @@ dependencies {
     // --- LIQUIBASE (Sustituyendo a Flyway) ---
     implementation "org.liquibase:liquibase-core:4.23.1"
 
+    //Jackson for JSON
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation "org.testcontainers:postgresql:${testcontainersVersion}"

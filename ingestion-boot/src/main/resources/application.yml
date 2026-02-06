@@ -79,6 +79,8 @@ spring:
         jwt:
           issuer-uri: ${security.security-profile-issuer}
 
+  
+
 #Liquibase Mongo config
 liquibase:
   mongodb:
@@ -149,3 +151,7 @@ ingestion:
     remoteUrl: ${OFFERS_TEST_URL:http://localhost:8083/offers.json}
     cron: "0 */15 * * * *" # Every 15 minutes
     format: json
+  purgeScheduler:
+    enabled: true
+    cron: "0 0 3 * * SUN" # Every Sunday at 3 AM
+    days: 7

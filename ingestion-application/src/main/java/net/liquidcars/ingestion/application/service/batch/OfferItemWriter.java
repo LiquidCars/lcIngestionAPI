@@ -22,12 +22,8 @@ public class OfferItemWriter implements ItemWriter<OfferDto>, StepExecutionListe
     @Override
     public void beforeStep(StepExecution stepExecution) {
 
-        var jobExecution = stepExecution.getJobExecution();
-
-        String jobName = stepExecution.getJobExecution().getJobInstance().getJobName();
-        Long executionId = stepExecution.getJobExecutionId();
-        this.jobIdentifier = jobName + "_" + executionId;
-        this.jobStatus = jobExecution.getStatus().name();
+        this.jobIdentifier = stepExecution.getJobExecution().getJobInstance().getJobName() + "-" + stepExecution.getJobExecutionId();
+        this.jobStatus = stepExecution.getJobExecution().getStatus().name();
 
         log.info("Writer configured. Job: {} | Status: {}", jobIdentifier, jobStatus);
     }

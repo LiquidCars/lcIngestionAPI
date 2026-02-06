@@ -14,10 +14,10 @@ public class OfferInfraSQLMapperTest {
     private final OfferInfraSQLMapper mapper = Mappers.getMapper(OfferInfraSQLMapper.class);
 
     @Test
-    void toEntity_ShouldMapAllFieldsCorrectly() {
+    void toOfferEntity_ShouldMapAllFieldsCorrectly() {
         OfferDto dto = OfferDtoFactory.getOfferDto();
 
-        OfferEntity entity = mapper.toEntity(dto);
+        OfferEntity entity = mapper.toOfferEntity(dto);
 
         assertNotNull(entity, "Entity should not be null");
         assertEquals(dto.getExternalId(), entity.getExternalId(), "ExternalId mapping failed");
@@ -33,19 +33,19 @@ public class OfferInfraSQLMapperTest {
     }
 
     @Test
-    void toEntity_ShouldReturnNull_WhenDtoIsNull() {
-        OfferEntity entity = mapper.toEntity(null);
+    void toOfferEntity_ShouldReturnNull_WhenDtoIsNull() {
+        OfferEntity entity = mapper.toOfferEntity(null);
 
         assertNull(entity, "Entity should be null when DTO is null");
     }
 
     @Test
-    void toEntity_ShouldMapAllVehicleTypes() {
+    void toOfferEntity_ShouldMapAllVehicleTypes() {
         for (OfferDto.VehicleTypeDto type : OfferDto.VehicleTypeDto.values()) {
             OfferDto dto = OfferDtoFactory.getOfferDto();
             dto.setVehicleType(type);
 
-            OfferEntity entity = mapper.toEntity(dto);
+            OfferEntity entity = mapper.toOfferEntity(dto);
 
             assertNotNull(entity);
             assertEquals(type.name(), entity.getVehicleType().name(),
@@ -54,12 +54,12 @@ public class OfferInfraSQLMapperTest {
     }
 
     @Test
-    void toEntity_ShouldMapAllOfferStatuses() {
+    void toOfferEntity_ShouldMapAllOfferStatuses() {
         for (OfferDto.OfferStatusDto status : OfferDto.OfferStatusDto.values()) {
             OfferDto dto = OfferDtoFactory.getOfferDto();
             dto.setStatus(status);
 
-            OfferEntity entity = mapper.toEntity(dto);
+            OfferEntity entity = mapper.toOfferEntity(dto);
 
             assertNotNull(entity);
             assertEquals(status.name(), entity.getStatus().name(),
@@ -68,12 +68,12 @@ public class OfferInfraSQLMapperTest {
     }
 
     @Test
-    void toEntity_ShouldHandleNullEnums() {
+    void toOfferEntity_ShouldHandleNullEnums() {
         OfferDto dto = OfferDtoFactory.getOfferDto();
         dto.setVehicleType(null);
         dto.setStatus(null);
 
-        OfferEntity entity = mapper.toEntity(dto);
+        OfferEntity entity = mapper.toOfferEntity(dto);
 
         assertNotNull(entity);
         assertNull(entity.getVehicleType(), "VehicleType should be null");
