@@ -12,9 +12,7 @@ import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.*;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +22,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Application service for offer ingestion orchestration.
@@ -128,18 +127,21 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
 
     private void processOffersStream(String format, IOfferParserService parser, InputStream inputStream) {
         Thread.ofVirtual().start(() -> {
+            JobExecution execution = null;
             try {
+                String ingestionId = UUID.randomUUID().toString();
                 offerReader.start(parser, inputStream);
                 JobParameters params = new JobParametersBuilder()
+                        .addString("ingestionId", ingestionId)
                         .addString("format", format)
-                        .addLong("time", System.currentTimeMillis())
                         .toJobParameters();
 
-                jobLauncher.run(offerIngestionJob, params);
+                execution = jobLauncher.run(offerIngestionJob, params);
 
                 log.info("Batch job started successfully for format: {}", format);
             } catch (Exception e) {
-                log.error("Failed to execute batch job", e);
+                assert execution != null;
+                log.error("Failed to execute batch job: {} . Status: {}", execution.getJobId(), execution.getStatus() , e);
             }
         });
     }

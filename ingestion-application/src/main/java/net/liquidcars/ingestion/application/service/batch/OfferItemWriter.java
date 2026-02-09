@@ -6,23 +6,28 @@ import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.StepExecutionListener;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
+@StepScope
 @RequiredArgsConstructor
 public class OfferItemWriter implements ItemWriter<OfferDto>, StepExecutionListener {
 
     private final IOfferInfraKafkaProducerService kafkaProducer;
     private String jobIdentifier;
+    @Value("#{jobParameters['ingestionId']}")
+    private String ingestionId;
     private String jobStatus;
 
     @Override
     public void beforeStep(StepExecution stepExecution) {
 
-        this.jobIdentifier = stepExecution.getJobExecution().getJobInstance().getJobName() + "-" + stepExecution.getJobExecutionId();
+        this.jobIdentifier = stepExecution.getJobExecution().getJobInstance().getJobName() + "-" + ingestionId;
         this.jobStatus = stepExecution.getJobExecution().getStatus().name();
 
         log.info("Writer configured. Job: {} | Status: {}", jobIdentifier, jobStatus);
@@ -35,5 +40,6 @@ public class OfferItemWriter implements ItemWriter<OfferDto>, StepExecutionListe
             offer.setBatchStatus(this.jobStatus);
             kafkaProducer.sendOffer(offer);
         }
+        kafkaProducer.flushOffers();
     }
 }

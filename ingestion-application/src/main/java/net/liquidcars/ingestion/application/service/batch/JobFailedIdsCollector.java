@@ -17,4 +17,8 @@ public class JobFailedIdsCollector {
     public List<String> getFailedIds() {
         return new ArrayList<>(failedIds);
     }
+
+    public void clear() {
+        failedIds.clear();
+    }
 }

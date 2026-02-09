@@ -41,6 +41,9 @@ public class OfferInfraKafkaProducerServiceImpl implements IOfferInfraKafkaProdu
     @Override
     public void sendJobReport(IngestionReportDto ingestionReportDto) {
         try {
+            log.info("Flushing offer producer buffer before sending report for Job: {}", ingestionReportDto.getJobId());
+            flushOffers();
+
             IngestionReportMsg ingestionReportMsg = offerInfraKafkaProducerMapper.toIngestionReportMsg(ingestionReportDto);
             ingestionReportKafkaPublisher.sendIngestionReport(ingestionReportMsg);
         } catch (Exception e) {
@@ -50,6 +53,16 @@ public class OfferInfraKafkaProducerServiceImpl implements IOfferInfraKafkaProdu
                     .message("Infrastructure failure: Kafka publisher is unavailable")
                     .cause(e)
                     .build();
+        }
+    }
+
+    @Override
+    public void flushOffers() {
+        try {
+            log.debug("Flushing offer producer buffer.");
+            offerKafkaPublisher.flush();
+        } catch (Exception e) {
+            log.error("Error durante el flush de ofertas", e);
         }
     }
 }

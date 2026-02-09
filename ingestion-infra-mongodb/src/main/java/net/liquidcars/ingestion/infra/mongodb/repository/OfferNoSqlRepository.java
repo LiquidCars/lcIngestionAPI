@@ -25,15 +25,27 @@ public interface OfferNoSqlRepository extends MongoRepository<OfferNoSQLEntity, 
     void updateBatchStatusByJobIdentifier(String jobIdentifier, String batchStatus);
 
     /**
-     * Deletes offers of a job
-     * @param jobIdentifier job id
+     * Deletes offers of a job.
+     * Changed return type to long to detect if deletion was effective.
+     * * @param jobIdentifier job id
+     * @return count of deleted documents
      */
-    void deleteByJobIdentifier(String jobIdentifier);
+    long deleteByJobIdentifier(String jobIdentifier);
+
+    /**
+     * Counts offers of a job.
+     * Used to detect race conditions before cleanup.
+     * @param jobIdentifier job id
+     * @return count of documents with the given jobIdentifier
+     */
+    long countByJobIdentifier(String jobIdentifier);
 
     /**
      * Deletes offers where batchStatus is not 'COMPLETED'
      * and updatedAt is older than the provided threshold.
+     * * @param threshold time limit
+     * @return count of deleted documents
      */
     @Query(value = "{ 'batchStatus': { $ne: 'COMPLETED' }, 'updatedAt': { $lt: ?0 } }", delete = true)
-    void deleteByBatchStatusNotCompletedAndUpdatedAtBefore(Instant threshold);
+    long deleteByBatchStatusNotCompletedAndUpdatedAtBefore(Instant threshold);
 }

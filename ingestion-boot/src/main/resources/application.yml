@@ -42,30 +42,56 @@ spring:
   # Kafka Configuration
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      # 'all' ensures the highest durability, waiting for full replication
       acks: all
       retries: 3
       properties:
-        linger.ms: 10
+        # 'linger.ms: 0' forces immediate sending, crucial for our "flush" strategy
+        linger.ms: 0
         batch.size: 16384
+        delivery.timeout.ms: 120000  # 2 minutes
+        request.timeout.ms: 30000     # 30 seconds
+        max.block.ms: 6000
+
     consumer:
       group-id: liquidcars-ingestion-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      # 'read_uncommitted' is default (allows reading offers before the report)
       auto-offset-reset: earliest
       enable-auto-commit: false
       properties:
         spring.json.trusted.packages: "*"
-  
-  # Spring Batch Configuration
-  batch:
-    job:
-      enabled: false # Don't auto-start jobs on application startup
-    jdbc:
-      initialize-schema: never
-      table-prefix: BATCH_
+
+      # --- NON-BLOCKING RETRY CONFIGURATION ---
+      # This section manages how the consumer behaves when your Service
+      # throws the LCIngestionException during the cleanup process.
+      retry:
+        # How long to wait before the first retry (5 seconds)
+        initial-interval: 5000
+        # Maximum number of delivery attempts for the same report message
+        max-attempts: 5
+        # Multiplier for the wait time (1.0 means always wait 2s, 2.0 would double it)
+        multiplier: 2.0
+        max-interval: 30000  # 30 seconds
+
+    listener:
+      # 'record' mode allows each message to be acknowledged individually
+      ack-mode: record
+      # Ensures the error handler defined in YAML is active
+      type: single
+
+    # Spring Batch Configuration
+    batch:
+      job:
+        enabled: false # Don't auto-start jobs on application startup
+      jdbc:
+        initialize-schema: never
+        table-prefix: BATCH_
   
   # Liquibase Migration
   liquibase:
@@ -133,6 +159,10 @@ logging:
     org.springframework.kafka: INFO
     liquibase: INFO
     org.liquibase: INFO
+    org.springframework.orm.jpa: DEBUG
+    org.springframework.transaction: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 
@@ -141,13 +171,16 @@ ingestion:
   batch:
     chunk-size: 10
     skip-limit: 2
+    # Delay before send ingestion report (3 seconds)
+    failed-job-report-delay-ms: 3000
   kafka:
     topics:
       offers: vehicle-offers
   scheduler:
-    enabled: true
+    enabled: false
     remoteUrl: ${OFFERS_TEST_URL:http://localhost:8083/offers.json}
-    cron: "0 */15 * * * *" # Every 15 minutes
+    #cron: "0 */15 * * * *" # Every 15 minutes
+    cron: "0 0 3 * * SUN" # Every Sunday at 3 AM
     format: json
   purgeScheduler:
     enabled: true

@@ -13,16 +13,44 @@ import java.util.Optional;
 @Repository
 public interface OfferSQLRepository extends JpaRepository<OfferEntity, String> {
 
-    Optional<OfferEntity> findByExternalId(String externalId);
+        /**
+         * Retrieves an offer by its unique external identifier.
+         * @param externalId the business ID from the source system.
+         * @return an Optional containing the entity if found.
+         */
+        Optional<OfferEntity> findByExternalId(String externalId);
 
-    @Modifying
-    @Query("UPDATE OfferEntity o SET o.batchStatus = :status WHERE o.jobIdentifier = :jobId")
-    void updateBatchStatusByJobIdentifier(@Param("jobId") String jobId, @Param("status") String status);
+        /**
+         * Updates the batch status for all offers associated with a specific Job.
+         * @param jobId the unique identifier of the batch execution.
+         * @param status the new status to apply (e.g., 'COMPLETED', 'FAILED').
+         * @return the number of updated records.
+         */
+        @Modifying
+        @Query("UPDATE OfferEntity o SET o.batchStatus = :status WHERE o.jobIdentifier = :jobId")
+        int updateBatchStatusByJobIdentifier(@Param("jobId") String jobId, @Param("status") String status);
 
-    @Modifying
-    void deleteByJobIdentifier(String jobId);
+        /**
+         * Deletes all offers linked to a specific Job execution.
+         * Used mainly for cleanup operations after a failed ingestion.
+         * @param jobId the unique identifier of the batch execution.
+         * @return the number of deleted records.
+         */
+        @Modifying
+        int deleteByJobIdentifier(String jobId);
 
-    @Modifying
-    @Query("DELETE FROM OfferEntity o WHERE o.batchStatus != 'COMPLETED' AND o.updatedAt < :threshold")
-    void deleteObsoleteOffers(@Param("threshold") OffsetDateTime threshold);
+        /**
+         * Count all offers linked to a specific Job execution.
+         * @return the number of records.
+         */
+        int countByJobIdentifier(String jobIdentifier);
+
+        /**
+         * Removes offers that were not successfully completed and exceed the age threshold.
+         * @param threshold the date and time limit for obsolescence.
+         * @return the number of purged records.
+         */
+        @Modifying
+        @Query("DELETE FROM OfferEntity o WHERE o.batchStatus != 'COMPLETED' AND o.updatedAt < :threshold")
+        int deleteObsoleteOffers(@Param("threshold") OffsetDateTime threshold);
 }

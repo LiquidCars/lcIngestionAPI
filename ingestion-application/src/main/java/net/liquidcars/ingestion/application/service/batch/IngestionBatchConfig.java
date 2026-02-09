@@ -2,15 +2,12 @@ package net.liquidcars.ingestion.application.service.batch;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.liquidcars.ingestion.application.service.OfferIngestionProcessServiceImpl;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
@@ -20,8 +17,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.transaction.PlatformTransactionManager;
-
-import java.util.Objects;
 
 @Slf4j
 @Configuration
@@ -42,7 +37,7 @@ public class IngestionBatchConfig {
     @Bean
     public Job offerIngestionJob(JobRepository jobRepository, Step ingestionStep) {
         return new JobBuilder("offerIngestionJob", jobRepository)
-                .incrementer(new RunIdIncrementer()) //Allows rerun the job with same name
+                //.incrementer(new RunIdIncrementer()) //Allows rerun the job with same name
                 .listener(jobCompletionListener)
                 .start(ingestionStep)
                 .build();
@@ -50,7 +45,11 @@ public class IngestionBatchConfig {
 
 
     @Bean
-    public Step ingestionStep(JobRepository jobRepository, PlatformTransactionManager transactionManager, OfferStreamItemReader offerReader){
+    public Step ingestionStep(
+            JobRepository jobRepository,
+            PlatformTransactionManager transactionManager,
+            OfferStreamItemReader offerReader
+    ){
         return new StepBuilder("ingestionStep", jobRepository)
                 .<OfferDto, OfferDto>chunk(chunkSize, transactionManager)
                 .reader(offerReader)

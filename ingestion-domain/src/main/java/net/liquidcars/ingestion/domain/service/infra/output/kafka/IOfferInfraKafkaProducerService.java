@@ -6,4 +6,6 @@ import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 public interface IOfferInfraKafkaProducerService {
     void sendOffer(OfferDto offer);
     void sendJobReport(IngestionReportDto ingestionReportDto);
+
+    void flushOffers();
 }
