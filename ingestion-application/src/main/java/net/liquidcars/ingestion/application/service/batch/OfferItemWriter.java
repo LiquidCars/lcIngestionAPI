@@ -20,13 +20,14 @@ public class OfferItemWriter implements ItemWriter<OfferDto>, StepExecutionListe
 
     private final IOfferInfraKafkaProducerService kafkaProducer;
     private String jobIdentifier;
-    @Value("#{jobParameters['ingestionId']}")
-    private String ingestionId;
     private String jobStatus;
 
     @Override
     public void beforeStep(StepExecution stepExecution) {
 
+        String ingestionId = stepExecution.getJobExecution()
+                .getJobParameters()
+                .getString("ingestionId");
         this.jobIdentifier = stepExecution.getJobExecution().getJobInstance().getJobName() + "-" + ingestionId;
         this.jobStatus = stepExecution.getJobExecution().getStatus().name();
 

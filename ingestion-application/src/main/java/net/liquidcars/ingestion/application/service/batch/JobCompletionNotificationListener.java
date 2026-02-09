@@ -22,8 +22,6 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
 
     private final IOfferInfraKafkaProducerService kafkaProducer;
     private final JobFailedIdsCollector failedIdsCollector;
-    @Value("${ingestion.batch.failed-job-report-delay-ms:3000}")
-    private long failedJobReportDelayMs;
 
     @Override
     public void afterJob(JobExecution jobExecution) {
@@ -66,17 +64,6 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
                     readCount,
                     writeCount,
                     skipCount);
-
-            if (BatchStatus.FAILED.equals(jobExecution.getStatus()) && writeCount > 0) {
-                log.info("Job FAILED with {} writes. Waiting {}ms before sending cleanup report...",
-                        writeCount, failedJobReportDelayMs);
-                try {
-                    Thread.sleep(failedJobReportDelayMs);
-                } catch (InterruptedException e) {
-                    log.warn("Interrupted while waiting to send failed job report", e);
-                    Thread.currentThread().interrupt();
-                }
-            }
 
             log.info(">> Sending Job Report for Job: {}", report.getJobId());
             kafkaProducer.sendJobReport(report);

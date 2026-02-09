@@ -156,7 +156,7 @@ logging:
     root: INFO
     com.orbyn.ingestion: INFO
     org.springframework.batch: INFO
-    org.springframework.kafka: INFO
+    org.springframework.kafka: DEBUG
     liquibase: INFO
     org.liquibase: INFO
     org.springframework.orm.jpa: DEBUG
@@ -171,16 +171,13 @@ ingestion:
   batch:
     chunk-size: 10
     skip-limit: 2
-    # Delay before send ingestion report (3 seconds)
-    failed-job-report-delay-ms: 3000
   kafka:
     topics:
       offers: vehicle-offers
   scheduler:
     enabled: false
     remoteUrl: ${OFFERS_TEST_URL:http://localhost:8083/offers.json}
-    #cron: "0 */15 * * * *" # Every 15 minutes
-    cron: "0 0 3 * * SUN" # Every Sunday at 3 AM
+    cron: "0 */45 * * * *" # Every 45 minutes
     format: json
   purgeScheduler:
     enabled: true
