@@ -4,8 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
-import net.liquidcars.ingestion.application.service.parser.model.OfferJSONModel;
-import net.liquidcars.ingestion.application.service.parser.model.OfferXMLModel;
+import net.liquidcars.ingestion.application.service.parser.model.XML.CarOfferSellerTypeEnumXMLModel;
+import net.liquidcars.ingestion.application.service.parser.model.XML.MoneyXMLModel;
+import net.liquidcars.ingestion.application.service.parser.model.XML.OfferXMLModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserException;
@@ -19,6 +20,7 @@ import javax.xml.stream.XMLStreamReader;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 @Slf4j
@@ -107,17 +109,32 @@ public class OfferXmlProcessor implements IOfferParserService {
         String content = reader.getElementText();
         if (content == null || content.isBlank()) return;
 
+        final String DEFAULT_CURRENCY = "EUR";
+
         switch (tagName) {
-            case "externalId"  -> model.setExternalId(content);
-            case "brand"       -> model.setBrand(content);
-            case "model"       -> model.setModel(content);
-            case "year"        -> model.setYear(Integer.parseInt(content));
-            case "price"       -> model.setPrice(new BigDecimal(content));
-            case "source"      -> model.setSource(content);
-            case "vehicleType" -> model.setVehicleType(OfferXMLModel.VehicleTypeXML.valueOf(content.toUpperCase()));
-            case "status"      -> model.setStatus(OfferXMLModel.OfferStatusXML.valueOf(content.toUpperCase()));
-            case "createdAt"   -> model.setCreatedAt(OffsetDateTime.parse(content));
-            case "updatedAt"   -> model.setUpdatedAt(OffsetDateTime.parse(content));
+            case "id" -> model.setId(UUID.fromString(content));
+            case "xmlCarOfferId" -> model.setXmlCarOfferId(UUID.fromString(content));
+            case "privateOwnerRegisteredUserId" -> model.setPrivateOwnerRegisteredUserId(UUID.fromString(content));
+            case "sellerType" -> model.setSellerType(CarOfferSellerTypeEnumXMLModel.valueOf(content));
+            case "price" -> model.setPrice(MoneyXMLModel.toMoney(new BigDecimal(content), DEFAULT_CURRENCY));
+            case "financedPrice" -> model.setFinancedPrice(MoneyXMLModel.toMoney(new BigDecimal(content), DEFAULT_CURRENCY));
+            case "financedInstallmentAprox" -> model.setFinancedInstallmentAprox(MoneyXMLModel.toMoney(new BigDecimal(content), DEFAULT_CURRENCY));
+            case "priceNew" -> model.setPriceNew(MoneyXMLModel.toMoney(new BigDecimal(content), DEFAULT_CURRENCY));
+            case "professionalPrice" -> model.setProfessionalPrice(MoneyXMLModel.toMoney(new BigDecimal(content), DEFAULT_CURRENCY));
+            case "ownerReference" -> model.setOwnerReference(content);
+            case "dealerReference" -> model.setDealerReference(content);
+            case "channelReference" -> model.setChannelReference(content);
+            case "financedText" -> model.setFinancedText(content);
+            case "obs" -> model.setObs(content);
+            case "internalNotes" -> model.setInternalNotes(content);
+            case "installation" -> model.setInstallation(content);
+            case "mail" -> model.setMail(content);
+            case "taxDeductible" -> model.setTaxDeductible(Boolean.parseBoolean(content));
+            case "guarantee" -> model.setGuarantee(Boolean.parseBoolean(content));
+            case "certified" -> model.setCertified(Boolean.parseBoolean(content));
+            case "guaranteeMonths" -> model.setGuaranteeMonths(Integer.parseInt(content));
+            case "hash" -> model.setHash(Integer.parseInt(content));
+            case "lastUpdated" -> model.setLastUpdated(Long.parseLong(content));
         }
     }
 }

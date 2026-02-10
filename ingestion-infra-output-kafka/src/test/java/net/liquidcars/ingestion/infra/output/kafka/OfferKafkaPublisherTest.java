@@ -13,6 +13,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 
 import java.util.concurrent.CompletableFuture;
 
+import java.util.UUID;
+
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -31,7 +33,8 @@ public class OfferKafkaPublisherTest {
     @DisplayName("Should send the offer to the Kafka topic with the ID as the key")
     void sendOffer_ShouldCallKafkaTemplate() {
         OfferMsg msg = OfferMsgFactory.getOfferMsg();
-        msg.setId("OFF-999");
+        UUID id = UUID.randomUUID();
+        msg.setId(id);
 
         CompletableFuture<?> future = CompletableFuture.completedFuture(null);
 
@@ -40,7 +43,6 @@ public class OfferKafkaPublisherTest {
 
         publisher.sendOffer(msg);
 
-        verify(kafkaTemplate, times(1))
-                .send(eq(TOPIC), eq("OFF-999"), eq(msg));
+        verify(kafkaTemplate, times(1)).send(eq(TOPIC), eq(id.toString()), eq(msg));
     }
 }

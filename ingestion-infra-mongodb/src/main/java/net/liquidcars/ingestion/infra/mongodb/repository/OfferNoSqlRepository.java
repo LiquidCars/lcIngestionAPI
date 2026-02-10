@@ -13,8 +13,6 @@ import java.util.Optional;
 @Repository
 public interface OfferNoSqlRepository extends MongoRepository<OfferNoSQLEntity, String> {
 
-    Optional<OfferNoSQLEntity> findByExternalId(String externalId);
-
     /**
      * Updates batch status in offers of a job
      * @param jobIdentifier job id

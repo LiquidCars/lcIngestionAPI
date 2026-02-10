@@ -57,7 +57,7 @@ public class OfferInfraNoSQLServiceImplTest {
         existingEntity.setId("existing-id");
 
         when(mapper.toEntity(dto)).thenReturn(newEntity);
-        when(repository.findByExternalId(dto.getExternalId()))
+        when(repository.findById(dto.getId().toString()))
                 .thenReturn(Optional.of(existingEntity));
 
         service.processOffer(dto);
@@ -76,7 +76,7 @@ public class OfferInfraNoSQLServiceImplTest {
         newEntity.setCreatedAt(Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS));
 
         when(mapper.toEntity(dto)).thenReturn(newEntity);
-        when(repository.findByExternalId(dto.getExternalId()))
+        when(repository.findById(dto.getId().toString()))
                 .thenReturn(Optional.of(existingEntity));
 
         service.processOffer(dto);

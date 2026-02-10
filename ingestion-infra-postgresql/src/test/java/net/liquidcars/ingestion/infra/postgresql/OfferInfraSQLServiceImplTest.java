@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
@@ -36,11 +37,11 @@ public class OfferInfraSQLServiceImplTest {
         OfferDto dto = OfferDtoFactory.getOfferDto();
         OfferEntity entity = OfferEntityFactory.getOfferEntity();
 
-        when(mapper.toOfferEntity(dto)).thenReturn(entity);
+        when(mapper.toEntity(dto)).thenReturn(entity);
 
         service.processOffer(dto);
 
-        verify(mapper, times(1)).toOfferEntity(dto);
+        verify(mapper, times(1)).toEntity(dto);
         verify(sqlRepository, times(1)).save(entity);
     }
 
@@ -53,11 +54,11 @@ public class OfferInfraSQLServiceImplTest {
         newEntity.setCreatedAt(OffsetDateTime.now());
         existingEntity.setCreatedAt(OffsetDateTime.now().minusDays(1));
 
-        String existingId = "existing-uuid-123";
+        UUID existingId = UUID.randomUUID();
         existingEntity.setId(existingId);
 
-        when(mapper.toOfferEntity(dto)).thenReturn(newEntity);
-        when(sqlRepository.findByExternalId(dto.getExternalId()))
+        when(mapper.toEntity(dto)).thenReturn(newEntity);
+        when(sqlRepository.findById(dto.getId()))
                 .thenReturn(Optional.of(existingEntity));
 
         service.processOffer(dto);
@@ -75,8 +76,8 @@ public class OfferInfraSQLServiceImplTest {
         newEntity.setCreatedAt(OffsetDateTime.now().minusDays(10));
         existingEntity.setCreatedAt(OffsetDateTime.now());
 
-        when(mapper.toOfferEntity(dto)).thenReturn(newEntity);
-        when(sqlRepository.findByExternalId(dto.getExternalId()))
+        when(mapper.toEntity(dto)).thenReturn(newEntity);
+        when(sqlRepository.findById(dto.getId()))
                 .thenReturn(Optional.of(existingEntity));
 
         service.processOffer(dto);

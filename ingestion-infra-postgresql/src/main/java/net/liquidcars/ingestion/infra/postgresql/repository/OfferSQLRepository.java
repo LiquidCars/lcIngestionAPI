@@ -9,16 +9,10 @@ import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface OfferSQLRepository extends JpaRepository<OfferEntity, String> {
-
-        /**
-         * Retrieves an offer by its unique external identifier.
-         * @param externalId the business ID from the source system.
-         * @return an Optional containing the entity if found.
-         */
-        Optional<OfferEntity> findByExternalId(String externalId);
 
         /**
          * Updates the batch status for all offers associated with a specific Job.

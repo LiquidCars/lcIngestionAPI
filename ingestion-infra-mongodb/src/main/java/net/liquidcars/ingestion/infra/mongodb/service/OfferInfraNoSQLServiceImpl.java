@@ -25,34 +25,42 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     private final OfferInfraNoSQLMapper offerInfraNoSQLMapper;
 
     @Override
+    @Transactional
     public void processOffer(OfferDto offer) {
-        log.info("Processing NoSQL persistence for externalId: {}", offer.getExternalId());
+        log.info("Processing NoSQL persistence for d: {}", offer.getId());
 
         try {
             OfferNoSQLEntity entity = offerInfraNoSQLMapper.toEntity(offer);
-            repository.findByExternalId(offer.getExternalId())
+            entity.setCreatedAt(Instant.now());
+            repository.findById(offer.getId().toString())
                     .ifPresentOrElse(
                             existingOffer -> updateIfNewer(existingOffer, entity),
                             () -> repository.save(entity)
                     );
 
         } catch (Exception e) {
-            log.error("Failed to persist offer in NoSQL database. ExternalID: {}", offer.getExternalId(), e);
+            log.error("Failed to persist offer in NoSQL database. ID: {}", offer.getId(), e);
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.DATABASE)
-                    .message("NoSQL persistence error for externalId: " + offer.getExternalId())
+                    .message("NoSQL persistence error for id: " + offer.getId())
                     .cause(e)
                     .build();
         }
     }
 
     private void updateIfNewer(OfferNoSQLEntity existing, OfferNoSQLEntity incoming) {
-        if (incoming.getCreatedAt().isAfter(existing.getCreatedAt())) {
-            log.debug("Updating existing offer. ExternalID: {}", incoming.getExternalId());
+        boolean shouldUpdate = existing.getCreatedAt() == null ||
+                incoming.getCreatedAt().isAfter(existing.getCreatedAt());
+
+        if (shouldUpdate) {
+            log.debug("Updating existing offer. ID: {}", incoming.getId());
             incoming.setId(existing.getId());
+            if (existing.getCreatedAt() != null) {
+                incoming.setCreatedAt(existing.getCreatedAt());
+            }
             repository.save(incoming);
         } else {
-            log.debug("Incoming offer is older than existing one. Skipping update. ExternalID: {}", incoming.getExternalId());
+            log.debug("Incoming offer is older than existing one. Skipping update. ExternalID: {}", incoming.getId());
         }
     }
 
