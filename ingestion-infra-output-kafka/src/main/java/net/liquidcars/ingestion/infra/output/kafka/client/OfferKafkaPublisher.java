@@ -7,8 +7,6 @@ import net.liquidcars.ingestion.infra.output.kafka.model.OfferMsg;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.concurrent.ExecutionException;
-
 @Service
 @RequiredArgsConstructor
 public class OfferKafkaPublisher {
@@ -26,9 +24,5 @@ public class OfferKafkaPublisher {
                     .cause(e)
                     .build();
         }
-    }
-
-    public void flush() {
-        kafkaTemplate.flush();
     }
 }

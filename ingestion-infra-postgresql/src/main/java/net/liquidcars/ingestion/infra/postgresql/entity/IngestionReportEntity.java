@@ -46,4 +46,8 @@ public class IngestionReportEntity {
 
     @Column(name = "end_time")
     private OffsetDateTime endTime;
+
+    @Builder.Default
+    @Column(name = "processed", nullable = false)
+    private boolean processed = false;
 }

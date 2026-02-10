@@ -2,15 +2,19 @@ package net.liquidcars.ingestion.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import net.liquidcars.ingestion.application.service.batch.IngestionSkipListener;
 import net.liquidcars.ingestion.application.service.batch.JobCompletionNotificationListener;
 import net.liquidcars.ingestion.application.service.batch.OfferItemWriter;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
+import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
+import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
 import org.springframework.batch.core.*;
 import org.springframework.batch.core.launch.JobLauncher;
@@ -43,6 +47,8 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     private final JobCompletionNotificationListener jobCompletionListener;
     private final Job offerIngestionJob;
     private final OfferStreamItemReader offerReader;
+    private final IOfferInfraSQLService offerInfraSQLService;
+    private final IOfferInfraNoSQLService offerInfraNoSQLService;
 
     @Value("${ingestion.batch.chunk-size:10}")
     private int chunkSize;
@@ -147,5 +153,21 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     }
     private void processOffer(OfferDto offerDto){
         offerInfraKafkaProducerService.sendOffer(offerDto);
+    }
+
+    @Override
+    @SchedulerLock(
+            name = "IngestionSync_Lock",
+            lockAtMostFor = "4m",  // If the pod dies, the lock is released in 4 minutes
+            lockAtLeastFor = "1m"  //I hope that if the process is very fast, another replica will catch on right away.
+    )
+    public void syncPendingReports() {
+        List<IngestionReportDto> pendingReports = offerInfraSQLService.getPendingReports();
+        if (pendingReports.isEmpty()) {
+            return;
+        }
+        log.info("Syncing {} pending reports across SQL and NoSQL", pendingReports.size());
+        offerInfraNoSQLService.syncPendingReports(pendingReports);
+        offerInfraSQLService.syncPendingReports(pendingReports);
     }
 }

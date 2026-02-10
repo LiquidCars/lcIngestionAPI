@@ -42,6 +42,5 @@ public class OfferInfraKafkaConsumerServiceImpl implements IOfferInfraKafkaConsu
     @Override
     public void processIngestionReport(IngestionReportDto ingestionReportDto) {
         offerInfraSQLService.processIngestionReport(ingestionReportDto);
-        offerInfraNoSQLService.processIngestionReport(ingestionReportDto);
     }
 }

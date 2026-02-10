@@ -23,10 +23,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 @RequiredArgsConstructor
 public class IngestionBatchConfig {
 
-    private final OfferItemWriter offerItemWriter;
-    private final IngestionSkipListener ingestionSkipListener;
-    private final JobCompletionNotificationListener jobCompletionListener;
-    private final JobFailedIdsCollector failedIdsCollector;
 
     @Value("${ingestion.batch.chunk-size:10}")
     private int chunkSize;
@@ -35,9 +31,8 @@ public class IngestionBatchConfig {
     private int skipLimit;
 
     @Bean
-    public Job offerIngestionJob(JobRepository jobRepository, Step ingestionStep) {
+    public Job offerIngestionJob(JobRepository jobRepository, Step ingestionStep, JobCompletionNotificationListener jobCompletionListener) {
         return new JobBuilder("offerIngestionJob", jobRepository)
-                //.incrementer(new RunIdIncrementer()) //Allows rerun the job with same name
                 .listener(jobCompletionListener)
                 .start(ingestionStep)
                 .build();
@@ -48,7 +43,10 @@ public class IngestionBatchConfig {
     public Step ingestionStep(
             JobRepository jobRepository,
             PlatformTransactionManager transactionManager,
-            OfferStreamItemReader offerReader
+            OfferStreamItemReader offerReader,
+            OfferItemWriter offerItemWriter,
+            IngestionSkipListener ingestionSkipListener,
+            JobFailedIdsCollector failedIdsCollector
     ){
         return new StepBuilder("ingestionStep", jobRepository)
                 .<OfferDto, OfferDto>chunk(chunkSize, transactionManager)
