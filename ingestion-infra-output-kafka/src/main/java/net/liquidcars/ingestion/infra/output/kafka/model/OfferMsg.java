@@ -76,9 +76,10 @@ public class OfferMsg implements Serializable {
     @Schema(description = "A versionning hash code used to detect potential changes of the offer")
     private int hash; //Do not add to hashCode implementation
     @Schema(description = "Update date")
-    private long lastUpdated = DateHelperMsg.now().toEpochSecond(ZoneOffset.UTC); //default, now. Do not add to hashCode implementation
+    private long lastUpdated; //default, now. Do not add to hashCode implementation
     @Schema(description = "Update date")
     private UUID jsonCarOfferId;
+    private UUID participantId;
 
 
     @JsonIgnore

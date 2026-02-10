@@ -16,7 +16,7 @@ public class VehicleModelEntity {
 
     @Id
     @Column(name = "car_co_id")
-    private long id;
+    private Long id;
 
     @Column(name = "car_co_brand")
     private String brand;

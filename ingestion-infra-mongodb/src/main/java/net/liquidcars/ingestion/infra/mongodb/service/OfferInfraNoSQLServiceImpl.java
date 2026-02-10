@@ -25,7 +25,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     @Override
     @Transactional
     public void processOffer(OfferDto offer) {
-        log.info("Processing NoSQL persistence for d: {}", offer.getId());
+        log.info("Processing NoSQL persistence for id: {}", offer.getId());
 
         try {
             OfferNoSQLEntity entity = offerInfraNoSQLMapper.toEntity(offer);

@@ -3,26 +3,33 @@ package net.liquidcars.ingestion.infra.postgresql.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.liquidcars.ingestion.domain.model.CarInstanceEquipmentDto;
+import net.liquidcars.ingestion.domain.model.CarOfferResourceDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.VehicleModelDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
 import net.liquidcars.ingestion.infra.postgresql.entity.*;
-import net.liquidcars.ingestion.infra.postgresql.repository.OfferSQLRepository;
-import net.liquidcars.ingestion.infra.postgresql.repository.VehicleModelSQLRepository;
+import net.liquidcars.ingestion.infra.postgresql.repository.*;
 import net.liquidcars.ingestion.infra.postgresql.service.mapper.OfferInfraSQLMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
-    private final VehicleModelSQLRepository vehicleModelRepository;
+
     private final OfferSQLRepository offerSqlRepository;
+    private final VehicleModelSQLRepository vehicleModelRepository;
+    private final CarOfferResourceRepository carOfferResourceRepository;
+    private final ParticipantAddressEntityRepository participantAddressEntityRepository;
+    private final CarInstanceEquipmentEntityRepository carInstanceEquipmentEntityRepository;
     private final OfferInfraSQLMapper mapper;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
@@ -30,20 +37,28 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     @Transactional
     public void processOffer(OfferDto offer) {
         log.info("Processing SQL persistence for id: {}", offer.getId());
-        /* TODO Hay objetos de offerdto que no existen en la tabla de bd */
         try {
-            // Builds the JsonOfferEntity TODO
-            JsonOfferEntity jsonOfferEntity = buildJsonEntity(offer);
-            OfferEntity entity = mapper.toEntity(offer);
-            entity.setJsonCarOffer(jsonOfferEntity);
-            // If the model doesn't exist on bd, we save it before the offer TODO
+            // Creates model if it doesn't exist on bd
             ensureVehicleModelExists(offer.getVehicleInstance().getVehicleModel());
-            offerSqlRepository.findById(offer.getId())
-                    .ifPresentOrElse(
-                            existing -> updateIfNewer(existing, entity),
-                            () -> offerSqlRepository.save(entity)
-                    );
+            offerSqlRepository.findById(offer.getId()).ifPresentOrElse(
+                    existingEntity -> {
+                        // Update logic
+                        OffsetDateTime incomingDate = mapper.mapEpoch(offer.getLastUpdated());
+                        OffsetDateTime existingDate = existingEntity.getLastUpdated() != null
+                                ? existingEntity.getLastUpdated()
+                                : existingEntity.getCreatedAt();
 
+                        if (incomingDate.isAfter(existingDate)) {
+                            log.info("Updating existing offer ID: {}", offer.getId());
+                            updateFullOffer(existingEntity, offer, incomingDate);
+                        }
+                    },
+                    // Create logic
+                    () -> {
+                        log.info("Creating new offer ID: {}", offer.getId());
+                        createNewOffer(offer);
+                    }
+            );
         } catch (Exception e) {
             log.error("Failed to persist offer in SQL database. ID: {}", offer.getId(), e);
             throw LCIngestionException.builder()
@@ -52,6 +67,93 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                     .cause(e)
                     .build();
         }
+    }
+
+    /**
+     * Lógica de creación
+     */
+    private void createNewOffer(OfferDto offer) {
+        OfferEntity newEntity = mapper.toEntity(offer);
+        newEntity.setJsonCarOffer(buildJsonEntity(offer));
+        OfferEntity savedOffer = offerSqlRepository.saveAndFlush(newEntity);
+        if (offer.getPickUpAddress() != null) {
+            ParticipantAddressEntity newAddress = mapper.toParticipantAddressEntity(offer.getPickUpAddress());
+            newAddress.setId(offer.getParticipantId());
+            participantAddressEntityRepository.save(newAddress);
+        }
+        saveOrUpdateResources(offer.getResources(), savedOffer);
+        saveOrUpdateEquipments(offer.getVehicleInstance().getEquipments(), savedOffer.getVehicleInstance());
+
+    }
+
+    /**
+     * Lógica de actualización
+     */
+    private void updateFullOffer(OfferEntity existing, OfferDto dto, OffsetDateTime updateDate) {
+        mapper.updateEntityFromDto(dto, existing);
+        existing.setLastUpdated(updateDate);
+        if (existing.getJsonCarOffer() != null) {
+            Map<String, Object> jsonMap = objectMapper.convertValue(dto.getUICarOffer(), Map.class);
+            existing.getJsonCarOffer().setTexto(jsonMap);
+            existing.getJsonCarOffer().setCreatedAt(OffsetDateTime.now());
+        }
+        offerSqlRepository.save(existing);
+        if (dto.getPickUpAddress() != null) {
+            participantAddressEntityRepository.findById(dto.getParticipantId())
+                    .ifPresentOrElse(
+                            addr -> mapper.updateAddressFromDto(dto.getPickUpAddress(), addr),
+                            () -> {
+                                ParticipantAddressEntity newAddr = mapper.toParticipantAddressEntity(dto.getPickUpAddress());
+                                newAddr.setId(dto.getParticipantId());
+                                participantAddressEntityRepository.save(newAddr);
+                            }
+                    );
+        }
+        saveOrUpdateResources(dto.getResources(), existing);
+        saveOrUpdateEquipments(dto.getVehicleInstance().getEquipments(), existing.getVehicleInstance());
+    }
+
+
+    /**
+     * Funciones de soporte
+     */
+
+    private void saveOrUpdateEquipments(List<CarInstanceEquipmentDto> equipments, VehicleInstanceEntity vehicleInstance) {
+        if (equipments == null || equipments.isEmpty()) return;
+        carInstanceEquipmentEntityRepository.deleteByVehicleInstanceId(vehicleInstance.getId());
+        List<CarInstanceEquipmentEntity> entities = mapper.toCarInstanceEquipmentEntityList(equipments);
+        entities.forEach(entity -> {
+            entity.setVehicleInstance(vehicleInstance);
+        });
+        carInstanceEquipmentEntityRepository.saveAll(entities);
+    }
+
+    private void saveOrUpdateResources(List<CarOfferResourceDto> resources, OfferEntity offer) {
+        if (resources == null || resources.isEmpty()) return;
+        carOfferResourceRepository.deleteByOfferId(offer.getId());
+        List<CarOfferResourceEntity> resourceEntities = resources.stream()
+                .map(dto -> buildCarOfferResourceEntity(dto, offer))
+                .toList();
+        carOfferResourceRepository.saveAll(resourceEntities);
+    }
+
+    private CarOfferResourceEntity buildCarOfferResourceEntity(CarOfferResourceDto dto, OfferEntity offer) {
+        ResourceTypeEntity type = ResourceTypeEntity.builder()
+                .id("UrlImage")
+                .build();
+        byte[] image = convertUrlToBytes(dto.getResource());
+        CarOfferResourceEntity resourceEntity = CarOfferResourceEntity.builder()
+                .id(dto.getId())
+                .offer(offer)
+                .resourceType(type)
+                .resource(image)
+                .build();
+        return resourceEntity;
+    }
+
+    private byte[] convertUrlToBytes(String url) {
+        if (url == null) return null;
+        return url.getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private JsonOfferEntity buildJsonEntity(OfferDto offer) {
@@ -63,7 +165,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                 .jsonObjectType(type)
                 .createdAt(OffsetDateTime.now())
                 .build();
-        java.util.Map<String, Object> jsonMap = objectMapper.convertValue(
+        Map<String, Object> jsonMap = objectMapper.convertValue(
                 offer.getUICarOffer(),
                 java.util.Map.class
         );
@@ -79,51 +181,8 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     private void ensureVehicleModelExists(VehicleModelDto dto) {
         vehicleModelRepository.findById(dto.getId())
                 .orElseGet(() -> {
-                    // Crear el modelo con TODOS sus datos
-                    VehicleModelEntity model = VehicleModelEntity.builder()
-                            .id(dto.getId())
-                            .brand(dto.getBrand())
-                            .model(dto.getModel())
-                            .version(dto.getVersion())
-                            .bodyType(BodyTypesEntity.builder().id(dto.getBodyType().getKey().toString()).build())
-                            .numDoors(dto.getNumDoors())
-                            .cv(dto.getCv())
-                            .numCylinders(dto.getNumCylinders())
-                            .displacement(dto.getDisplacement())
-                            .urbanConsumption(dto.getUrbanConsumption())
-                            .roadConsumption(dto.getRoadConsumption())
-                            .avgConsumption(dto.getAvgConsumption())
-                            .numGears(dto.getNumGears())
-                            .kgWeight(dto.getKgWeight())
-                            .changeType(ChangeTypesEntity.builder().id(dto.getChangeType().getKey().toString()).build())
-                            .fuelType(FuelTypesEntity.builder().id(dto.getFuelType().getKey().toString()).build())
-                            .numSeats(dto.getNumSeats())
-                            .drivetrainType(DriveTrainTypeEntity.builder().id(dto.getDrivetrainType().getKey().toString()).build())
-                            .euroTaxCode(dto.getEuroTaxCode())
-                            .environmentalBadge(EnvironmentalBadgeEntity.builder().id(dto.getEnvironmentalBadge().getKey().toString()).build())
-                            .cmWidth(dto.getCmWidth())
-                            .cmLength(dto.getCmLength())
-                            .cmHeight(dto.getCmHeight())
-                            .litresTrunk(dto.getLitresTrunk())
-                            .litresTank(dto.getLitresTank())
-                            .maxSpeed(dto.getMaxSpeed())
-                            .maxEmissions(dto.getMaxEmissions())
-                            .acceleration(dto.getAcceleration())
-                            .hash(0)
-                            .enabled(true)
-                            .build();
-
+                    VehicleModelEntity model = mapper.toVehicleModelEntity(dto);
                     return vehicleModelRepository.save(model);
                 });
-    }
-
-    private void updateIfNewer(OfferEntity existing, OfferEntity incoming) {
-        if (incoming.getCreatedAt().isAfter(existing.getCreatedAt())) {
-            log.debug("Updating existing offer. ID: {}", incoming.getId());
-            incoming.setId(existing.getId());
-            offerSqlRepository.save(incoming);
-        } else {
-            log.debug("Incoming offer is older than existing one. Skipping update. ID: {}", incoming.getId());
-        }
     }
 }

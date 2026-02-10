@@ -183,10 +183,6 @@ components:
           type: integer
           format: int32
           description: A versioning hash code used to detect potential changes of the offer
-        lastUpdated:
-          type: integer
-          format: int64
-          description: Update date (epoch seconds in UTC)
         jsonCarOfferId:
           type: string
           format: uuid

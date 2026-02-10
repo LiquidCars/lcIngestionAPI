@@ -53,25 +53,6 @@ public class VehicleInstanceDto implements Serializable{
         return ret;
     }
 
-    @JsonIgnore
-    public LocalDateTime getRegistrationApproxDate(boolean approxWithMileage) {
-        if (this.getRegistrationYear()>1900) {
-            int month = this.getRegistrationMonth()>0 ? this.getRegistrationMonth() : 1;
-            return DateHelperDto.fromStringLDT(this.getRegistrationYear() + "-" + (month < 10 ? "0" : "") + month + "-01", DateHelperDto.DEFAULT_DATE_ONLY_FORMAT_STR);
-        }
-        else {
-            if (approxWithMileage) {
-                //Assume 20K Kms/year
-                int years = 1 + this.getMileage() / 20000;
-                return DateHelperDto.now().minusYears(years);
-            }
-            else {
-                return null;
-            }
-        }
-    }
-
-
     public int hashCode(){
         //Init numbers should be primes, and different for each HashCodeBuilder in different classes
         return Math.abs(new HashCodeBuilder(17,31)

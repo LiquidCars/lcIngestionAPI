@@ -25,7 +25,7 @@ public class ParticipantAddressEntity {
     private AddressTypeEntity addressType;
 
     @Column(name = "pad_ds_name")
-    private String addressName;
+    private String padName;
 
     @Column(name = "pad_nm_longitude", columnDefinition = "numeric")
     private double longitude;
