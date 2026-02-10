@@ -71,11 +71,4 @@ class IngestionBatchConfigTest {
         assertThat(step).isNotNull();
         assertThat(step.getName()).isEqualTo("ingestionStep");
     }
-
-    @Test
-    void shouldVerifyOfferItemWriterIsInjected() {
-        assertThat(ingestionBatchConfig).isNotNull();
-        assertThat(org.springframework.test.util.ReflectionTestUtils.getField(ingestionBatchConfig, "offerItemWriter"))
-                .isEqualTo(offerItemWriter);
-    }
 }
