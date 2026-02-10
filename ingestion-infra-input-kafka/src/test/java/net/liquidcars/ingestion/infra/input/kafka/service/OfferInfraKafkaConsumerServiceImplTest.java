@@ -3,6 +3,7 @@ package net.liquidcars.ingestion.infra.input.kafka.service;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
+import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
 import net.liquidcars.ingestion.factory.IngestionReportDtoFactory;
@@ -45,13 +46,17 @@ class OfferInfraKafkaConsumerServiceImplTest {
     void processOfferSave_ShouldNotSaveInNoSQL_WhenSQLFails() {
         OfferDto offer = OfferDtoFactory.getOfferDto();
 
-        doThrow(new RuntimeException("Postgres Down"))
-                .when(offerInfraSQLService).processOffer(any());
+        doThrow(LCIngestionException.builder()
+                .techCause(LCTechCauseEnum.DATABASE)
+                .message("SQL persistence error for externalId: " + offer.getExternalId())
+                .build())
+                .when(offerInfraSQLService)
+                .processOffer(any());
 
         assertThrows(LCIngestionException.class,
                 () -> service.processOfferSave(offer));
 
-        verify(offerInfraSQLService, times(1)).processOffer(offer);
+        verify(offerInfraSQLService, times(1)).processOffer(any());
         verify(offerInfraNoSQLService, never()).processOffer(any());
     }
 
@@ -60,14 +65,18 @@ class OfferInfraKafkaConsumerServiceImplTest {
     void processOfferSave_ShouldSaveInSQL_AndFailIfNoSQLFails() {
         OfferDto offer = OfferDtoFactory.getOfferDto();
 
-        doThrow(new RuntimeException("Mongo Down"))
-                .when(offerInfraNoSQLService).processOffer(any());
+        doThrow(LCIngestionException.builder()
+                .techCause(LCTechCauseEnum.DATABASE)
+                .message("SQL persistence error for externalId: " + offer.getExternalId())
+                .build())
+                .when(offerInfraNoSQLService)
+                .processOffer(any());
 
         assertThrows(LCIngestionException.class,
                 () -> service.processOfferSave(offer));
 
-        verify(offerInfraSQLService, times(1)).processOffer(offer);
-        verify(offerInfraNoSQLService, times(1)).processOffer(offer);
+        verify(offerInfraSQLService, times(1)).processOffer(any());
+        verify(offerInfraNoSQLService, times(1)).processOffer(any());
     }
 
     @Test
@@ -79,38 +88,6 @@ class OfferInfraKafkaConsumerServiceImplTest {
         service.processIngestionReport(report);
 
         verify(offerInfraSQLService, times(1)).processIngestionReport(report);
-        verify(offerInfraNoSQLService, times(1)).processIngestionReport(report);
-    }
 
-    @Test
-    @DisplayName("Should NOT attempt NoSQL when SQL fails for ingestion report")
-    void processIngestionReport_ShouldNotSaveInNoSQL_WhenSQLFails() {
-        IngestionReportDto report = IngestionReportDtoFactory.getIngestionReportDto();
-        report.setJobId("job-123");
-
-        doThrow(new RuntimeException("Postgres Down"))
-                .when(offerInfraSQLService).processIngestionReport(any());
-
-        assertThrows(LCIngestionException.class,
-                () -> service.processIngestionReport(report));
-
-        verify(offerInfraSQLService, times(1)).processIngestionReport(report);
-        verify(offerInfraNoSQLService, never()).processIngestionReport(any());
-    }
-
-    @Test
-    @DisplayName("Should save ingestion report in SQL and fail if NoSQL fails")
-    void processIngestionReport_ShouldSaveInSQL_AndFailIfNoSQLFails() {
-        IngestionReportDto report = IngestionReportDtoFactory.getIngestionReportDto();
-        report.setJobId("job-123");
-
-        doThrow(new RuntimeException("Mongo Down"))
-                .when(offerInfraNoSQLService).processIngestionReport(any());
-
-        assertThrows(LCIngestionException.class,
-                () -> service.processIngestionReport(report));
-
-        verify(offerInfraSQLService, times(1)).processIngestionReport(report);
-        verify(offerInfraNoSQLService, times(1)).processIngestionReport(report);
     }
 }

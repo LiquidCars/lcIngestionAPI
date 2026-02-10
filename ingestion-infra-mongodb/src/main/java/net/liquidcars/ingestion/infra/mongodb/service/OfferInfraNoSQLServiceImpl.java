@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -55,34 +56,6 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         }
     }
 
-    @Override
-    public void processIngestionReport(IngestionReportDto ingestionReportDto) {
-        log.info("Updating batchStatus to '{}' for all offers linked to Job: {}",
-                ingestionReportDto.getStatus(), ingestionReportDto.getJobId());
-        try {
-            if ("FAILED".equalsIgnoreCase(ingestionReportDto.getStatus())) {
-                /*
-                 * If the job failed, we must ensure data consistency by removing all partial
-                 * data ingested during this specific execution.
-                 * This prevents having "orphan" or corrupted data in the NoSQL store.
-                 */
-                log.warn("Job {} FAILED. Deleting all associated offers from NoSQL.", ingestionReportDto.getJobId());
-                repository.deleteByJobIdentifier(ingestionReportDto.getJobId());
-                log.info("Successfully deleted offers for failed Job with id: {}", ingestionReportDto.getJobId());
-
-            } else {
-                repository.updateBatchStatusByJobIdentifier(ingestionReportDto.getJobId(), ingestionReportDto.getStatus());
-                log.debug("NoSQL batchStatus update completed for Job: {}", ingestionReportDto.getJobId());
-            }
-        } catch (Exception e) {
-            log.error("Failed to update batchStatus in NoSQL for Job: {}", ingestionReportDto.getJobId(), e);
-            throw LCIngestionException.builder()
-                    .techCause(LCTechCauseEnum.DATABASE)
-                    .message("NoSQL report update error for Job: " + ingestionReportDto.getJobId())
-                    .cause(e)
-                    .build();
-        }
-    }
 
     @Override
     public void purgeObsoleteOffers(int daysOld) {
@@ -95,8 +68,8 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
              * We execute a bulk delete operation. Using a single query with $ne and $lt
              * is highly efficient as MongoDB performs the filter and deletion in one pass.
              */
-            repository.deleteByBatchStatusNotCompletedAndUpdatedAtBefore(threshold);
-            log.info("Obsolete offers purge completed successfully.");
+            long offersDeleted = repository.deleteByBatchStatusNotCompletedAndUpdatedAtBefore(threshold);
+            log.info("Obsolete offers purge completed successfully. Deleted {} offers", offersDeleted);
         } catch (Exception e) {
             log.error("Failed to purge obsolete offers from NoSQL", e);
             throw LCIngestionException.builder()
@@ -104,6 +77,21 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                     .message("Error during NoSQL offers data purge")
                     .cause(e)
                     .build();
+        }
+    }
+
+    @Override
+    public void syncPendingReports(List<IngestionReportDto> pendingReports) {
+        for (IngestionReportDto report : pendingReports) {
+            try {
+                if ("FAILED".equals(report.getStatus())) {
+                    repository.deleteByJobIdentifier(report.getJobId());
+                } else {
+                    repository.updateBatchStatusByJobIdentifier(report.getJobId(), "COMPLETED");
+                }
+            } catch (Exception e) {
+                log.error("Error syncing report {}", report.getJobId(), e);
+            }
         }
     }
 

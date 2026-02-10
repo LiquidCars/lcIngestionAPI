@@ -30,31 +30,8 @@ public class OfferInfraKafkaConsumerServiceImpl implements IOfferInfraKafkaConsu
     @Transactional
     @Override
     public void processOfferSave(OfferDto offerDto) {
-        try {
-            // 1. SQL Persistence: Primary source of truth.
-            // If this fails, the transaction is marked for rollback immediately.
-            offerInfraSQLService.processOffer(offerDto);
-        } catch (Exception e) {
-            log.error("Critical failure in Postgres for offer {}: {}", offerDto.getExternalId(), e.getMessage());
-            throw LCIngestionException.builder()
-                    .techCause(LCTechCauseEnum.DATABASE)
-                    .message("SQL persistence failed for offer: " + offerDto.getExternalId())
-                    .cause(e)
-                    .build();
-        }
-
-        try {
-            // 2. NoSQL Persistence: Secondary/Read-optimized source.
-            // If this fails, it throws a RuntimeException, causing Postgres to rollback.
-            offerInfraNoSQLService.processOffer(offerDto);
-        } catch (Exception e) {
-            log.error("Critical failure in MongoDB for offer {}: {}", offerDto.getExternalId(), e.getMessage());
-            throw LCIngestionException.builder()
-                    .techCause(LCTechCauseEnum.DATABASE)
-                    .message("NoSQL persistence failed for offer: " + offerDto.getExternalId())
-                    .cause(e)
-                    .build();
-        }
+        offerInfraSQLService.processOffer(offerDto);
+        offerInfraNoSQLService.processOffer(offerDto);
     }
 
     /**
@@ -64,27 +41,6 @@ public class OfferInfraKafkaConsumerServiceImpl implements IOfferInfraKafkaConsu
     @Transactional
     @Override
     public void processIngestionReport(IngestionReportDto ingestionReportDto) {
-        try {
-            // Update RDBMS first as it usually manages the report's relational state.
-            offerInfraSQLService.processIngestionReport(ingestionReportDto);
-        } catch (Exception e) {
-            log.error("Critical failure in Postgres for ingestion report {}: {}", ingestionReportDto.getJobId(), e.getMessage());
-            throw LCIngestionException.builder()
-                    .techCause(LCTechCauseEnum.DATABASE)
-                    .message("SQL persistence failed for ingestion report: " + ingestionReportDto.getJobId())
-                    .cause(e)
-                    .build();
-        }
-        try {
-            // Synchronize the report status in the NoSQL document store.
-            offerInfraNoSQLService.processIngestionReport(ingestionReportDto);
-        } catch (Exception e) {
-            log.error("Critical failure in MongoDB for ingestion report {}: {}", ingestionReportDto.getJobId(), e.getMessage());
-            throw LCIngestionException.builder()
-                    .techCause(LCTechCauseEnum.DATABASE)
-                    .message("NoSQL persistence failed for ingestion report: " + ingestionReportDto.getJobId())
-                    .cause(e)
-                    .build();
-        }
+        offerInfraSQLService.processIngestionReport(ingestionReportDto);
     }
 }

@@ -11,9 +11,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 
+import java.util.concurrent.CompletableFuture;
+
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class OfferKafkaPublisherTest {
@@ -32,8 +33,14 @@ public class OfferKafkaPublisherTest {
         OfferMsg msg = OfferMsgFactory.getOfferMsg();
         msg.setId("OFF-999");
 
+        CompletableFuture<?> future = CompletableFuture.completedFuture(null);
+
+        when(kafkaTemplate.send(eq(TOPIC), eq("OFF-999"), eq(msg)))
+                .thenReturn((CompletableFuture) future);
+
         publisher.sendOffer(msg);
 
-        verify(kafkaTemplate, times(1)).send(eq(TOPIC), eq("OFF-999"), eq(msg));
+        verify(kafkaTemplate, times(1))
+                .send(eq(TOPIC), eq("OFF-999"), eq(msg));
     }
 }

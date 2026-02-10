@@ -2,15 +2,12 @@ package net.liquidcars.ingestion.application.service.batch;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.liquidcars.ingestion.application.service.OfferIngestionProcessServiceImpl;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
@@ -21,17 +18,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import java.util.Objects;
-
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
 public class IngestionBatchConfig {
 
-    private final OfferItemWriter offerItemWriter;
-    private final IngestionSkipListener ingestionSkipListener;
-    private final JobCompletionNotificationListener jobCompletionListener;
-    private final JobFailedIdsCollector failedIdsCollector;
 
     @Value("${ingestion.batch.chunk-size:10}")
     private int chunkSize;
@@ -40,9 +31,8 @@ public class IngestionBatchConfig {
     private int skipLimit;
 
     @Bean
-    public Job offerIngestionJob(JobRepository jobRepository, Step ingestionStep) {
+    public Job offerIngestionJob(JobRepository jobRepository, Step ingestionStep, JobCompletionNotificationListener jobCompletionListener) {
         return new JobBuilder("offerIngestionJob", jobRepository)
-                .incrementer(new RunIdIncrementer()) //Allows rerun the job with same name
                 .listener(jobCompletionListener)
                 .start(ingestionStep)
                 .build();
@@ -50,7 +40,14 @@ public class IngestionBatchConfig {
 
 
     @Bean
-    public Step ingestionStep(JobRepository jobRepository, PlatformTransactionManager transactionManager, OfferStreamItemReader offerReader){
+    public Step ingestionStep(
+            JobRepository jobRepository,
+            PlatformTransactionManager transactionManager,
+            OfferStreamItemReader offerReader,
+            OfferItemWriter offerItemWriter,
+            IngestionSkipListener ingestionSkipListener,
+            JobFailedIdsCollector failedIdsCollector
+    ){
         return new StepBuilder("ingestionStep", jobRepository)
                 .<OfferDto, OfferDto>chunk(chunkSize, transactionManager)
                 .reader(offerReader)

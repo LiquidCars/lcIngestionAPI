@@ -34,6 +34,9 @@ class IngestionBatchConfigTest {
     @Mock
     private OfferStreamItemReader offerReader;
 
+    @Mock
+    private JobFailedIdsCollector failedIdsCollector;
+
     @InjectMocks
     private IngestionBatchConfig ingestionBatchConfig;
 
@@ -41,7 +44,7 @@ class IngestionBatchConfigTest {
     void shouldCreateOfferIngestionJob() {
         Step mockStep = mock(Step.class);
 
-        Job job = ingestionBatchConfig.offerIngestionJob(jobRepository, mockStep);
+        Job job = ingestionBatchConfig.offerIngestionJob(jobRepository, mockStep, jobCompletionListener);
 
         assertThat(job).isNotNull();
         assertThat(job.getName()).isEqualTo("offerIngestionJob");
@@ -52,7 +55,7 @@ class IngestionBatchConfigTest {
         org.springframework.test.util.ReflectionTestUtils.setField(ingestionBatchConfig, "chunkSize", 10);
         org.springframework.test.util.ReflectionTestUtils.setField(ingestionBatchConfig, "skipLimit", 100);
 
-        Step step = ingestionBatchConfig.ingestionStep(jobRepository, transactionManager, offerReader);
+        Step step = ingestionBatchConfig.ingestionStep(jobRepository, transactionManager, offerReader, offerItemWriter, ingestionSkipListener, failedIdsCollector);
 
         assertThat(step).isNotNull();
         assertThat(step.getName()).isEqualTo("ingestionStep");
@@ -63,16 +66,9 @@ class IngestionBatchConfigTest {
         org.springframework.test.util.ReflectionTestUtils.setField(ingestionBatchConfig, "chunkSize", 50);
         org.springframework.test.util.ReflectionTestUtils.setField(ingestionBatchConfig, "skipLimit", 200);
 
-        Step step = ingestionBatchConfig.ingestionStep(jobRepository, transactionManager, offerReader);
+        Step step = ingestionBatchConfig.ingestionStep(jobRepository, transactionManager, offerReader, offerItemWriter, ingestionSkipListener, failedIdsCollector);
 
         assertThat(step).isNotNull();
         assertThat(step.getName()).isEqualTo("ingestionStep");
-    }
-
-    @Test
-    void shouldVerifyOfferItemWriterIsInjected() {
-        assertThat(ingestionBatchConfig).isNotNull();
-        assertThat(org.springframework.test.util.ReflectionTestUtils.getField(ingestionBatchConfig, "offerItemWriter"))
-                .isEqualTo(offerItemWriter);
     }
 }

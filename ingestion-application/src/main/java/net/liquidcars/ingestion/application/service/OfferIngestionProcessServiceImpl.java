@@ -2,19 +2,21 @@ package net.liquidcars.ingestion.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import net.liquidcars.ingestion.application.service.batch.IngestionSkipListener;
 import net.liquidcars.ingestion.application.service.batch.JobCompletionNotificationListener;
 import net.liquidcars.ingestion.application.service.batch.OfferItemWriter;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
+import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
+import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.*;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +26,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Application service for offer ingestion orchestration.
@@ -44,6 +47,8 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     private final JobCompletionNotificationListener jobCompletionListener;
     private final Job offerIngestionJob;
     private final OfferStreamItemReader offerReader;
+    private final IOfferInfraSQLService offerInfraSQLService;
+    private final IOfferInfraNoSQLService offerInfraNoSQLService;
 
     @Value("${ingestion.batch.chunk-size:10}")
     private int chunkSize;
@@ -128,22 +133,41 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
 
     private void processOffersStream(String format, IOfferParserService parser, InputStream inputStream) {
         Thread.ofVirtual().start(() -> {
+            JobExecution execution = null;
             try {
+                String ingestionId = UUID.randomUUID().toString();
                 offerReader.start(parser, inputStream);
                 JobParameters params = new JobParametersBuilder()
+                        .addString("ingestionId", ingestionId)
                         .addString("format", format)
-                        .addLong("time", System.currentTimeMillis())
                         .toJobParameters();
 
-                jobLauncher.run(offerIngestionJob, params);
+                execution = jobLauncher.run(offerIngestionJob, params);
 
                 log.info("Batch job started successfully for format: {}", format);
             } catch (Exception e) {
-                log.error("Failed to execute batch job", e);
+                assert execution != null;
+                log.error("Failed to execute batch job: {} . Status: {}", execution.getJobId(), execution.getStatus() , e);
             }
         });
     }
     private void processOffer(OfferDto offerDto){
         offerInfraKafkaProducerService.sendOffer(offerDto);
+    }
+
+    @Override
+    @SchedulerLock(
+            name = "IngestionSync_Lock",
+            lockAtMostFor = "4m",  // If the pod dies, the lock is released in 4 minutes
+            lockAtLeastFor = "1m"  //I hope that if the process is very fast, another replica will catch on right away.
+    )
+    public void syncPendingReports() {
+        List<IngestionReportDto> pendingReports = offerInfraSQLService.getPendingReports();
+        if (pendingReports.isEmpty()) {
+            return;
+        }
+        log.info("Syncing {} pending reports across SQL and NoSQL", pendingReports.size());
+        offerInfraNoSQLService.syncPendingReports(pendingReports);
+        offerInfraSQLService.syncPendingReports(pendingReports);
     }
 }

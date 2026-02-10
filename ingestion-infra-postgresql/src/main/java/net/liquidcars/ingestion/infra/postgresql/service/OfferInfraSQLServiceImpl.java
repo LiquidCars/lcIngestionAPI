@@ -8,6 +8,7 @@ import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
+import net.liquidcars.ingestion.infra.postgresql.entity.IngestionReportEntity;
 import net.liquidcars.ingestion.infra.postgresql.entity.OfferEntity;
 import net.liquidcars.ingestion.infra.postgresql.repository.IngestionReportRepository;
 import net.liquidcars.ingestion.infra.postgresql.repository.OfferSQLRepository;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -26,9 +28,8 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     private final IngestionReportRepository reportRepository;
     private final OfferInfraSQLMapper mapper;
 
-
     @Override
-    @Transactional // Vital to ensure the find + save is consistent
+    @Transactional
     public void processOffer(OfferDto offer) {
         log.info("Processing SQL persistence for externalId: {}", offer.getExternalId());
 
@@ -63,26 +64,16 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     @Override
     @Transactional
     public void processIngestionReport(IngestionReportDto ingestionReportDto) {
-        log.info("Processing SQL Report and updating offers for Job: {}", ingestionReportDto.getJobId());
+        log.info("Processing SQL Report for Job: {}", ingestionReportDto.getJobId());
 
         try {
-            // 1. Persist the report itself in ingestion_reports table
+            // 1. Persist the report record
             reportRepository.save(mapper.toIngestionReportEntity(ingestionReportDto));
-
-            // 2. Handle associated offers based on status
-            if ("FAILED".equalsIgnoreCase(ingestionReportDto.getStatus())) {
-                log.warn("Job {} FAILED. Purging partial SQL data for this execution.", ingestionReportDto.getJobId());
-                offerSQLRepository.deleteByJobIdentifier(ingestionReportDto.getJobId());
-            } else {
-                log.debug("Updating batchStatus to {} in SQL for Job: {}", ingestionReportDto.getStatus(), ingestionReportDto.getJobId());
-                offerSQLRepository.updateBatchStatusByJobIdentifier(ingestionReportDto.getJobId(), ingestionReportDto.getStatus());
-            }
-
         } catch (Exception e) {
-            log.error("Failed to process SQL ingestion report for Job: {}", ingestionReportDto.getJobId(), e);
+            log.error("Critical error processing SQL report for Job: {}", ingestionReportDto.getJobId(), e);
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.DATABASE)
-                    .message("SQL report processing error for Job: " + ingestionReportDto.getJobId())
+                    .message("SQL report processing error")
                     .cause(e)
                     .build();
         }
@@ -96,8 +87,8 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
 
         try {
             // Purge obsolete offers
-            offerSQLRepository.deleteObsoleteOffers(threshold);
-            log.info("SQL purge completed successfully.");
+            int offersDeleted = offerSQLRepository.deleteObsoleteOffers(threshold);
+            log.info("SQL purge completed successfully. Deleted {} offers", offersDeleted);
         } catch (Exception e) {
             log.error("Failed to purge obsolete SQL data", e);
             throw LCIngestionException.builder()
@@ -105,6 +96,30 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                     .message("Error during SQL data purge")
                     .cause(e)
                     .build();
+        }
+    }
+
+    @Override
+    public List<IngestionReportDto> getPendingReports(){
+        return mapper.toIngestionReportDtoList(reportRepository.findByProcessedFalse());
+    }
+
+    @Transactional
+    @Override
+    public void syncPendingReports(List<IngestionReportDto> pendingReports) {
+        for (IngestionReportDto report : pendingReports) {
+            try {
+                if ("FAILED".equals(report.getStatus())) {
+                    offerSQLRepository.deleteByJobIdentifier(report.getJobId());
+                } else {
+                    offerSQLRepository.updateBatchStatusByJobIdentifier(report.getJobId(), "COMPLETED");
+                }
+                IngestionReportEntity reportEntity = mapper.toIngestionReportEntity(report);
+                reportEntity.setProcessed(true);
+                reportRepository.save(reportEntity);
+            } catch (Exception e) {
+                log.error("Error syncing report {}", report.getJobId(), e);
+            }
         }
     }
 

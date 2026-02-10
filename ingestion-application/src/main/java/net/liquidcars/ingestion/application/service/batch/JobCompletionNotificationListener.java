@@ -8,6 +8,7 @@ import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.StepExecution;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
@@ -25,8 +26,13 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
     @Override
     public void afterJob(JobExecution jobExecution) {
         // We only care about final states
+        String ingestionId = jobExecution.getJobParameters()
+                .getString("ingestionId");
+        if (ingestionId == null) {
+            log.warn("Skipping ingestion report: ingestionId is null");
+            return;
+        }
         if (jobExecution.getStatus() != BatchStatus.STARTING) {
-
             // 1. Calculate metrics
             long readCount = 0, writeCount = 0, skipCount = 0;
             for (StepExecution stepExecution : jobExecution.getStepExecutions()) {
@@ -37,7 +43,7 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
 
             // 2. Build report with Start and End times
             IngestionReportDto report = IngestionReportDto.builder()
-                    .jobId(jobExecution.getJobInstance().getJobName() + "-" + jobExecution.getId())
+                    .jobId(jobExecution.getJobInstance().getJobName() + "-" + ingestionId)
                     .status(jobExecution.getStatus().toString())
                     .readCount(readCount)
                     .writeCount(writeCount)
@@ -49,11 +55,20 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
                     .endTime(OffsetDateTime.now())
                     .build();
 
-            log.info(">> Sending Job Report. Started: {} | Duration: {}s",
-                    report.getStartTime(),
-                    java.time.Duration.between(report.getStartTime(), report.getEndTime()).toSeconds());
+            long durationSeconds = java.time.Duration.between(report.getStartTime(), report.getEndTime()).toSeconds();
 
+            log.info(">> Job finished: {} | Status: {} | Duration: {}s | Read: {} | Written: {} | Skipped: {}",
+                    report.getJobId(),
+                    report.getStatus(),
+                    durationSeconds,
+                    readCount,
+                    writeCount,
+                    skipCount);
+
+            log.info(">> Sending Job Report for Job: {}", report.getJobId());
             kafkaProducer.sendJobReport(report);
+
+            failedIdsCollector.clear();
         }
     }
 }
