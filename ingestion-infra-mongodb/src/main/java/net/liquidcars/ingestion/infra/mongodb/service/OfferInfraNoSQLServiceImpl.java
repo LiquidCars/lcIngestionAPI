@@ -92,7 +92,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     @Override
     public void syncPendingReport(IngestionBatchReportDto pendingReport) {
         try {
-            if ("FAILED".equals(pendingReport.getStatus())) {
+            if ("FAILED".equals(pendingReport.getStatus().name())) {
                 repository.deleteByJobIdentifier(pendingReport.getJobId());
             } else {
                 repository.updateBatchStatusByJobIdentifier(pendingReport.getJobId(), "COMPLETED");

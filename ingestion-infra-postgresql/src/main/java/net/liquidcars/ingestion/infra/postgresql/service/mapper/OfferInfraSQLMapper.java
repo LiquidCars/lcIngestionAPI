@@ -1,14 +1,12 @@
 package net.liquidcars.ingestion.infra.postgresql.service.mapper;
 
-import net.liquidcars.ingestion.domain.model.KeyValueDto;
-import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.domain.model.VehicleInstanceDto;
-import net.liquidcars.ingestion.domain.model.VehicleModelDto;
+import net.liquidcars.ingestion.domain.model.*;
 import net.liquidcars.ingestion.infra.postgresql.entity.*;
 import org.mapstruct.*;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE,
         imports = { java.time.OffsetDateTime.class })

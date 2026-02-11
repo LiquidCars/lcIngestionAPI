@@ -21,7 +21,7 @@ public interface OfferNoSqlRepository extends MongoRepository<OfferNoSQLEntity, 
      */
     @Query("{ 'jobIdentifier' : ?0 }")
     @Update("{ '$set' : { 'batchStatus' : ?1 } }")
-    void updateBatchStatusByJobIdentifier(String jobIdentifier, String batchStatus);
+    void updateBatchStatusByJobIdentifier(UUID jobIdentifier, String batchStatus);
 
     /**
      * Deletes offers of a job.
@@ -29,7 +29,7 @@ public interface OfferNoSqlRepository extends MongoRepository<OfferNoSQLEntity, 
      * * @param jobIdentifier job id
      * @return count of deleted documents
      */
-    long deleteByJobIdentifier(String jobIdentifier);
+    long deleteByJobIdentifier(UUID jobIdentifier);
 
     /**
      * Counts offers of a job.
