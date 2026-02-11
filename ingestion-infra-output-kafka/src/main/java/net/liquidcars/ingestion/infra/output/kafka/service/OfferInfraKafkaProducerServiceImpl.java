@@ -3,7 +3,7 @@ package net.liquidcars.ingestion.infra.output.kafka.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
@@ -40,13 +40,13 @@ public class OfferInfraKafkaProducerServiceImpl implements IOfferInfraKafkaProdu
     }
 
     @Override
-    public void sendJobReport(IngestionReportDto ingestionReportDto) {
+    public void sendJobReport(IngestionBatchReportDto ingestionBatchReportDto) {
         try {
-            log.debug("Sending report for Job: {}", ingestionReportDto.getJobId());
-            IngestionReportMsg ingestionReportMsg = offerInfraKafkaProducerMapper.toIngestionReportMsg(ingestionReportDto);
+            log.debug("Sending report for Job: {}", ingestionBatchReportDto.getJobId());
+            IngestionReportMsg ingestionReportMsg = offerInfraKafkaProducerMapper.toIngestionReportMsg(ingestionBatchReportDto);
             ingestionReportKafkaPublisher.sendIngestionReport(ingestionReportMsg);
         } catch (Exception e) {
-            log.error("Failed to dispatch offer to Kafka topic. JobId: {}", ingestionReportDto.getJobId(), e);
+            log.error("Failed to dispatch offer to Kafka topic. JobId: {}", ingestionBatchReportDto.getJobId(), e);
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.MESSAGING_BROKER_ERROR)
                     .message("Infrastructure failure: Kafka publisher is unavailable")

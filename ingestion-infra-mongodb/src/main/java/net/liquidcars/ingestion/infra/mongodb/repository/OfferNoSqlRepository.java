@@ -9,6 +9,7 @@ import net.liquidcars.ingestion.infra.mongodb.entity.OfferNoSQLEntity;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface OfferNoSqlRepository extends MongoRepository<OfferNoSQLEntity, String> {
@@ -36,7 +37,7 @@ public interface OfferNoSqlRepository extends MongoRepository<OfferNoSQLEntity, 
      * @param jobIdentifier job id
      * @return count of documents with the given jobIdentifier
      */
-    long countByJobIdentifier(String jobIdentifier);
+    long countByJobIdentifier(UUID jobIdentifier);
 
     /**
      * Deletes offers where batchStatus is not 'COMPLETED'

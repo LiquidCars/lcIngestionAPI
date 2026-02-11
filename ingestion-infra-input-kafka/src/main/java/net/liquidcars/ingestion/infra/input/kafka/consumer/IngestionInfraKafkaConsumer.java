@@ -2,14 +2,12 @@ package net.liquidcars.ingestion.infra.input.kafka.consumer;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.input.kafka.IOfferInfraKafkaConsumerService;
 import net.liquidcars.ingestion.infra.input.kafka.service.mapper.OfferInfraKafkaConsumerMapper;
 import net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportMsg;
-import net.liquidcars.ingestion.infra.output.kafka.model.OfferMsg;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +26,7 @@ public class IngestionInfraKafkaConsumer {
     public void consumeOffer(IngestionReportMsg message) {
         log.info("Received ingestion report job with id: {}", message.getJobId());
         try {
-            IngestionReportDto reportDto = offerInfraKafkaConsumerMapper.toIngestionReportDto(message);
+            IngestionBatchReportDto reportDto = offerInfraKafkaConsumerMapper.toIngestionReportDto(message);
             offerInfraKafkaConsumerService.processIngestionReport(reportDto);
         } catch (Exception e) {
             log.error("Critical error processing report with id: {}. Triggering Kafka retry...", message.getJobId(), e);

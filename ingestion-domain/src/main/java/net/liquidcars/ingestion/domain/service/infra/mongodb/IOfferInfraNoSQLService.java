@@ -1,9 +1,9 @@
 package net.liquidcars.ingestion.domain.service.infra.mongodb;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
 
-import java.util.List;
+import java.util.UUID;
 
 public interface IOfferInfraNoSQLService {
 
@@ -11,5 +11,7 @@ public interface IOfferInfraNoSQLService {
 
     void purgeObsoleteOffers(int daysOld);
 
-    void syncPendingReports(List<IngestionReportDto> pendingReports);
+    void syncPendingReport(IngestionBatchReportDto pendingReport);
+
+    long getOffersFromJobId(UUID jobId);
 }

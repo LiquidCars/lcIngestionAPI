@@ -5,12 +5,14 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus;
 import net.liquidcars.ingestion.infra.postgresql.service.mapper.JsonStringListConverter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @Entity
@@ -22,10 +24,11 @@ public class IngestionReportEntity {
 
     @Id
     @Column(name = "job_id")
-    private String jobId;
+    private UUID jobId;
 
     @Column(nullable = false)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private IngestionBatchStatus status;
 
     @Column(name = "read_count")
     private long readCount;

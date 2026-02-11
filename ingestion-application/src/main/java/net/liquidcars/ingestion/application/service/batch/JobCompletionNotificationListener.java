@@ -2,7 +2,8 @@ package net.liquidcars.ingestion.application.service.batch;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
+import net.liquidcars.ingestion.application.service.batch.mapper.IngestionBatchMapper;
+import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -21,16 +23,18 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
 
     private final IOfferInfraKafkaProducerService kafkaProducer;
     private final JobFailedIdsCollector failedIdsCollector;
+    private final IngestionBatchMapper mapper;
 
     @Override
     public void afterJob(JobExecution jobExecution) {
         // We only care about final states
-        String ingestionId = jobExecution.getJobParameters()
+        String ingestionIdParam = jobExecution.getJobParameters()
                 .getString("ingestionId");
-        if (ingestionId == null) {
+        if (ingestionIdParam == null) {
             log.warn("Skipping ingestion report: ingestionId is null");
             return;
         }
+        UUID ingestionId = UUID.fromString(ingestionIdParam);
         if (jobExecution.getStatus() != BatchStatus.STARTING) {
             // 1. Calculate metrics
             long readCount = 0, writeCount = 0, skipCount = 0;
@@ -41,9 +45,9 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
             }
 
             // 2. Build report with Start and End times
-            IngestionReportDto report = IngestionReportDto.builder()
-                    .jobId(jobExecution.getJobInstance().getJobName() + "-" + ingestionId)
-                    .status(jobExecution.getStatus().toString())
+            IngestionBatchReportDto report = IngestionBatchReportDto.builder()
+                    .jobId(ingestionId)
+                    .status(mapper.toIngestionBatchStatus(jobExecution.getStatus()))
                     .readCount(readCount)
                     .writeCount(writeCount)
                     .skipCount(skipCount)

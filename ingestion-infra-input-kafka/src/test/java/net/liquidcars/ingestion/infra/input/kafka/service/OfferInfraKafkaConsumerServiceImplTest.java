@@ -1,7 +1,7 @@
 package net.liquidcars.ingestion.infra.input.kafka.service;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
@@ -82,7 +82,7 @@ class OfferInfraKafkaConsumerServiceImplTest {
     @Test
     @DisplayName("Should save ingestion report to SQL and NoSQL when everything goes well")
     void processIngestionReport_ShouldSaveInBothSystems() {
-        IngestionReportDto report = IngestionReportDtoFactory.getIngestionReportDto();
+        IngestionBatchReportDto report = IngestionReportDtoFactory.getIngestionReportDto();
         report.setJobId("job-123");
 
         service.processIngestionReport(report);

@@ -1,7 +1,7 @@
 package net.liquidcars.ingestion.infra.output.kafka.service.mapper;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
 import net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportMsg;
 import net.liquidcars.ingestion.infra.output.kafka.model.OfferMsg;
 import org.mapstruct.Mapper;
@@ -20,7 +20,7 @@ public interface OfferInfraKafkaProducerMapper {
 
     @Mapping(target = "startTime", source = "startTime")
     @Mapping(target = "endTime", source = "endTime")
-    IngestionReportMsg toIngestionReportMsg(IngestionReportDto ingestionReportDto);
+    IngestionReportMsg toIngestionReportMsg(IngestionBatchReportDto ingestionBatchReportDto);
 
     default String map(OffsetDateTime value) {
         return value == null ? null : value.format(OFFSET_FORMATTER);

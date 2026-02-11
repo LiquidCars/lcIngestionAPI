@@ -8,12 +8,14 @@ import net.liquidcars.ingestion.application.service.batch.JobCompletionNotificat
 import net.liquidcars.ingestion.application.service.batch.OfferItemWriter;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
+import net.liquidcars.ingestion.domain.service.infra.postgresql.IBatchReportInfraSQLService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
 import org.springframework.batch.core.*;
@@ -49,6 +51,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     private final OfferStreamItemReader offerReader;
     private final IOfferInfraSQLService offerInfraSQLService;
     private final IOfferInfraNoSQLService offerInfraNoSQLService;
+    private final IBatchReportInfraSQLService batchReportInfraSQLService;
 
     @Value("${ingestion.batch.chunk-size:10}")
     private int chunkSize;
@@ -163,12 +166,69 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
             lockAtLeastFor = "1m"  //I hope that if the process is very fast, another replica will catch on right away.
     )
     public void syncPendingReports() {
-        List<IngestionReportDto> pendingReports = offerInfraSQLService.getPendingReports();
+        List<IngestionBatchReportDto> pendingReports = batchReportInfraSQLService.getBatchPendingReports();
         if (pendingReports.isEmpty()) {
             return;
         }
         log.info("Syncing {} pending reports across SQL and NoSQL", pendingReports.size());
-        offerInfraNoSQLService.syncPendingReports(pendingReports);
-        offerInfraSQLService.syncPendingReports(pendingReports);
+        for(IngestionBatchReportDto pendingReport: pendingReports){
+            processIngestionBatchReportForCompleteJob(pendingReport);
+        }
+
+    }
+
+    @Override
+    public void processIngestionBatchReport(IngestionBatchReportDto ingestionBatchReportDto) {
+        log.info("Received batch ingestion report with id {} for process offers", ingestionBatchReportDto.getJobId());
+        //We save the report when we received from kafka topic
+        batchReportInfraSQLService.upsertIngestionReport(ingestionBatchReportDto);
+        this.processIngestionBatchReportForCompleteJob(ingestionBatchReportDto);
+    }
+
+    private void processIngestionBatchReportForCompleteJob(IngestionBatchReportDto ingestionBatchReportDto) {
+
+        long draftOffersCount =
+                offerInfraNoSQLService.getOffersFromJobId(ingestionBatchReportDto.getJobId());
+
+        IngestionBatchStatus status = ingestionBatchReportDto.getStatus();
+        boolean shouldMarkAsProcessed = false;
+        switch (status) {
+            case COMPLETED:
+                if (ingestionBatchReportDto.getWriteCount() == draftOffersCount) {
+                    // TODO enviar mensaje Kafka aquí
+                    log.info(
+                            "Batch ingestion report with id {} for process offers processed and Success job sent.",
+                            ingestionBatchReportDto.getJobId()
+                    );
+                    shouldMarkAsProcessed = true;
+                } else {
+                    log.info(
+                            "Batch ingestion report with id {} not fully processed. Total offers not saved in draft DB. Will retry in next scheduler.",
+                            ingestionBatchReportDto.getJobId()
+                    );
+                }
+                break;
+
+            case FAILED:
+                // TODO enviar mensaje Kafka aquí
+                log.info(
+                        "Batch ingestion report with id {} processed and Failed job sent.",
+                        ingestionBatchReportDto.getJobId()
+                );
+                shouldMarkAsProcessed = true;
+                break;
+
+            default:
+                log.warn(
+                        "Batch ingestion report with id {} has not processable status {}.",
+                        ingestionBatchReportDto.getJobId(),
+                        status
+                );
+                break;
+        }
+        if (shouldMarkAsProcessed) {
+            ingestionBatchReportDto.setProcessed(true);
+            batchReportInfraSQLService.upsertIngestionReport(ingestionBatchReportDto);
+        }
     }
 }

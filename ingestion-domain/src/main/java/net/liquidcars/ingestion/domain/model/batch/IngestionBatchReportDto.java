@@ -9,13 +9,14 @@ import java.util.UUID;
 
 @Data
 @Builder
-public class IngestionReportDto {
-    private String jobId;
-    private String status;
+public class IngestionBatchReportDto {
+    private UUID jobId;
+    private IngestionBatchStatus status;
     private long readCount;
     private long writeCount;
     private long skipCount;
     private List<UUID> failedExternalIds;
     private OffsetDateTime startTime;
     private OffsetDateTime endTime;
+    private boolean processed;
 }

@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import io.swagger.v3.oas.annotations.media.Schema;
+import net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -79,9 +80,9 @@ public class OfferDto implements Serializable {
     @Schema(description = "Update date")
     private UUID jsonCarOfferId;
     @Schema(description = "Batch job identifier")
-    private String jobIdentifier;
+    private UUID jobIdentifier;
     @Schema(description = "Batch job status")
-    private String batchStatus;
+    private IngestionBatchStatus batchStatus;
 
     @JsonIgnore
     public UIOffer getUICarOffer(){

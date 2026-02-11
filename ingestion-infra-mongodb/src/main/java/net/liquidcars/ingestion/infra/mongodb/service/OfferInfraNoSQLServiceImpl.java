@@ -3,7 +3,7 @@ package net.liquidcars.ingestion.infra.mongodb.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -90,18 +90,31 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     }
 
     @Override
-    public void syncPendingReports(List<IngestionReportDto> pendingReports) {
-        for (IngestionReportDto report : pendingReports) {
-            try {
-                if ("FAILED".equals(report.getStatus())) {
-                    repository.deleteByJobIdentifier(report.getJobId());
-                } else {
-                    repository.updateBatchStatusByJobIdentifier(report.getJobId(), "COMPLETED");
-                }
-            } catch (Exception e) {
-                log.error("Error syncing report {}", report.getJobId(), e);
+    public void syncPendingReport(IngestionBatchReportDto pendingReport) {
+        try {
+            if ("FAILED".equals(pendingReport.getStatus())) {
+                repository.deleteByJobIdentifier(pendingReport.getJobId());
+            } else {
+                repository.updateBatchStatusByJobIdentifier(pendingReport.getJobId(), "COMPLETED");
             }
+        } catch (Exception e) {
+            log.error("Error syncing report {}", pendingReport.getJobId(), e);
         }
+    }
+
+    @Override
+    public long getOffersFromJobId(UUID jobId){
+        try {
+            return repository.countByJobIdentifier(jobId);
+        } catch (Exception e) {
+            log.error("Failed to get offers from NoSQL by jobId: {}", jobId, e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.DATABASE)
+                    .message("Failed to get offers from NoSQL by jobId: " + jobId)
+                    .cause(e)
+                    .build();
+        }
+
     }
 
 
