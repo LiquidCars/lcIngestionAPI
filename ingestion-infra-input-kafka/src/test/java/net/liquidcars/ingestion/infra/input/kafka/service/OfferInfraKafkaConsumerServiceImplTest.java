@@ -48,7 +48,7 @@ class OfferInfraKafkaConsumerServiceImplTest {
 
         doThrow(LCIngestionException.builder()
                 .techCause(LCTechCauseEnum.DATABASE)
-                .message("SQL persistence error for externalId: " + offer.getExternalId())
+                .message("SQL persistence error for id: " + offer.getId())
                 .build())
                 .when(offerInfraSQLService)
                 .processOffer(any());
@@ -67,7 +67,7 @@ class OfferInfraKafkaConsumerServiceImplTest {
 
         doThrow(LCIngestionException.builder()
                 .techCause(LCTechCauseEnum.DATABASE)
-                .message("SQL persistence error for externalId: " + offer.getExternalId())
+                .message("SQL persistence error for id: " + offer.getId())
                 .build())
                 .when(offerInfraNoSQLService)
                 .processOffer(any());

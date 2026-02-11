@@ -114,5 +114,12 @@ public class OfferNoSQLEntity {
 
     @Field("updated_at")
     private Instant updatedAt;
+
+    @Field("job_identifier")
+    private String jobIdentifier;
+
+    @Field("batch_status")
+    private String batchStatus;
+
 }
 

@@ -72,8 +72,8 @@ public class OfferInfraNoSQLServiceImplTest {
         OfferNoSQLEntity newEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
         OfferNoSQLEntity existingEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
 
-        existingEntity.setCreatedAt(Instant.now());
-        newEntity.setCreatedAt(Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS));
+        // existing is artificially in the future → guarantees it is newer
+        existingEntity.setCreatedAt(Instant.now().plus(1, ChronoUnit.DAYS));
 
         when(mapper.toEntity(dto)).thenReturn(newEntity);
         when(repository.findById(dto.getId().toString()))
@@ -81,6 +81,6 @@ public class OfferInfraNoSQLServiceImplTest {
 
         service.processOffer(dto);
 
-        verify(repository, never()).save(any(OfferNoSQLEntity.class));
+        verify(repository, never()).save(any());
     }
 }

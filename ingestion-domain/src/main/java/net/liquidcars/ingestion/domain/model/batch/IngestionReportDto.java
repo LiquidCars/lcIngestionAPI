@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -14,7 +15,7 @@ public class IngestionReportDto {
     private long readCount;
     private long writeCount;
     private long skipCount;
-    private List<String> failedExternalIds;
+    private List<UUID> failedExternalIds;
     private OffsetDateTime startTime;
     private OffsetDateTime endTime;
 }

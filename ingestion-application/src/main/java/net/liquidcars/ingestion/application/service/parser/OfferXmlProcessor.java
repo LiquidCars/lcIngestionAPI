@@ -53,7 +53,7 @@ public class OfferXmlProcessor implements IOfferParserService {
                             action.accept(offerParserMapper.toOfferDto(xmlModel));
                         }
                     } catch (Exception e) {
-                        String failedId = (xmlModel.getExternalId() != null) ? xmlModel.getExternalId() : null;
+                        UUID failedId = (xmlModel.getId() != null) ? xmlModel.getId() : null;
 
                         log.warn("XML Record {} failed parsing: {}", failedId, e.getMessage());
 

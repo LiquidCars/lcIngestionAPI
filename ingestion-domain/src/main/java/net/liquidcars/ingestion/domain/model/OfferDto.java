@@ -78,6 +78,10 @@ public class OfferDto implements Serializable {
     private long lastUpdated = DateHelperDto.now().toEpochSecond(ZoneOffset.UTC); //default, now. Do not add to hashCode implementation
     @Schema(description = "Update date")
     private UUID jsonCarOfferId;
+    @Schema(description = "Batch job identifier")
+    private String jobIdentifier;
+    @Schema(description = "Batch job status")
+    private String batchStatus;
 
     @JsonIgnore
     public UIOffer getUICarOffer(){

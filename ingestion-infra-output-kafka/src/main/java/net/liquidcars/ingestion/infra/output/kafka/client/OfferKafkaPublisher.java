@@ -16,7 +16,7 @@ public class OfferKafkaPublisher {
 
     public void sendOffer(OfferMsg offer) {
         try {
-            kafkaTemplate.send(CREATE_OFFER_TOPIC, offer.getId(), offer).get();
+            kafkaTemplate.send(CREATE_OFFER_TOPIC, offer.getId().toString(), offer).get();
         } catch (Exception e) {
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.MESSAGING_BROKER_ERROR)

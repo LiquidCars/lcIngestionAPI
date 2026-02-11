@@ -1,6 +1,10 @@
 package net.liquidcars.ingestion.infra.postgresql.service.mapper;
 
-import net.liquidcars.ingestion.domain.model.*;
+import net.liquidcars.ingestion.domain.model.KeyValueDto;
+import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.VehicleInstanceDto;
+import net.liquidcars.ingestion.domain.model.VehicleModelDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import net.liquidcars.ingestion.infra.postgresql.entity.*;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -10,7 +14,6 @@ import org.mapstruct.ReportingPolicy;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.UUID;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE,
         imports = { java.time.OffsetDateTime.class })
@@ -100,4 +103,6 @@ public interface OfferInfraSQLMapper {
         );
     }
 
+    IngestionReportEntity toIngestionReportEntity(IngestionReportDto ingestionReportDto);
+    List<IngestionReportDto> toIngestionReportDtoList(List<IngestionReportEntity> ingestionReportEntityList);
 }

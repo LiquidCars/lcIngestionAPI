@@ -18,6 +18,7 @@ import net.liquidcars.ingestion.infra.postgresql.repository.VehicleModelSQLRepos
 import net.liquidcars.ingestion.infra.postgresql.service.mapper.OfferInfraSQLMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.OffsetDateTime;
 
@@ -31,7 +32,8 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     private final VehicleModelSQLRepository vehicleModelRepository;
     private final OfferSQLRepository offerSqlRepository;
     private final OfferInfraSQLMapper mapper;
-    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
+    private final IngestionReportRepository reportRepository;
 
     @Override
     @Transactional
@@ -48,7 +50,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
             offerSqlRepository.findById(offer.getId())
                     .ifPresentOrElse(
                             existingOffer -> updateIfNewer(existingOffer, entity),
-                            () -> sqlRepository.save(entity)
+                            () -> offerSqlRepository.save(entity)
                     );
 
         } catch (Exception e) {
@@ -160,7 +162,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
 
         try {
             // Purge obsolete offers
-            int offersDeleted = offerSQLRepository.deleteObsoleteOffers(threshold);
+            int offersDeleted = offerSqlRepository.deleteObsoleteOffers(threshold);
             log.info("SQL purge completed successfully. Deleted {} offers", offersDeleted);
         } catch (Exception e) {
             log.error("Failed to purge obsolete SQL data", e);
@@ -183,9 +185,9 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         for (IngestionReportDto report : pendingReports) {
             try {
                 if ("FAILED".equals(report.getStatus())) {
-                    offerSQLRepository.deleteByJobIdentifier(report.getJobId());
+                    offerSqlRepository.deleteByJobIdentifier(report.getJobId());
                 } else {
-                    offerSQLRepository.updateBatchStatusByJobIdentifier(report.getJobId(), "COMPLETED");
+                    offerSqlRepository.updateBatchStatusByJobIdentifier(report.getJobId(), "COMPLETED");
                 }
                 IngestionReportEntity reportEntity = mapper.toIngestionReportEntity(report);
                 reportEntity.setProcessed(true);

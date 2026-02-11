@@ -108,4 +108,11 @@ public class OfferEntity {
     @Column(name = "ofr_dt_updated")
     private OffsetDateTime lastUpdated;
 
+    //TODO esto se va a eliminar en cuanto se cambie la lógica
+    //@Column(name = "jobIdentifier")
+    private String jobIdentifier;
+
+    //@Column(name = "batchStatus")
+    private String batchStatus;
+
 }

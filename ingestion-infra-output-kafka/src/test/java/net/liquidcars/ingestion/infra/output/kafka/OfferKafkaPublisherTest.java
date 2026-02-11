@@ -38,7 +38,7 @@ public class OfferKafkaPublisherTest {
 
         CompletableFuture<?> future = CompletableFuture.completedFuture(null);
 
-        when(kafkaTemplate.send(eq(TOPIC), eq("OFF-999"), eq(msg)))
+        when(kafkaTemplate.send(eq(TOPIC), eq(id.toString()), eq(msg)))
                 .thenReturn((CompletableFuture) future);
 
         publisher.sendOffer(msg);

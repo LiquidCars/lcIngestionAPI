@@ -16,6 +16,7 @@ import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 @Slf4j
@@ -40,13 +41,13 @@ public class OfferJSONProcessor implements IOfferParserService {
             }
 
             while (parser.nextToken() == JsonToken.START_OBJECT) {
-                String currentId = null;
+                UUID currentId = null;
                 try {
                     com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(parser);
 
                     if (node != null) {
                         if (node.has("externalId")) {
-                            currentId = node.get("externalId").asText();
+                            currentId = UUID.fromString(node.get("externalId").asText());
                         }
                         OfferJSONModel model = objectMapper.treeToValue(node, OfferJSONModel.class);
                         if (model != null) {

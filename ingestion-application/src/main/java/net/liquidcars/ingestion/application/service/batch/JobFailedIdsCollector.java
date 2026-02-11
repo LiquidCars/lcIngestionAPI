@@ -8,13 +8,13 @@ import java.util.*;
 @Component
 @JobScope // This bean is created fresh for every Job execution
 public class JobFailedIdsCollector {
-    private final Set<String> failedIds = Collections.synchronizedSet(new HashSet<>());
+    private final Set<UUID> failedIds = Collections.synchronizedSet(new HashSet<>());
 
-    public void addId(String id) {
+    public void addId(UUID id) {
         failedIds.add(id);
     }
 
-    public List<String> getFailedIds() {
+    public List<UUID> getFailedIds() {
         return new ArrayList<>(failedIds);
     }
 

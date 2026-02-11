@@ -8,11 +8,10 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
-import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface OfferSQLRepository extends JpaRepository<OfferEntity, String> {
+public interface OfferSQLRepository extends JpaRepository<OfferEntity, UUID> {
 
         /**
          * Updates the batch status for all offers associated with a specific Job.
