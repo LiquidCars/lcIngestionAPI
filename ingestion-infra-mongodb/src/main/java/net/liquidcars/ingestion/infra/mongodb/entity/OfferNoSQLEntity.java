@@ -17,7 +17,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "offers_raw")
+@Document(collection = "vehicleoffers_ingestion_draft")
 @CompoundIndex(
         name = "idx_offers_composite",
         def = "{ 'owner_reference': 1, 'dealer_reference': 1, 'channel_reference': 1 }"

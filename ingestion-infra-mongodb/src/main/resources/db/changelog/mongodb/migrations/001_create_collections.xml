@@ -8,7 +8,10 @@
         http://www.liquibase.org/xml/ns/dbchangelog-ext
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
 
-    <changeSet id="1-create-offers-collection" author="liquidcars">
-        <ext:createCollection collectionName="offers_raw"/>
+    <changeSet id="1-create-vehicleoffersdraft-collection" author="liquidcars">
+        <ext:createCollection collectionName="vehicleoffers_ingestion_draft"/>
+    </changeSet>
+    <changeSet id="2-create-vehicleoffers-collection" author="liquidcars">
+        <ext:createCollection collectionName="vehicleoffers"/>
     </changeSet>
 </databaseChangeLog>
