@@ -27,7 +27,7 @@ public class OfferStreamItemReader implements ItemReader<OfferDto> {
 
         Thread.ofVirtual().start(() -> {
             try (is) {
-                // Pasamos un lambda que envuelve el acierto en un ParsingResult
+                // We pass a lambda that wraps the success in a ParsingResult
                 parser.parseAndProcess(is, offer -> queue.add(ParsingResult.success(offer)));
             } catch (LCIngestionException e) {
                 log.debug("Parser thread caught a record error already queued");
@@ -48,9 +48,9 @@ public class OfferStreamItemReader implements ItemReader<OfferDto> {
 
             if (result != null) {
                 if (result.isError()) {
-                    throw result.error(); // Spring Batch lo captura, SkipListener actúa y el Job SIGUE
+                    throw result.error(); // Spring Batch captures it, SkipListener takes over, and the Job CONTINUES
                 }
-                return result.offer(); // Registro OK
+                return result.offer(); // Register OK
             }
 
             if (isParsingFinished && queue.isEmpty()) return null;

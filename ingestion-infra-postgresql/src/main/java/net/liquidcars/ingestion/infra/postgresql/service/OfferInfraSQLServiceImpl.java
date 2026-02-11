@@ -162,8 +162,8 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
 
         try {
             // Purge obsolete offers
-            int offersDeleted = offerSqlRepository.deleteObsoleteOffers(threshold);
-            log.info("SQL purge completed successfully. Deleted {} offers", offersDeleted);
+            //int offersDeleted = offerSqlRepository.deleteObsoleteOffers(threshold);
+            //log.info("SQL purge completed successfully. Deleted {} offers", offersDeleted);
         } catch (Exception e) {
             log.error("Failed to purge obsolete SQL data", e);
             throw LCIngestionException.builder()
@@ -185,9 +185,9 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         for (IngestionReportDto report : pendingReports) {
             try {
                 if ("FAILED".equals(report.getStatus())) {
-                    offerSqlRepository.deleteByJobIdentifier(report.getJobId());
+                    //offerSqlRepository.deleteByJobIdentifier(report.getJobId());
                 } else {
-                    offerSqlRepository.updateBatchStatusByJobIdentifier(report.getJobId(), "COMPLETED");
+                   // offerSqlRepository.updateBatchStatusByJobIdentifier(report.getJobId(), "COMPLETED");
                 }
                 IngestionReportEntity reportEntity = mapper.toIngestionReportEntity(report);
                 reportEntity.setProcessed(true);

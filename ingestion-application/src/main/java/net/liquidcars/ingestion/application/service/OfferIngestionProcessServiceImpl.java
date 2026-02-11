@@ -140,6 +140,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                 JobParameters params = new JobParametersBuilder()
                         .addString("ingestionId", ingestionId)
                         .addString("format", format)
+                        .addLong("time", System.currentTimeMillis())
                         .toJobParameters();
 
                 execution = jobLauncher.run(offerIngestionJob, params);

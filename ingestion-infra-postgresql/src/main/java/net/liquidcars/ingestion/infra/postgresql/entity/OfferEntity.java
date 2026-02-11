@@ -110,9 +110,9 @@ public class OfferEntity {
 
     //TODO esto se va a eliminar en cuanto se cambie la lógica
     //@Column(name = "jobIdentifier")
-    private String jobIdentifier;
+    //private String jobIdentifier;
 
     //@Column(name = "batchStatus")
-    private String batchStatus;
+    //private String batchStatus;
 
 }

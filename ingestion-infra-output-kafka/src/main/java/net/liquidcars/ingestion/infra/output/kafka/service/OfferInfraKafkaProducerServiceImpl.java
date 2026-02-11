@@ -26,6 +26,7 @@ public class OfferInfraKafkaProducerServiceImpl implements IOfferInfraKafkaProdu
     @Override
     public void sendOffer(OfferDto offer) {
         try {
+            log.debug("Sending offer with id: {}", offer.getId());
             OfferMsg offerMsg = offerInfraKafkaProducerMapper.toOfferMsg(offer);
             offerKafkaPublisher.sendOffer(offerMsg);
         } catch (Exception e) {
@@ -41,7 +42,7 @@ public class OfferInfraKafkaProducerServiceImpl implements IOfferInfraKafkaProdu
     @Override
     public void sendJobReport(IngestionReportDto ingestionReportDto) {
         try {
-            log.info("Flushing offer producer buffer before sending report for Job: {}", ingestionReportDto.getJobId());
+            log.debug("Sending report for Job: {}", ingestionReportDto.getJobId());
             IngestionReportMsg ingestionReportMsg = offerInfraKafkaProducerMapper.toIngestionReportMsg(ingestionReportDto);
             ingestionReportKafkaPublisher.sendIngestionReport(ingestionReportMsg);
         } catch (Exception e) {
