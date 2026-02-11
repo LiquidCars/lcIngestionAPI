@@ -1,2 +1,2 @@
 python -m http.server 8083
-http://localhost:8083/offers.json
+http://localhost:8083/offers.xml

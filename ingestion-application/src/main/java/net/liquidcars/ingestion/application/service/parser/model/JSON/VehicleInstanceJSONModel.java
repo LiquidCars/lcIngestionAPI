@@ -35,25 +35,6 @@ public class VehicleInstanceJSONModel implements Serializable {
     @Schema(description = "The state type of this car")
     private KeyValueJSONModel state;
 
-    @JsonIgnore
-    public LocalDateTime getRegistrationApproxDate(boolean approxWithMileage) {
-        if (this.getRegistrationYear()>1900) {
-            int month = this.getRegistrationMonth()>0 ? this.getRegistrationMonth() : 1;
-            return DateHelperJSONModel.fromStringLDT(this.getRegistrationYear() + "-" + (month < 10 ? "0" : "") + month + "-01", DateHelperJSONModel.DEFAULT_DATE_ONLY_FORMAT_STR);
-        }
-        else {
-            if (approxWithMileage) {
-                //Assume 20K Kms/year
-                int years = 1 + this.getMileage() / 20000;
-                return DateHelperJSONModel.now().minusYears(years);
-            }
-            else {
-                return null;
-            }
-        }
-    }
-
-
     public int hashCode(){
         //Init numbers should be primes, and different for each HashCodeBuilder in different classes
         return Math.abs(new HashCodeBuilder(17,31)

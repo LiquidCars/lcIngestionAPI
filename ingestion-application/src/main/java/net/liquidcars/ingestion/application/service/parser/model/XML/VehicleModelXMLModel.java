@@ -85,4 +85,12 @@ public class VehicleModelXMLModel implements Serializable {
         VehicleModelXMLModel other = (VehicleModelXMLModel) o;
         return other.hashCode()==this.hashCode();
     }
+
+    public VehicleModelXMLModel() {
+        this.bodyType = new KeyValueXMLModel();
+        this.changeType = new KeyValueXMLModel();
+        this.fuelType = new KeyValueXMLModel();
+        this.drivetrainType = new KeyValueXMLModel();
+        this.environmentalBadge = new KeyValueXMLModel();
+    }
 }

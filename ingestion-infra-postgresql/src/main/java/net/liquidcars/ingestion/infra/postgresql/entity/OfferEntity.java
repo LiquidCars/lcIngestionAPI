@@ -5,15 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import net.liquidcars.ingestion.domain.model.CarOfferResourceDto;
-import net.liquidcars.ingestion.domain.model.DateHelperDto;
-import net.liquidcars.ingestion.domain.model.MoneyDto;
-import net.liquidcars.ingestion.domain.model.ParticipantAddressDto;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
 import java.util.UUID;
 
 @Data

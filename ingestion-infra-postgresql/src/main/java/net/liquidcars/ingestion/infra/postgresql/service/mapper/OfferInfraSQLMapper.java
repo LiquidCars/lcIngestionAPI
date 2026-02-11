@@ -5,10 +5,7 @@ import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.VehicleInstanceDto;
 import net.liquidcars.ingestion.domain.model.VehicleModelDto;
 import net.liquidcars.ingestion.infra.postgresql.entity.*;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Named;
-import org.mapstruct.ReportingPolicy;
+import org.mapstruct.*;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -16,6 +13,59 @@ import java.time.ZoneOffset;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE,
         imports = { java.time.OffsetDateTime.class })
 public interface OfferInfraSQLMapper {
+
+    @Mapping(target = "id", source = "id")
+    @Mapping(target = "equipment", source = "equipment", qualifiedByName = "equipmentReference")
+    @Mapping(target = "category", source = "category", qualifiedByName = "equipmentCategoryReference")
+    @Mapping(target = "type", source = "type", qualifiedByName = "equipmentTypeReference")
+    @Mapping(target = "price", source = "price.amount")
+    @Mapping(target = "currency", source = "price.currency", qualifiedByName = "currencyReference")
+    @Mapping(target = "vehicleInstance", ignore = true)
+    CarInstanceEquipmentEntity toCarInstanceEquipmentEntity(CarInstanceEquipmentDto carInstanceEquipmentDto);
+
+    List<CarInstanceEquipmentEntity> toCarInstanceEquipmentEntityList(List<CarInstanceEquipmentDto> dtoList);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "addressType", source = "type", qualifiedByName = "addressTypeReference")
+    @Mapping(target = "padName", source = "address.name")
+    @Mapping(target = "longitude", source = "address.gpsLocation.longitude")
+    @Mapping(target = "latitude", source = "address.gpsLocation.latitude")
+    @Mapping(target = "streetNumber", source = "address.streetNumber")
+    @Mapping(target = "streetAddress", source = "address.streetAddress")
+    @Mapping(target = "extendedAddress", source = "address.extendedAddress")
+    @Mapping(target = "postalCode", source = "address.postalCode")
+    @Mapping(target = "city", source = "address.city")
+    @Mapping(target = "region", source = "address.region")
+    @Mapping(target = "country", source = "address.country")
+    @Mapping(target = "countryCode", source = "address.countryCode")
+    @Mapping(target = "poBox", source = "address.poBox")
+    void updateAddressFromDto(ParticipantAddressDto dto, @MappingTarget ParticipantAddressEntity entity);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "addressType", source = "type", qualifiedByName = "addressTypeReference")
+    @Mapping(target = "padName", source = "address.name")
+    @Mapping(target = "longitude", source = "address.gpsLocation.longitude")
+    @Mapping(target = "latitude", source = "address.gpsLocation.latitude")
+    @Mapping(target = "streetNumber", source = "address.streetNumber")
+    @Mapping(target = "streetAddress", source = "address.streetAddress")
+    @Mapping(target = "extendedAddress", source = "address.extendedAddress")
+    @Mapping(target = "postalCode", source = "address.postalCode")
+    @Mapping(target = "city", source = "address.city")
+    @Mapping(target = "region", source = "address.region")
+    @Mapping(target = "country", source = "address.country")
+    @Mapping(target = "countryCode", source = "address.countryCode")
+    @Mapping(target = "poBox", source = "address.poBox")
+    ParticipantAddressEntity toParticipantAddressEntity(ParticipantAddressDto participantAddressDto);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "jsonCarOffer", ignore = true)
+    @Mapping(target = "vehicleInstance", source = "vehicleInstance")
+    @Mapping(target = "price", source = "price.amount")
+    @Mapping(target = "priceNew", source = "priceNew.amount")
+    @Mapping(target = "financedPrice", source = "financedPrice.amount")
+    @Mapping(target = "currency", source = "price.currency", qualifiedByName = "currencyReference")
+    @Mapping(target = "lastUpdated", source = "lastUpdated", qualifiedByName = "epochToOffset")
+    void updateEntityFromDto(OfferDto dto, @MappingTarget OfferEntity entity);
 
     @Mapping(target = "vehicleInstance", source = "vehicleInstance")
     @Mapping(target = "price", source = "price.amount")
@@ -99,6 +149,30 @@ public interface OfferInfraSQLMapper {
                 java.time.Instant.ofEpochSecond(epoch),
                 ZoneOffset.UTC
         );
+    }
+
+    @Named("addressTypeReference")
+    default AddressTypeEntity addressTypeReference(AddressTypeDto typeDto) {
+        if (typeDto == null) return null;
+        return AddressTypeEntity.builder().id(typeDto.name()).build();
+    }
+
+    @Named("equipmentReference")
+    default EquipmentsEntity equipmentReference(KeyValueDto dto) {
+        if (dto == null || dto.getKey() == null) return null;
+        return EquipmentsEntity.builder().id(dto.getKey().toString()).build();
+    }
+
+    @Named("equipmentCategoryReference")
+    default EquipmentCategoryEntity equipmentCategoryReference(KeyValueDto dto) {
+        if (dto == null || dto.getKey() == null) return null;
+        return EquipmentCategoryEntity.builder().id(dto.getKey().toString()).build();
+    }
+
+    @Named("equipmentTypeReference")
+    default EquipmentTypeEntity equipmentTypeReference(KeyValueDto dto) {
+        if (dto == null || dto.getKey() == null) return null;
+        return EquipmentTypeEntity.builder().id(dto.getKey().toString()).build();
     }
 
 }

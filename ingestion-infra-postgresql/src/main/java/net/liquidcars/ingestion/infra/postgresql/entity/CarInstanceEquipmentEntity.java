@@ -6,22 +6,48 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "car_eq_equipments")
+@IdClass(CarInstanceEquipmentId.class)
+@Table(name = "inv_cot_carinstanceequipments")
 public class CarInstanceEquipmentEntity {
 
     @Id
-    @Column(name = "eq_co_id")
-    private String id;
+    @Column(name = "cot_co_id")
+    private Integer id;
 
-    @Column(name = "eq_ds_des")
-    private String description;
+    @Id
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cari_co_id")
+    private VehicleInstanceEntity vehicleInstance;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "txm_co_id")
-    private TextMasterEntity texto;
+    @JoinColumn(name = "eq_co_id")
+    private EquipmentsEntity equipment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ec_co_id")
+    private EquipmentCategoryEntity category;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "et_co_id")
+    private EquipmentTypeEntity type;
+
+    @Column(name = "cot_ds_desc")
+    private String description;
+
+    @Column(name = "cot_ds_code")
+    private String code;
+
+    @Column(name = "cot_nm_price")
+    private BigDecimal price;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cur_co_id", nullable = false)
+    private CurrencyEntity currency;
 }

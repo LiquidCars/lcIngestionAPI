@@ -8,8 +8,10 @@ import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.model.security.AccessRoleEnum;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
+import net.liquidcars.ingestion.domain.service.context.IContextService;
 import net.liquidcars.ingestion.infra.input.rest.mapper.IngestionControllerMapper;
 import net.liquidcars.ingestion.infra.input.rest.model.OfferRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,11 +28,14 @@ public class IngestionController implements IngestionApi {
     private final IOfferIngestionProcessService offerIngestionProcessService;
     private final IngestionControllerMapper ingestionControllerMapper;
 
+    @Autowired
+    private IContextService contextService;
+
 
     @RolesAllowed({AccessRoleEnum.LCSupport_role, AccessRoleEnum.M2M_role})
     @Override
     public ResponseEntity<Void> ingestBatch(List<OfferRequest> offerRequest) {
-        offerIngestionProcessService.processOffers(ingestionControllerMapper.toOfferDtoList(offerRequest));
+        offerIngestionProcessService.processOffers(ingestionControllerMapper.toOfferDtoList(offerRequest, contextService));
         return ResponseEntity.ok().build();
     }
 
