@@ -10,12 +10,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.DependsOn;
+import org.springframework.data.mongodb.core.convert.DefaultMongoTypeMapper;
+import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
+import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
+import org.springframework.data.mongodb.core.convert.NoOpDbRefResolver;
+import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 
 @Slf4j
 @Configuration
 @ConditionalOnProperty(prefix = "liquibase.mongodb", name = "enabled", havingValue = "true")
-public class MongoLiquibaseConfig {
+public class MongoConfig {
 
     @Value("${liquibase.mongodb.url}")
     private String url;
@@ -49,5 +53,23 @@ public class MongoLiquibaseConfig {
 
         log.info("MongoDB Liquibase migration completed successfully");
         return liquibase;
+    }
+
+    @Bean
+    public MappingMongoConverter mappingMongoConverter(
+            MongoMappingContext context,
+            MongoCustomConversions conversions) {
+
+        MappingMongoConverter converter = new MappingMongoConverter(
+                NoOpDbRefResolver.INSTANCE,
+                context
+        );
+
+        converter.setCustomConversions(conversions);
+
+        // Delete field _class
+        converter.setTypeMapper(new DefaultMongoTypeMapper(null));
+
+        return converter;
     }
 }
