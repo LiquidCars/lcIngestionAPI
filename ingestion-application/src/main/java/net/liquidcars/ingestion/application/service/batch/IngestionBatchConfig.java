@@ -8,6 +8,7 @@ import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserExceptio
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -20,6 +21,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
+@EnableBatchProcessing(modular = true)
 public class IngestionBatchConfig {
 
 

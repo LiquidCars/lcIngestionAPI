@@ -8,8 +8,6 @@ spring:
     multipart:
       max-file-size: -1
       max-request-size: -1
-  main:
-    allow-bean-definition-overriding: true
   
   # MongoDB Configuration
   data:
@@ -91,6 +89,7 @@ spring:
     batch:
       job:
         enabled: false # Don't auto-start jobs on application startup
+        name: "NONE"
       jdbc:
         initialize-schema: never
         table-prefix: BATCH_
@@ -156,9 +155,11 @@ management:
 logging:
   level:
     root: INFO
-    com.orbyn.ingestion: INFO
+    com.orbyn.ingestion: WARN
+    com.orbyn.ingestion.consumer: WARN
+    com.orbyn.ingestion.kafka: WARN
     org.springframework.batch: INFO
-    org.springframework.kafka: DEBUG
+    org.springframework.kafka: WARN
     liquibase: INFO
     org.liquibase: INFO
     org.springframework.orm.jpa: DEBUG
