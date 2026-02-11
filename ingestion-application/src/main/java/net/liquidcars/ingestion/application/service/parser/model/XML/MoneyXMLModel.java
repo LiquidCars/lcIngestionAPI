@@ -4,9 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Builder;
-import lombok.Data;
-import lombok.Value;
+import lombok.*;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.io.Serializable;
@@ -17,8 +15,8 @@ import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 
 @Data
+@NoArgsConstructor
 @Schema(title="The Money XML object", description="A representation of money")
-@Value
 @JsonPropertyOrder({"amount", "currency"})
 public class MoneyXMLModel implements Serializable, Comparable<MoneyXMLModel> {
 

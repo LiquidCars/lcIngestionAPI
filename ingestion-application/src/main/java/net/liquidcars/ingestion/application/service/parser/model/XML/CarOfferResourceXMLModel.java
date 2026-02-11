@@ -3,12 +3,14 @@ package net.liquidcars.ingestion.application.service.parser.model.XML;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.UUID;
 
+@Builder
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

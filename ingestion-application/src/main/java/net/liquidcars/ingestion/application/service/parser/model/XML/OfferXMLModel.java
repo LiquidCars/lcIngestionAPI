@@ -8,13 +8,11 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
 @Data
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
 @Schema(title="The VehicleOffer XML object", description="This object represents a commercial offer based con a specific vehicle unit, or VehicleInstance" )
 public class OfferXMLModel implements Serializable {
@@ -72,7 +70,7 @@ public class OfferXMLModel implements Serializable {
     @Schema(description = "Update date")
     private long lastUpdated; //default, now. Do not add to hashCode implementation
     @Schema(description = "Update date")
-    private UUID xmlCarOfferId;
+    private UUID jsonCarOfferId;
 
     public boolean isValid() {
         return id != null
@@ -91,6 +89,14 @@ public class OfferXMLModel implements Serializable {
         }
         // Si es profesional, se asume que dealerReference o ownerReference deberían existir
         return true;
+    }
+
+    public OfferXMLModel() {
+        this.vehicleInstance = new VehicleInstanceXMLModel();
+        this.price = new MoneyXMLModel();
+        this.priceNew = new MoneyXMLModel();
+        this.financedPrice = new MoneyXMLModel();
+        this.professionalPrice = new MoneyXMLModel();
     }
 
 }

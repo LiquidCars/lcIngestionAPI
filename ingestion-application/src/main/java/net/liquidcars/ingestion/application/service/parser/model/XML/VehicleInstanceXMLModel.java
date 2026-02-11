@@ -1,11 +1,10 @@
 package net.liquidcars.ingestion.application.service.parser.model.XML;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
+
 import java.io.Serializable;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -48,5 +47,11 @@ public class VehicleInstanceXMLModel implements Serializable {
         if (!(o instanceof VehicleInstanceXMLModel)) return false;
         VehicleInstanceXMLModel other = (VehicleInstanceXMLModel)o;
         return other.hashCode()==this.hashCode();
+    }
+
+    public VehicleInstanceXMLModel() {
+        this.vehicleModel = new VehicleModelXMLModel();
+        this.color = new KeyValueXMLModel();
+        this.state = new KeyValueXMLModel();
     }
 }
