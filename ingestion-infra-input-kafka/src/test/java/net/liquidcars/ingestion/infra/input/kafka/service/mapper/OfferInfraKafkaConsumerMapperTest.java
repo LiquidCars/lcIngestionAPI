@@ -22,7 +22,7 @@ public class OfferInfraKafkaConsumerMapperTest {
         OfferDto result = mapper.toOfferDto(msg);
 
         assertThat(result).isNotNull();
-        assertThat(result.getOwnerReference()).isEqualTo(msg.getOwnerReference());
+        assertThat(result.getExternalIdInfo().getOwnerReference()).isEqualTo(msg.getExternalIdInfo().getOwnerReference());
 
         if (msg.getVehicleInstance() != null && msg.getVehicleInstance().getVehicleModel() != null) {
             assertThat(result.getVehicleInstance().getPlate()).isEqualTo(msg.getVehicleInstance().getPlate());
@@ -43,11 +43,11 @@ public class OfferInfraKafkaConsumerMapperTest {
     void shouldHandleMissingNestedObjects() {
         // Test manual para asegurar que el mapper no rompe si falta una rama del árbol
         OfferMsg msg = OfferMsgFactory.getOfferMsg();
-        msg.setVehicleInstance(null);
+        msg.setExternalIdInfo(null);
 
         OfferDto result = mapper.toOfferDto(msg);
 
         assertThat(result).isNotNull();
-        assertThat(result.getChannelReference()).isNull();
+        assertThat(result.getExternalIdInfo()).isNull();
     }
 }

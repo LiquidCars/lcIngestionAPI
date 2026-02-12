@@ -20,7 +20,7 @@ class OfferParserMapperTest {
         OfferDto result = mapper.toOfferDto(jsonModel);
 
         assertThat(result.getId()).isEqualTo(jsonModel.getId());
-        assertThat(result.getChannelReference()).isEqualTo(jsonModel.getChannelReference());
+        assertThat(result.getExternalIdInfo().getChannelReference()).isEqualTo(jsonModel.getExternalIdInfo().getChannelReference());
         assertThat(result.getVehicleInstance().getPlate()).isEqualTo(jsonModel.getVehicleInstance().getPlate());
         assertThat(result.getPickUpAddress().getAddress().getExtendedAddress()).isEqualTo(jsonModel.getPickUpAddress().getAddress().getExtendedAddress());
         assertThat(result.getMail()).isEqualTo(jsonModel.getMail());
@@ -34,7 +34,7 @@ class OfferParserMapperTest {
         OfferDto result = mapper.toOfferDto(xmlModel);
 
         assertThat(result.getId()).isEqualTo(xmlModel.getId());
-        assertThat(result.getChannelReference()).isEqualTo(xmlModel.getChannelReference());
+        assertThat(result.getExternalIdInfo().getChannelReference()).isEqualTo(xmlModel.getExternalIdInfo().getChannelReference());
         assertThat(result.getVehicleInstance().getPlate()).isEqualTo(xmlModel.getVehicleInstance().getPlate());
         assertThat(result.getPickUpAddress().getAddress().getExtendedAddress()).isEqualTo(xmlModel.getPickUpAddress().getAddress().getExtendedAddress());
         assertThat(result.getMail()).isEqualTo(xmlModel.getMail());

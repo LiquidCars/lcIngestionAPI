@@ -4,6 +4,7 @@ import net.liquidcars.ingestion.config.security.model.SecurityProperties;
 import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
 import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
+import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.model.security.LCContext;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
 import net.liquidcars.ingestion.domain.service.context.IContextService;
@@ -130,9 +131,14 @@ public class IngestionControllerTest {
     }
 
     @Test
-    void ingestStream_ShouldReturnBadRequest_WhenIOExceptionOccurs() throws Exception {
-        doThrow(new IOException("Forced failure"))
-                .when(ingestionService).processOffersStream(
+    void ingestStream_ShouldReturnBadRequest_WhenServiceThrowsLCIngestionException() throws Exception {
+
+        doThrow(LCIngestionException.builder()
+                .techCause(LCTechCauseEnum.INVALID_REQUEST)
+                .message("Forced failure")
+                .build())
+                .when(ingestionService)
+                .processOffersStream(
                         any(), any(InputStream.class), any(), any(), any(), any(), any());
 
         mockMvc.perform(post("/stream")
@@ -142,8 +148,11 @@ public class IngestionControllerTest {
                         .content("test content")
                         .contentType(MediaType.APPLICATION_OCTET_STREAM))
                 .andExpect(status().isBadRequest())
-                .andExpect(result -> assertTrue(result.getResolvedException() instanceof LCIngestionException));
+                .andExpect(result ->
+                        assertTrue(result.getResolvedException() instanceof LCIngestionException)
+                );
     }
+
 
     @Test
     void ingestBatch_ShouldReturn400_WhenRequiredParamsMissing() throws Exception {

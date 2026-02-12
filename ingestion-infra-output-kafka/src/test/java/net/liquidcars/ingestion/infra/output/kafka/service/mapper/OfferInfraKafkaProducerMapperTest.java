@@ -26,7 +26,7 @@ public class OfferInfraKafkaProducerMapperTest {
         assertThat(result).isNotNull();
 
         assertThat(result.getId()).isEqualTo(sourceDto.getId());
-        assertThat(result.getChannelReference()).isEqualTo(sourceDto.getChannelReference());
+        assertThat(result.getExternalIdInfo().getChannelReference()).isEqualTo(sourceDto.getExternalIdInfo().getChannelReference());
         assertThat(result.getVehicleInstance().getPlate()).isEqualTo(sourceDto.getVehicleInstance().getPlate());
         assertThat(result.getPickUpAddress().getAddress().getExtendedAddress()).isEqualTo(sourceDto.getPickUpAddress().getAddress().getExtendedAddress());
         assertThat(result.getMail()).isEqualTo(sourceDto.getMail());

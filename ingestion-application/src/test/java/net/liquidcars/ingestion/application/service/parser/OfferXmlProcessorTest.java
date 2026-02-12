@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,9 +48,8 @@ class OfferXmlProcessorTest {
 
     @Test
     void supports_ShouldReturnTrueOnlyForXml() {
-        assertTrue(processor.supports("xml"));
-        assertTrue(processor.supports("XML"));
-        assertFalse(processor.supports("json"));
+        assertTrue(processor.supports(IngestionFormat.xml));
+        assertFalse(processor.supports(IngestionFormat.json));
         assertFalse(processor.supports(null));
     }
 

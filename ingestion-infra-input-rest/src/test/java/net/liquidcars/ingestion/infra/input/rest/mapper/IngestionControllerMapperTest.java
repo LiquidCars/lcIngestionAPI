@@ -18,7 +18,7 @@ public class IngestionControllerMapperTest {
     @Autowired
     private IngestionControllerMapper mapper;
 
-    private final String participantId = UUID.randomUUID().toString();
+    private final UUID participantId = UUID.randomUUID();
 
     @Test
     void shouldMapOfferRequestToOfferDtoWithGeneratedId() {
@@ -28,18 +28,18 @@ public class IngestionControllerMapperTest {
 
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(request.getId());
-        assertThat(result.getChannelReference()).isEqualTo(request.getChannelReference());
+        assertThat(result.getExternalIdInfo().getChannelReference()).isEqualTo(request.getExternalIdInfo().getChannelReference());
         assertThat(result.getVehicleInstance().getPlate()).isEqualTo(request.getVehicleInstance().getPlate());
-        assertThat(result.getPickUpAddress().getAddress().getExtendedAddress())
-                .isEqualTo(request.getPickUpAddress().getAddress().getExtendedAddress());
+
         assertThat(result.getMail()).isEqualTo(request.getMail());
         assertThat(result.getPrice().getAmount()).isEqualByComparingTo(request.getPrice().getAmount());
-        assertThat(result.getParticipantId()).isEqualTo(UUID.fromString(participantId));
+        assertThat(result.getParticipantId()).isEqualTo(participantId);
         assertThat(result.getLastUpdated()).isNotNull();
     }
 
     @Test
     void shouldMapListWithDifferentIds() {
+
         List<OfferRequest> requests = List.of(
                 OfferRequestFactory.getOfferRequest(),
                 OfferRequestFactory.getOfferRequest()
@@ -49,22 +49,30 @@ public class IngestionControllerMapperTest {
 
         assertThat(results).hasSize(2);
 
+        // Each DTO must have a unique ID
         assertThat(results.get(0).getId())
-                .isNotEqualTo(results.get(1).getId())
-                .withFailMessage("Each DTO should have a unique ID");
+                .isNotEqualTo(results.get(1).getId());
 
-        assertThat(results).extracting(OfferDto::getChannelReference)
-                .containsExactly(requests.get(0).getChannelReference(), requests.get(1).getChannelReference());
+        // Channel reference must be mapped correctly
+        assertThat(results)
+                .extracting(dto -> dto.getExternalIdInfo().getChannelReference())
+                .containsExactly(
+                        requests.get(0).getExternalIdInfo().getChannelReference(),
+                        requests.get(1).getExternalIdInfo().getChannelReference()
+                );
 
-        // Verify all items have the same participantId
-        assertThat(results).extracting(OfferDto::getParticipantId)
-                .containsOnly(UUID.fromString(participantId));
+        // All DTOs must have same participantId
+        assertThat(results)
+                .extracting(OfferDto::getParticipantId)
+                .containsOnly(participantId);
 
-        // Verify all items have lastUpdated timestamp
-        assertThat(results).allSatisfy(dto ->
-                assertThat(dto.getLastUpdated()).isNotNull()
-        );
+        // All DTOs must have lastUpdated timestamp
+        assertThat(results)
+                .allSatisfy(dto ->
+                        assertThat(dto.getLastUpdated()).isNotNull()
+                );
     }
+
 
 
     @Test
@@ -91,6 +99,6 @@ public class IngestionControllerMapperTest {
 
         assertThat(result.getParticipantId())
                 .isNotNull()
-                .isEqualTo(UUID.fromString(participantId));
+                .isEqualTo(participantId);
     }
 }

@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,12 +32,8 @@ public class OfferJSONModel implements Serializable {
     private UUID privateOwnerRegisteredUserId = null;
     @Schema(description = "The VehicleInstance reference")
     private VehicleInstanceJSONModel vehicleInstance;
-    @Schema(description = "The car owner reference")
-    private String ownerReference;
-    @Schema(description = "The dealer reference")
-    private String dealerReference;
-    @Schema(description = "The dealer channel reference")
-    private String channelReference;
+    @Schema(description = "The external offer identifiers")
+    private ExternalIdInfoJSONModel externalIdInfo;
     @Schema(description = "The normal price")
     private MoneyJSONModel price;
     @Schema(description = "The normal price when financing is contracted to buy the car")
