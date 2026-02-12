@@ -120,9 +120,6 @@ public class OfferNoSQLEntity {
     @Field("job_identifier")
     private String jobIdentifier;
 
-    @Field("batch_status")
-    private String batchStatus;
-
     @Field("ingestion_report_id")
     private UUID ingestionReportId;
 

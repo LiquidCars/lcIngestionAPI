@@ -1,7 +1,7 @@
 package net.liquidcars.ingestion.infra.output.kafka;
 
 import net.liquidcars.ingestion.factory.OfferMsgFactory;
-import net.liquidcars.ingestion.infra.output.kafka.client.OfferKafkaPublisher;
+import net.liquidcars.ingestion.infra.output.kafka.producer.OfferKafkaPublisher;
 import net.liquidcars.ingestion.infra.output.kafka.model.OfferMsg;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

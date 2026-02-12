@@ -1,4 +1,4 @@
-package net.liquidcars.ingestion.infra.output.kafka.client;
+package net.liquidcars.ingestion.infra.output.kafka.producer;
 
 import lombok.RequiredArgsConstructor;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;

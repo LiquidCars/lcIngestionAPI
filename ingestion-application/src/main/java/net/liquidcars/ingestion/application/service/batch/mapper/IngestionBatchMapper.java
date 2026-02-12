@@ -7,9 +7,6 @@ import org.springframework.batch.core.BatchStatus;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface IngestionBatchMapper {
-    // Domain → Spring Batch
-    BatchStatus toSpringBatchStatus(IngestionBatchStatus status);
-
     //Spring Batch → Domain
     IngestionBatchStatus toIngestionBatchStatus(BatchStatus status);
 }

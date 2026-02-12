@@ -83,8 +83,6 @@ public class OfferDto implements Serializable {
     private UUID participantId;
     @Schema(description = "Batch job identifier")
     private UUID jobIdentifier;
-    @Schema(description = "Batch job status")
-    private IngestionBatchStatus batchStatus;
     @Schema(description = "Ingestion report job identifier")
     private UUID ingestionReportId;
 

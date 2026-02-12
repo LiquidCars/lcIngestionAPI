@@ -379,44 +379,23 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     private void processIngestionReportForCompleteJob(IngestionReportDto ingestionReportDto) {
 
         long draftOffersCount =
-                offerInfraNoSQLService.countOffersFromJobId(ingestionReportDto.getId());
-
-        IngestionBatchStatus status = ingestionReportDto.getStatus();
+                offerInfraNoSQLService.countOffersFromReportId(ingestionReportDto.getId());
         boolean shouldMarkAsProcessed = false;
-        switch (status) {
-            case COMPLETED:
-                if (ingestionReportDto.getWriteCount() == draftOffersCount) {
-                    log.info(
-                            "Ingestion report with id {} for process offers processed and Success job sent.",
-                            ingestionReportDto.getId()
-                    );
-                    shouldMarkAsProcessed = true;
-                } else {
-                    log.info(
-                            "Ingestion report with id {} not fully processed. Total offers not saved in draft DB. Will retry in next scheduler.",
-                            ingestionReportDto.getId()
-                    );
-                }
-                break;
-
-            case FAILED:
-                log.info(
-                        "Ingestion report with id {} processed and Failed job sent.",
-                        ingestionReportDto.getId()
-                );
-                shouldMarkAsProcessed = true;
-                break;
-
-            default:
-                log.warn(
-                        "Ingestion report with id {} has not processable status {}.",
-                        ingestionReportDto.getId(),
-                        status
-                );
-                break;
+        if (ingestionReportDto.getWriteCount() == draftOffersCount) {
+            log.info(
+                    "Ingestion report with id {} for process offers processed and Success job sent.",
+                    ingestionReportDto.getId()
+            );
+            shouldMarkAsProcessed = true;
+        } else {
+            log.info(
+                    "Ingestion report with id {} not fully processed. Total offers not saved in draft DB. Will retry in next scheduler.",
+                    ingestionReportDto.getId()
+            );
         }
         if (shouldMarkAsProcessed) {
             ingestionReportDto.setProcessed(true);
+            ingestionReportDto.setStatus(IngestionBatchStatus.COMPLETED);
             iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
             offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
         }

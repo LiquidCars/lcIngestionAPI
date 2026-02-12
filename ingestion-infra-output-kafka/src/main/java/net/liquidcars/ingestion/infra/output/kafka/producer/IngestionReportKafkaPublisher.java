@@ -1,9 +1,8 @@
-package net.liquidcars.ingestion.infra.output.kafka.client;
+package net.liquidcars.ingestion.infra.output.kafka.producer;
 
 import lombok.RequiredArgsConstructor;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
-import net.liquidcars.ingestion.infra.output.kafka.model.BatchIngestionReportMsg;
 import net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportMsg;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
