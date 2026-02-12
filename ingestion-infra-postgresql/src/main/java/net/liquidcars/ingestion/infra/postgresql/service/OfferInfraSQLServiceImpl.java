@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
 @Service
@@ -39,8 +41,8 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         log.info("Processing SQL persistence for id: {}", offer.getId());
         try {
             // Creates model if it doesn't exist on bd
-            ensureVehicleModelExists(offer.getVehicleInstance().getVehicleModel());
-            offerSqlRepository.findById(offer.getId()).ifPresentOrElse(
+            VehicleModelEntity vehicleModelEntity = ensureVehicleModelExists(offer.getVehicleInstance().getVehicleModel());
+            offerSqlRepository.findByHash(offer.getHash()).ifPresentOrElse(
                     existingEntity -> {
                         // Update logic
                         OffsetDateTime incomingDate = mapper.mapEpoch(offer.getLastUpdated());
@@ -56,7 +58,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                     // Create logic
                     () -> {
                         log.info("Creating new offer ID: {}", offer.getId());
-                        createNewOffer(offer);
+                        createNewOffer(offer, vehicleModelEntity);
                     }
             );
         } catch (Exception e) {
@@ -72,8 +74,14 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     /**
      * Lógica de creación
      */
-    private void createNewOffer(OfferDto offer) {
+    private void createNewOffer(OfferDto offer, VehicleModelEntity vehicleModelEntity) {
         OfferEntity newEntity = mapper.toEntity(offer);
+        if (newEntity.getVehicleInstance() != null) {
+            newEntity.getVehicleInstance().setVehicleModel(vehicleModelEntity);
+            if (newEntity.getVehicleInstance().getId() == null || newEntity.getVehicleInstance().getId() == 0) {
+                newEntity.getVehicleInstance().setId(ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L));
+            }
+        }
         newEntity.setJsonCarOffer(buildJsonEntity(offer));
         OfferEntity savedOffer = offerSqlRepository.saveAndFlush(newEntity);
         if (offer.getPickUpAddress() != null) {
@@ -123,7 +131,14 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         carInstanceEquipmentEntityRepository.deleteByVehicleInstanceId(vehicleInstance.getId());
         List<CarInstanceEquipmentEntity> entities = mapper.toCarInstanceEquipmentEntityList(equipments);
         entities.forEach(entity -> {
+            int id = ThreadLocalRandom.current().nextInt(1000, 10000);
+            entity.setId(id);
             entity.setVehicleInstance(vehicleInstance);
+            if(entity.getType() == null){
+                entity.setType(EquipmentTypeEntity.builder()
+                        .id("Other")
+                        .build());
+            }
         });
         carInstanceEquipmentEntityRepository.saveAll(entities);
     }
@@ -142,8 +157,9 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                 .id("UrlImage")
                 .build();
         byte[] image = convertUrlToBytes(dto.getResource());
+        int id = ThreadLocalRandom.current().nextInt(1000, 10000);
         CarOfferResourceEntity resourceEntity = CarOfferResourceEntity.builder()
-                .id(dto.getId())
+                .id(id)
                 .offer(offer)
                 .resourceType(type)
                 .resource(image)
@@ -161,7 +177,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                 .id("caroffer")
                 .build();
         JsonObjectEntity baseObject = JsonObjectEntity.builder()
-                .id(offer.getJsonCarOfferId())
+                .id(offer.getJsonCarOfferId() != null ? offer.getJsonCarOfferId() : UUID.randomUUID())
                 .jsonObjectType(type)
                 .createdAt(OffsetDateTime.now())
                 .build();
@@ -178,10 +194,14 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         return jsonEntity;
     }
 
-    private void ensureVehicleModelExists(VehicleModelDto dto) {
-        vehicleModelRepository.findById(dto.getId())
+    private VehicleModelEntity ensureVehicleModelExists(VehicleModelDto dto) {
+        return vehicleModelRepository.findFirstByBrandIgnoreCaseAndModelIgnoreCaseAndVersionIgnoreCase(
+                        dto.getBrand(), dto.getModel(), dto.getVersion())
                 .orElseGet(() -> {
                     VehicleModelEntity model = mapper.toVehicleModelEntity(dto);
+                    Long id = ThreadLocalRandom.current().nextLong(100_000_000L, 1_000_000_000L);
+                    model.setId(id);
+                    model.setEnabled(true); // Asegúrate de habilitarlo
                     return vehicleModelRepository.save(model);
                 });
     }
