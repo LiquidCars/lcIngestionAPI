@@ -8,8 +8,7 @@ import net.liquidcars.ingestion.application.service.batch.JobCompletionNotificat
 import net.liquidcars.ingestion.application.service.batch.OfferItemWriter;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus;
+import net.liquidcars.ingestion.domain.model.batch.*;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
@@ -17,16 +16,22 @@ import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLSer
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IBatchReportInfraSQLService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
+import net.liquidcars.ingestion.domain.service.infra.postgresql.IReportInfraSQLService;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
-import org.springframework.batch.core.*;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.net.URI;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -52,26 +57,49 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     private final IOfferInfraSQLService offerInfraSQLService;
     private final IOfferInfraNoSQLService offerInfraNoSQLService;
     private final IBatchReportInfraSQLService batchReportInfraSQLService;
+    private final IReportInfraSQLService iReportInfraSQLService;
 
     @Value("${ingestion.batch.chunk-size:10}")
     private int chunkSize;
 
+    @Transactional
     @Override
-    public void processOffers(List<OfferDto> offers) {
+    public void processOffers(List<OfferDto> offers,
+                              UUID inventoryId,
+                              UUID requesterParticipantId,
+                              IngestionDumpType dumpType,
+                              String externalPublicationId) {
+
         if (offers == null || offers.isEmpty()) {
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.INVALID_REQUEST)
                     .message("The offers list is empty or null")
                     .build();
         }
-        offers.forEach(this::processOffer);
+        validateRequesterParticipantHasNotProcessStarted(requesterParticipantId);
+        IngestionReportDto ingestionReportDto = createIngestionReportDto(offers, inventoryId, requesterParticipantId, dumpType, externalPublicationId);
+        offers.forEach(offerDto -> {
+            offerDto.setIngestionReportId(ingestionReportDto.getId());
+            this.processOffer(offerDto);
+        });
+        iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
+        offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
     }
 
+    @Transactional
     @Override
-    public void processOffersFromUrl(String format, URI url) {
+    public void processOffersFromUrl(IngestionFormat format,
+                                     URI url,
+                                     UUID inventoryId,
+                                     UUID requesterParticipantId,
+                                     IngestionDumpType dumpType,
+                                     OffsetDateTime publicationDate,
+                                     String externalPublicationId)
+    {
         log.info("Triggering remote ingestion from URL: {} with format: {}", url, format);
-        IOfferParserService parser = getParser(format);
+        validateRequesterParticipantHasNotProcessStarted(requesterParticipantId);
         validateUrl(url);
+        IOfferParserService parser = getParser(format);
         Thread.ofVirtual().start(() -> {
             try (var httpClient = java.net.http.HttpClient.newBuilder()
                     .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
@@ -82,7 +110,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                 var response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofInputStream());
 
                 if (response.statusCode() == 200) {
-                    this.processOffersStream(format, parser, response.body());
+                    this.processOffersStream(format, parser, response.body(), inventoryId, requesterParticipantId, externalPublicationId, dumpType, publicationDate);
                 } else {
                     log.error("Failed to download file from URL: {}. Status code: {}", url, response.statusCode());
                 }
@@ -92,7 +120,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         });
     }
 
-    private IOfferParserService getParser(String format) {
+    private IOfferParserService getParser(IngestionFormat format) {
         return parsers.stream()
                 .filter(p -> p.supports(format))
                 .findFirst()
@@ -128,23 +156,100 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         }
     }
 
-    @Override
-    public void processOffersStream(String format, InputStream inputStream) {
-        IOfferParserService parser = getParser(format);
-        this.processOffersStream(format, parser, inputStream);
+    private void validateRequesterParticipantHasNotProcessStarted(UUID requestParticipantId) {
+        List<IngestionBatchStatus> finalStatuses = List.of(
+                IngestionBatchStatus.COMPLETED,
+                IngestionBatchStatus.FAILED,
+                IngestionBatchStatus.ABANDONED,
+                IngestionBatchStatus.STOPPED
+        );
+        if (iReportInfraSQLService.existsByRequesterParticipantIdAndStatusNotIn(requestParticipantId, finalStatuses)) {
+            log.warn("Validation failed: Participant {} already has an active ingestion process.", requestParticipantId);
+
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.INVALID_REQUEST)
+                    .message(String.format("Participant [%s] already has an active ingestion process in progress. " +
+                            "Please wait for it to finish before starting a new one.", requestParticipantId))
+                    .build();
+        }
     }
 
-    private void processOffersStream(String format, IOfferParserService parser, InputStream inputStream) {
+    private static IngestionReportDto createIngestionReportDto(List<OfferDto> offers,
+                                                               UUID inventoryId,
+                                                               UUID requesterParticipantId,
+                                                               IngestionDumpType dumpType,
+                                                               String externalPublicationId) {
+        IngestionReportDto ingestionReportDto = createIngestionReportDto(inventoryId, requesterParticipantId, dumpType, IngestionProcessType.PROCESS, externalPublicationId, null, null);
+        ingestionReportDto.setReadCount(offers.size());
+        ingestionReportDto.setWriteCount(offers.size());
+        ingestionReportDto.setSkipCount(0);
+        return ingestionReportDto;
+    }
+
+    private static IngestionReportDto createIngestionReportDto(UUID inventoryId,
+                                                               UUID requesterParticipantId,
+                                                               IngestionDumpType dumpType,
+                                                               IngestionProcessType ingestionProcessType,
+                                                               String externalPublicationId,
+                                                               UUID batchJobId,
+                                                               OffsetDateTime publicationDate
+                                                               ) {
+        IngestionReportDto ingestionReportDto = IngestionReportDto.builder().build();
+        ingestionReportDto.setId(UUID.randomUUID());
+        ingestionReportDto.setProcessType(ingestionProcessType);
+        ingestionReportDto.setBatchJobId(batchJobId);
+        ingestionReportDto.setRequesterParticipantId(requesterParticipantId);
+        ingestionReportDto.setInventoryId(inventoryId);
+        ingestionReportDto.setPublicationDate(publicationDate);
+        ingestionReportDto.setStatus(IngestionBatchStatus.STARTED);
+        ingestionReportDto.setDumpType(dumpType);
+        ingestionReportDto.setExternalRequestId(externalPublicationId);
+
+        ingestionReportDto.setProcessed(false);
+        ingestionReportDto.setCreatedAt(OffsetDateTime.now());
+        ingestionReportDto.setUpdatedAt(OffsetDateTime.now());
+        return ingestionReportDto;
+    }
+
+    @Transactional
+    @Override
+    public void processOffersStream(IngestionFormat format,
+                                    InputStream inputStream,
+                                    UUID inventoryId,
+                                    UUID requesterParticipantId,
+                                    IngestionDumpType dumpType,
+                                    OffsetDateTime publicationDate,
+                                    String externalPublicationId)
+    {
+        validateRequesterParticipantHasNotProcessStarted(requesterParticipantId);
+        IOfferParserService parser = getParser(format);
+        this.processOffersStream(format, parser, inputStream, inventoryId, requesterParticipantId, externalPublicationId, dumpType, publicationDate);
+    }
+
+    private void processOffersStream(IngestionFormat format,
+                                     IOfferParserService parser,
+                                     InputStream inputStream,
+                                     UUID inventoryId,
+                                     UUID requesterParticipantId,
+                                     String externalPublicationId,
+                                     IngestionDumpType dumpType,
+                                     OffsetDateTime publicationDate
+    ) {
         Thread.ofVirtual().start(() -> {
             JobExecution execution = null;
             try {
-                String ingestionId = UUID.randomUUID().toString();
+                UUID ingestionId = UUID.randomUUID();
                 offerReader.start(parser, inputStream);
                 JobParameters params = new JobParametersBuilder()
-                        .addString("ingestionId", ingestionId)
-                        .addString("format", format)
+                        .addString("ingestionId", ingestionId.toString())
+                        .addString("format", format.name())
                         .addLong("time", System.currentTimeMillis())
                         .toJobParameters();
+
+                IngestionReportDto ingestionReportDto = createIngestionReportDto(inventoryId, requesterParticipantId,
+                        dumpType, IngestionProcessType.FILE, externalPublicationId, ingestionId, publicationDate);
+                iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
+                offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
 
                 execution = jobLauncher.run(offerIngestionJob, params);
 
@@ -161,41 +266,41 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
 
     @Override
     @SchedulerLock(
-            name = "IngestionSync_Lock",
+            name = "IngestionBatchReportsSync_Lock",
             lockAtMostFor = "4m",  // If the pod dies, the lock is released in 4 minutes
             lockAtLeastFor = "1m"  //I hope that if the process is very fast, another replica will catch on right away.
     )
-    public void syncPendingReports() {
+    public void syncPendingBatchReports() {
         List<IngestionBatchReportDto> pendingReports = batchReportInfraSQLService.getBatchPendingReports();
         if (pendingReports.isEmpty()) {
             return;
         }
-        log.info("Syncing {} pending reports across SQL and NoSQL", pendingReports.size());
+        log.info("Syncing {} batch pending reports across SQL and NoSQL", pendingReports.size());
         for(IngestionBatchReportDto pendingReport: pendingReports){
             processIngestionBatchReportForCompleteJob(pendingReport);
         }
 
     }
 
+    @Transactional
     @Override
     public void processIngestionBatchReport(IngestionBatchReportDto ingestionBatchReportDto) {
         log.info("Received batch ingestion report with id {} for process offers", ingestionBatchReportDto.getJobId());
         //We save the report when we received from kafka topic
-        batchReportInfraSQLService.upsertIngestionReport(ingestionBatchReportDto);
+        batchReportInfraSQLService.upsertIngestionBatchReport(ingestionBatchReportDto);
         this.processIngestionBatchReportForCompleteJob(ingestionBatchReportDto);
     }
 
     private void processIngestionBatchReportForCompleteJob(IngestionBatchReportDto ingestionBatchReportDto) {
 
         long draftOffersCount =
-                offerInfraNoSQLService.getOffersFromJobId(ingestionBatchReportDto.getJobId());
+                offerInfraNoSQLService.countOffersFromJobId(ingestionBatchReportDto.getJobId());
 
         IngestionBatchStatus status = ingestionBatchReportDto.getStatus();
         boolean shouldMarkAsProcessed = false;
         switch (status) {
             case COMPLETED:
                 if (ingestionBatchReportDto.getWriteCount() == draftOffersCount) {
-                    // TODO enviar mensaje Kafka aquí
                     log.info(
                             "Batch ingestion report with id {} for process offers processed and Success job sent.",
                             ingestionBatchReportDto.getJobId()
@@ -210,7 +315,6 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                 break;
 
             case FAILED:
-                // TODO enviar mensaje Kafka aquí
                 log.info(
                         "Batch ingestion report with id {} processed and Failed job sent.",
                         ingestionBatchReportDto.getJobId()
@@ -228,7 +332,93 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         }
         if (shouldMarkAsProcessed) {
             ingestionBatchReportDto.setProcessed(true);
-            batchReportInfraSQLService.upsertIngestionReport(ingestionBatchReportDto);
+            batchReportInfraSQLService.upsertIngestionBatchReport(ingestionBatchReportDto);
+            IngestionReportDto ingestionReportDto = iReportInfraSQLService.findIngestionReportByBatchJobId(ingestionBatchReportDto.getJobId());
+            updateIngestionReportDtoWithBatchReport(ingestionReportDto, ingestionBatchReportDto);
+            iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
+            offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
+        }
+    }
+
+    private static void updateIngestionReportDtoWithBatchReport(
+            IngestionReportDto ingestionReportDto,
+            IngestionBatchReportDto ingestionBatchReportDto) {
+        ingestionReportDto.setStatus(ingestionBatchReportDto.getStatus());
+        ingestionReportDto.setProcessed(ingestionBatchReportDto.isProcessed());
+        ingestionReportDto.setReadCount(ingestionReportDto.getReadCount());
+        ingestionReportDto.setWriteCount(ingestionReportDto.getWriteCount());
+        ingestionReportDto.setSkipCount(ingestionReportDto.getSkipCount());
+        ingestionReportDto.setFailedExternalIds(ingestionReportDto.getFailedExternalIds());
+        ingestionReportDto.setUpdatedAt(OffsetDateTime.now());
+    }
+
+    @Override
+    @SchedulerLock(
+            name = "IngestionReportsSync_Lock",
+            lockAtMostFor = "4m",  // If the pod dies, the lock is released in 4 minutes
+            lockAtLeastFor = "1m"  //I hope that if the process is very fast, another replica will catch on right away.
+    )
+    public void syncPendingReports() {
+        List<IngestionReportDto> pendingReports = iReportInfraSQLService.getPendingReports();
+        if (pendingReports.isEmpty()) {
+            return;
+        }
+        log.info("Syncing {} pending reports across SQL and NoSQL", pendingReports.size());
+        for(IngestionReportDto pendingReport: pendingReports){
+            processIngestionReportForCompleteJob(pendingReport);
+        }
+    }
+
+    @Transactional
+    @Override
+    public void processIngestionReport(IngestionReportDto ingestionReportDto) {
+        log.info("Received ingestion report with id {} for process offers", ingestionReportDto.getId());
+        this.processIngestionReportForCompleteJob(ingestionReportDto);
+    }
+
+    private void processIngestionReportForCompleteJob(IngestionReportDto ingestionReportDto) {
+
+        long draftOffersCount =
+                offerInfraNoSQLService.countOffersFromJobId(ingestionReportDto.getId());
+
+        IngestionBatchStatus status = ingestionReportDto.getStatus();
+        boolean shouldMarkAsProcessed = false;
+        switch (status) {
+            case COMPLETED:
+                if (ingestionReportDto.getWriteCount() == draftOffersCount) {
+                    log.info(
+                            "Ingestion report with id {} for process offers processed and Success job sent.",
+                            ingestionReportDto.getId()
+                    );
+                    shouldMarkAsProcessed = true;
+                } else {
+                    log.info(
+                            "Ingestion report with id {} not fully processed. Total offers not saved in draft DB. Will retry in next scheduler.",
+                            ingestionReportDto.getId()
+                    );
+                }
+                break;
+
+            case FAILED:
+                log.info(
+                        "Ingestion report with id {} processed and Failed job sent.",
+                        ingestionReportDto.getId()
+                );
+                shouldMarkAsProcessed = true;
+                break;
+
+            default:
+                log.warn(
+                        "Ingestion report with id {} has not processable status {}.",
+                        ingestionReportDto.getId(),
+                        status
+                );
+                break;
+        }
+        if (shouldMarkAsProcessed) {
+            ingestionReportDto.setProcessed(true);
+            iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
+            offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
         }
     }
 }

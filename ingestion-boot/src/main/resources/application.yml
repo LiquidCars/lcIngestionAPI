@@ -189,3 +189,6 @@ ingestion:
   syncScheduler:
     enabled: true
     cron: "0 */2 * * * *" # Every 2 minutes
+  batchSyncScheduler:
+    enabled: true
+    cron: "0 */2 * * * *" # Every 2 minutes

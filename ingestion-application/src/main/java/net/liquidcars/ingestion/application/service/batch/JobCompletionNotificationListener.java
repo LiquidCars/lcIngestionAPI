@@ -69,7 +69,7 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
                     skipCount);
 
             log.info(">> Sending Job Report for Job: {}", report.getJobId());
-            kafkaProducer.sendJobReport(report);
+            kafkaProducer.sendBatchIngestionJobReport(report);
 
             failedIdsCollector.clear();
         }

@@ -3,8 +3,6 @@ package net.liquidcars.ingestion.infra.mongodb.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
@@ -92,7 +90,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
 
 
     @Override
-    public long getOffersFromJobId(UUID jobId){
+    public long countOffersFromJobId(UUID jobId){
         try {
             return repository.countByJobIdentifier(jobId);
         } catch (Exception e) {
@@ -100,6 +98,21 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.DATABASE)
                     .message("Failed to get offers from NoSQL by jobId: " + jobId)
+                    .cause(e)
+                    .build();
+        }
+
+    }
+
+    @Override
+    public long countOffersFromReportId(UUID ingestionReportId){
+        try {
+            return repository.countByIngestionReportId(ingestionReportId);
+        } catch (Exception e) {
+            log.error("Failed to get offers from NoSQL by ingestionReportId: {}", ingestionReportId, e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.DATABASE)
+                    .message("Failed to get offers from NoSQL by ingestionReportId: " + ingestionReportId)
                     .cause(e)
                     .build();
         }

@@ -5,18 +5,18 @@ info:
     API for bulk vehicle offer ingestion (LiquidCars).
     Designed to handle 170k+ records using reactive processing and streaming.
     
-    **Ingestion Strategies:**
-    1. **Batch**: For small JSON integrations.
-    2. **Stream**: For massive binary files (XML/JSON).
-    3. **URL**: For scheduled remote downloads (Pull).
+    **Business Logic (HU):**
+    - `inventoryId`: Target inventory. Defaults to General Inventory if null.
+    - `dumpType`: `UPDATE` (Merge) or `REPLACEMENT` (Full Sync/Delete).
+    - `format`: Now enforced via Enum (xml, json).
   contact:
     name: Platform Engineering Team
     email: support@liquidcars.net
-  version: 1.0.0
+  version: 1.1.0
 
 servers:
   - url: http://localhost:8090/v1/ingestion
-    description: Local development server (Docker/Local)
+    description: Local development server
 
 paths:
   /batch:
@@ -24,10 +24,11 @@ paths:
       tags:
         - Ingestion
       summary: Ingest JSON Batches
-      description: |
-        Protected by `IngestionSecurityFilter`. 
-        Rejects requests larger than 2MB or without `application/json` Content-Type.
       operationId: ingestBatch
+      parameters:
+        - $ref: '#/components/parameters/InventoryIdParam'
+        - $ref: '#/components/parameters/DumpTypeParam'
+        - $ref: '#/components/parameters/ExternalPubIdParam'
       requestBody:
         required: true
         content:
@@ -37,33 +38,25 @@ paths:
               items:
                 $ref: '#/components/schemas/OfferRequest'
       responses:
-        '200':
-          description: Batch successfully sent to Kafka.
-        '400':
-          description: Invalid data or schema mismatch.
+        '202':
+          description: Batch accepted.
         '413':
-          description: Payload Too Large. Batch exceeds the 2MB safety limit.
+          description: Payload Too Large.
 
   /stream:
     post:
       tags:
         - Ingestion
       summary: Ingest via Binary Stream
-      description: |
-        Processes massive files with no size limit using StAX/Jackson Streaming.
-        Maintains a constant memory footprint (<256MB).
       operationId: ingestStream
       parameters:
-        - name: format
-          in: query
-          required: true
-          description: Format of the binary content.
-          schema:
-            type: string
-            enum: [xml, json]
+        - $ref: '#/components/parameters/FormatParam'
+        - $ref: '#/components/parameters/InventoryIdParam'
+        - $ref: '#/components/parameters/DumpTypeParam'
+        - $ref: '#/components/parameters/PublishDateParam'
+        - $ref: '#/components/parameters/ExternalPubIdParam'
       requestBody:
         required: true
-        description: Binary content of the file (XML or JSON).
         content:
           application/octet-stream:
             schema:
@@ -71,65 +64,94 @@ paths:
               format: binary
       responses:
         '202':
-          description: Stream accepted. Processing will continue asynchronously.
-        '415':
-          description: Unsupported Media Type. Requires application/octet-stream.
+          description: Stream accepted.
 
   /url:
     post:
       tags:
         - Ingestion
       summary: Ingest via URL (Pull)
-      description: |
-        The microservice downloads the file from the provided URL and processes it internally via streaming.
-        Ideal for Scheduled Jobs.
       operationId: ingestFromUrl
       parameters:
-        - name: format
-          in: query
-          required: true
-          schema:
-            type: string
-            enum: [xml, json]
+        - $ref: '#/components/parameters/FormatParam'
         - name: url
           in: query
           required: true
-          description: Resource URL (sftp, http, https).
           schema:
             type: string
             format: uri
+        - $ref: '#/components/parameters/InventoryIdParam'
+        - $ref: '#/components/parameters/DumpTypeParam'
+        - $ref: '#/components/parameters/PublishDateParam'
+        - $ref: '#/components/parameters/ExternalPubIdParam'
       responses:
         '202':
-          description: Download and ingestion started.
+          description: Upload started.
 
 components:
+  parameters:
+    FormatParam:
+      name: format
+      in: query
+      required: true
+      schema:
+        $ref: '#/components/schemas/IngestionFormat'
+    InventoryIdParam:
+      name: inventoryId
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DumpTypeParam:
+      name: dumpType
+      in: query
+      required: true
+      schema:
+        $ref: '#/components/schemas/IngestionDumpType'
+    PublishDateParam:
+      name: publicationDate
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date-time
+    ExternalPubIdParam:
+      name: externalPublicationId
+      in: query
+      required: false
+      schema:
+        type: string
+
   schemas:
+    IngestionFormat:
+      type: string
+      enum: [xml, json]
+
+    IngestionDumpType:
+      type: string
+      enum: [UPDATE, REPLACEMENT]
+      default: UPDATE
+
     OfferRequest:
       type: object
-      title: The VehicleOffer object
-      description: This object represents a commercial offer based on a specific vehicle unit, or VehicleInstance
       properties:
         id:
           type: string
           format: uuid
-          description: Offer unique identifier
         sellerType:
           $ref: '#/components/schemas/CarOfferSellerTypeEnum'
         privateOwnerRegisteredUserId:
           type: string
           format: uuid
-          description: The registered user Id of the final owner accountable for transaction duties
         vehicleInstance:
           $ref: '#/components/schemas/VehicleInstance'
         ownerReference:
           type: string
-          description: The car owner reference
         dealerReference:
           type: string
-          description: The dealer reference
         channelReference:
           type: string
-          description: The dealer channel reference
         price:
           $ref: '#/components/schemas/Money'
         financedPrice:
@@ -138,97 +160,65 @@ components:
           $ref: '#/components/schemas/Money'
         financedText:
           type: string
-          description: A description of the financed price conditions, advantages, etc.
         priceNew:
           $ref: '#/components/schemas/Money'
         professionalPrice:
           $ref: '#/components/schemas/Money'
         taxDeductible:
           type: boolean
-          description: Indicates if taxes are deductible
         obs:
           type: string
-          description: Free text used as observations
         internalNotes:
           type: string
-          description: Additional notes
         resources:
           type: array
-          description: Collection of additional resources, such as images, documents and any other multimedia content
           items:
             $ref: '#/components/schemas/CarOfferResource'
         guarantee:
           type: boolean
-          description: Indicates if the car is currently under some kind of guarantee
         guaranteeMonths:
           type: integer
-          format: int32
-          description: Number of months the guarantee is still available
         guaranteeText:
           type: string
-          description: A Free text describing the guarantee conditions
         certified:
           type: boolean
-          description: A flag indicating if the car has been certified by the seller or any other third party
         installation:
           type: string
-          description: A free text describing the installation
         mail:
           type: string
           format: email
-          description: A contact email
         pickUpAddress:
           $ref: '#/components/schemas/ParticipantAddress'
         hash:
           type: integer
-          format: int32
-          description: A versioning hash code used to detect potential changes of the offer
         jsonCarOfferId:
           type: string
           format: uuid
 
     VehicleInstance:
       type: object
-      description: Represents a specific vehicle unit with its unique characteristics
       properties:
         id:
           type: integer
           format: int64
-          description: Internal ID
         vehicleModel:
           $ref: '#/components/schemas/VehicleModel'
         plate:
           type: string
-          description: The actual car plate
-          example: "1234XJV"
         color:
           $ref: '#/components/schemas/KeyValue'
         mileage:
           type: integer
-          format: int32
-          description: Approximate mileage, in kilometers
-          example: 123456
         registrationYear:
           type: integer
-          format: int32
-          description: The year of official registration
-          example: 2013
         registrationMonth:
           type: integer
-          format: int32
-          description: The month of official registration
-          example: 6
         isMetallicPaint:
           type: boolean
-          description: It indicates if the paint color has a metallic finish
-          example: true
         chassisNumber:
           type: string
-          description: The actual chassis (frame) number
-          example: "SV30-0169266"
         equipments:
           type: array
-          description: The list of existing off-series equipment included in this specific car
           items:
             $ref: '#/components/schemas/CarInstanceEquipment'
         state:
@@ -236,178 +226,66 @@ components:
 
     VehicleModel:
       type: object
-      description: Represents a vehicle model with technical specifications
       properties:
-        id:
-          type: integer
-          format: int64
-          description: Internal ID
         brand:
           type: string
-          description: OEM manufacturer brand
-          example: "BMW"
         model:
           type: string
-          description: OEM manufacturer model name
-          example: "530D"
         version:
           type: string
-          description: OEM manufacturer model version
-          example: "F10"
-        euroTaxCode:
-          type: string
-          description: EuroTax code, if any
         bodyType:
-          $ref: '#/components/schemas/KeyValue'
-        numDoors:
-          type: integer
-          format: int32
-          description: The number of doors
-        cv:
-          type: integer
-          format: int32
-          description: Horse power
-        numCylinders:
-          type: integer
-          format: int32
-          description: Number of cylinders
-        displacement:
-          type: integer
-          format: int32
-          description: Engine displacement in cubic centimeters
-        urbanConsumption:
-          type: number
-          format: double
-          description: ICE engine consumption in urban conditions
-        roadConsumption:
-          type: number
-          format: double
-          description: ICE engine consumption in road trip conditions
-        avgConsumption:
-          type: number
-          format: double
-          description: ICE engine mixed/average consumption
-        numGears:
-          type: integer
-          format: int32
-          description: Gear number
-        kgWeight:
-          type: integer
-          format: int32
-          description: Weight in kilograms
-        changeType:
           $ref: '#/components/schemas/KeyValue'
         fuelType:
           $ref: '#/components/schemas/KeyValue'
-        numSeats:
-          type: integer
-          format: int32
-          description: Number of seats
-        drivetrainType:
+        changeType:
           $ref: '#/components/schemas/KeyValue'
-        environmentalBadge:
-          $ref: '#/components/schemas/KeyValue'
-        cmWidth:
+        cv:
           type: integer
-          format: int32
-          description: Width in centimeters
-        cmLength:
+        displacement:
           type: integer
-          format: int32
-          description: Length in centimeters
-        cmHeight:
-          type: integer
-          format: int32
-          description: Height in centimeters
-        litresTrunk:
-          type: integer
-          format: int32
-          description: Trunk volume in litres
-        litresTank:
-          type: integer
-          format: int32
-          description: Gas tank volume in litres
-        maxSpeed:
-          type: integer
-          format: int32
-          description: Maximum speed
-        maxEmissions:
-          type: integer
-          format: int32
-          description: Maximum emissions
-        acceleration:
+        avgConsumption:
           type: number
           format: double
-          description: Maximum acceleration
 
     Money:
       type: object
-      title: The Money object
-      description: A representation of money
-      required:
-        - amount
-        - currency
+      required: [amount, currency]
       properties:
         amount:
           type: number
-          description: The money amount
-          example: 25000.50
         currency:
           type: string
-          description: The currency code
-          example: "EUR"
 
     KeyValue:
       type: object
-      description: Generic key-value pair
       properties:
         key:
           type: string
-          description: The key
         value:
           type: string
-          description: The value
 
     CarInstanceEquipment:
       type: object
-      description: Represents equipment included in a vehicle instance
       properties:
         id:
           type: integer
-          format: int32
-          description: Internal ID
         equipment:
           $ref: '#/components/schemas/KeyValue'
-        category:
-          $ref: '#/components/schemas/KeyValue'
-        type:
-          $ref: '#/components/schemas/KeyValue'
-        description:
-          type: string
-          description: A text description of the equipment
-        code:
-          type: string
-          description: The equipment code
         price:
           $ref: '#/components/schemas/Money'
 
     CarOfferResource:
       type: object
-      description: Represents a multimedia resource associated with an offer
       properties:
         id:
           type: integer
-          format: int32
-          description: Id
         type:
           $ref: '#/components/schemas/KeyValue'
         resource:
           type: string
-          description: A resource locator, URL when the type is URL based, or the resource content when it's raw
 
     ParticipantAddress:
       type: object
-      description: Address information for a participant
       properties:
         type:
           $ref: '#/components/schemas/AddressType'
@@ -416,83 +294,34 @@ components:
 
     PostalAddress:
       type: object
-      description: Detailed postal address information
       properties:
         name:
           type: string
-          description: A friendly name for the address
         gpsLocation:
           $ref: '#/components/schemas/GPSLocation'
-        streetNumber:
-          type: string
-          description: The street number
         streetAddress:
           type: string
-          description: The street address
-        extendedAddress:
-          type: string
-          description: The extended address of the address; for example, the apartment number
-        postalCode:
-          type: string
-          description: The postal code of the address
         city:
           type: string
-          description: The city of the address
-        region:
+        postalCode:
           type: string
-          description: The region of the address; for example, the state or province
-        country:
-          type: string
-          description: The country of the address
         countryCode:
           type: string
-          description: The ISO 3166-1 alpha-2 country code of the address
-        poBox:
-          type: string
-          description: The P.O. box
-        type:
-          type: string
-          description: The type of the address. Like home, work, other
 
     GPSLocation:
       type: object
-      description: GPS coordinates for a location
       properties:
-        name:
-          type: string
-          description: Name of the location
         longitude:
           type: number
           format: double
-          description: Longitude coordinate
         latitude:
           type: number
           format: double
-          description: Latitude coordinate
 
     CarOfferSellerTypeEnum:
       type: string
-      description: Type of offer, describing who is the final owner accountable for transaction duties
-      enum:
-        - usedCar_ProfessionalSeller
-        - usedCar_PrivateSeller
-      default: usedCar_ProfessionalSeller
+      enum: [usedCar_ProfessionalSeller, usedCar_PrivateSeller]
 
     AddressType:
       type: string
-      description: Type of address
-      enum:
-        - P_HOME
-        - B_RETAIL
-        - B_PICKUP
-        - B_EXPERTISE
-
-    EnvironmentType:
-      type: string
-      description: Environment type enumeration
-      enum:
-        - All
-        - DEV
-        - UAT
-        - PROD
-        - TEST
+      enum: [P_HOME, B_RETAIL, B_PICKUP, B_EXPERTISE]

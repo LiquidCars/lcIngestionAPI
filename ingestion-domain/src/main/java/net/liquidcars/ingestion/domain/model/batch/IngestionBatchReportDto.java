@@ -19,4 +19,6 @@ public class IngestionBatchReportDto {
     private OffsetDateTime startTime;
     private OffsetDateTime endTime;
     private boolean processed;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime updatedAt;
 }

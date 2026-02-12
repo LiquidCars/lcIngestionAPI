@@ -6,5 +6,5 @@ import java.util.List;
 
 public interface IBatchReportInfraSQLService {
     List<IngestionBatchReportDto> getBatchPendingReports();
-    void upsertIngestionReport(IngestionBatchReportDto ingestionBatchReportDto);
+    void upsertIngestionBatchReport(IngestionBatchReportDto ingestionBatchReportDto);
 }

@@ -1,7 +1,7 @@
 package net.liquidcars.ingestion.infra.postgresql.service.mapper;
 
 import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
-import net.liquidcars.ingestion.infra.postgresql.entity.*;
+import net.liquidcars.ingestion.infra.postgresql.entity.report.IngestionBatchReportEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 
@@ -12,6 +12,6 @@ import java.util.List;
         imports = { OffsetDateTime.class })
 public interface BatchReportInfraSQLMapper {
 
-    IngestionReportEntity toIngestionReportEntity(IngestionBatchReportDto ingestionBatchReportDto);
-    List<IngestionBatchReportDto> toIngestionReportDtoList(List<IngestionReportEntity> ingestionReportEntityList);
+    IngestionBatchReportEntity toIngestionReportEntity(IngestionBatchReportDto ingestionBatchReportDto);
+    List<IngestionBatchReportDto> toIngestionReportDtoList(List<IngestionBatchReportEntity> ingestionBatchReportEntityList);
 }

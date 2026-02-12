@@ -7,8 +7,7 @@ import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IBatchReportInfraSQLService;
-import net.liquidcars.ingestion.infra.postgresql.repository.IngestionReportRepository;
-import net.liquidcars.ingestion.infra.postgresql.repository.VehicleModelSQLRepository;
+import net.liquidcars.ingestion.infra.postgresql.repository.IngestionBatchReportRepository;
 import net.liquidcars.ingestion.infra.postgresql.service.mapper.BatchReportInfraSQLMapper;
 import org.springframework.stereotype.Service;
 
@@ -18,9 +17,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class BatchReportInfraSQLServiceImpl implements IBatchReportInfraSQLService {
-    private final VehicleModelSQLRepository vehicleModelRepository;
     private final BatchReportInfraSQLMapper mapper;
-    private final IngestionReportRepository reportRepository;
+    private final IngestionBatchReportRepository reportRepository;
 
     @Override
     public List<IngestionBatchReportDto> getBatchPendingReports(){
@@ -28,7 +26,7 @@ public class BatchReportInfraSQLServiceImpl implements IBatchReportInfraSQLServi
     }
 
     @Override
-    public void upsertIngestionReport(IngestionBatchReportDto ingestionBatchReportDto) {
+    public void upsertIngestionBatchReport(IngestionBatchReportDto ingestionBatchReportDto) {
         try {
             reportRepository.save(mapper.toIngestionReportEntity(ingestionBatchReportDto));
         } catch (Exception e) {

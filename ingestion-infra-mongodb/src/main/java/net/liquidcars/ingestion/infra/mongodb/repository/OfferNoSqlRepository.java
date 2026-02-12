@@ -40,6 +40,14 @@ public interface OfferNoSqlRepository extends MongoRepository<OfferNoSQLEntity, 
     long countByJobIdentifier(UUID jobIdentifier);
 
     /**
+     * Counts offers of a initiated job.
+     * Used to detect race conditions.
+     * @param ingestionReportId report job id
+     * @return count of documents with the given ingestionReportId
+     */
+    long countByIngestionReportId(UUID ingestionReportId);
+
+    /**
      * Deletes offers where batchStatus is not 'COMPLETED'
      * and updatedAt is older than the provided threshold.
      * * @param threshold time limit

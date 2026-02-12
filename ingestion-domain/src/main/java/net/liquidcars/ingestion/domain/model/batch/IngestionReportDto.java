@@ -1,10 +1,7 @@
-package net.liquidcars.ingestion.infra.output.kafka.model;
+package net.liquidcars.ingestion.domain.model.batch;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -12,23 +9,21 @@ import java.util.UUID;
 
 @Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class IngestionReportMsg {
-    private String id;
-    private String processType;
-    private String batchJobId;
+public class IngestionReportDto {
+    private UUID id;
+    private IngestionProcessType processType;
+    private UUID batchJobId;
     private UUID requesterParticipantId;
     private UUID inventoryId;
     private String externalRequestId;
     private OffsetDateTime publicationDate;
-    private String status;
+    private IngestionBatchStatus status;
     private IngestionDumpType dumpType;
     private long readCount;
     private long writeCount;
     private long skipCount;
     private List<String> failedExternalIds;
     private boolean processed = false;
-    private String createdAt;
-    private String updatedAt;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime updatedAt;
 }

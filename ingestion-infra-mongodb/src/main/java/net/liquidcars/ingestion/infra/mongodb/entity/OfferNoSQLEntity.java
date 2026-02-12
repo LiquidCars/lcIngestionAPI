@@ -1,5 +1,6 @@
 package net.liquidcars.ingestion.infra.mongodb.entity;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,6 +13,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -120,6 +122,9 @@ public class OfferNoSQLEntity {
 
     @Field("batch_status")
     private String batchStatus;
+
+    @Field("ingestion_report_id")
+    private UUID ingestionReportId;
 
 }
 

@@ -75,6 +75,10 @@ tasks.register('openApiIngestion', GenerateTask) {
     typeMappings = [
             DateTime: "java.time.OffsetDateTime"
     ]
+    schemaMappings = [
+            IngestionFormat: "net.liquidcars.ingestion.domain.model.batch.IngestionFormat",
+            IngestionDumpType: "net.liquidcars.ingestion.domain.model.batch.IngestionDumpType",
+    ]
 }
 
 tasks.named("compileJava") {

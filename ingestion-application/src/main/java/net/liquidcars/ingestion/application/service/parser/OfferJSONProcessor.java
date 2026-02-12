@@ -9,6 +9,7 @@ import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.JSON.OfferJSONModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
@@ -29,8 +30,8 @@ public class OfferJSONProcessor implements IOfferParserService {
     private final OfferStreamItemReader offerReader;
 
     @Override
-    public boolean supports(String format) {
-        return "json".equalsIgnoreCase(format);
+    public boolean supports(IngestionFormat format) {
+        return IngestionFormat.json.equals(format);
     }
 
     @Override

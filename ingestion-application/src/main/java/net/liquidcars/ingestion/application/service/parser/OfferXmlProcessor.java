@@ -6,6 +6,7 @@ import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.XML.*;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
@@ -32,8 +33,8 @@ public class OfferXmlProcessor implements IOfferParserService {
     private final OfferStreamItemReader offerReader;
 
     @Override
-    public boolean supports(String format) {
-        return "xml".equalsIgnoreCase(format);
+    public boolean supports(IngestionFormat format) {
+        return IngestionFormat.xml.equals(format);
     }
 
     @Override

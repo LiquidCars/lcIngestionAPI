@@ -7,7 +7,7 @@ import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.input.kafka.IOfferInfraKafkaConsumerService;
 import net.liquidcars.ingestion.infra.input.kafka.service.mapper.OfferInfraKafkaConsumerMapper;
-import net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportMsg;
+import net.liquidcars.ingestion.infra.output.kafka.model.BatchIngestionReportMsg;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +23,7 @@ public class IngestionInfraKafkaConsumer {
             topics = "liquidcars.ingestion.event.report.executed-action.0",
             groupId = "liquidcars-ingestion-group"
     )
-    public void consumeOffer(IngestionReportMsg message) {
+    public void consumeOffer(BatchIngestionReportMsg message) {
         log.info("Received ingestion report job with id: {}", message.getJobId());
         try {
             IngestionBatchReportDto reportDto = offerInfraKafkaConsumerMapper.toIngestionReportDto(message);

@@ -1,4 +1,4 @@
-package net.liquidcars.ingestion.infra.postgresql.entity;
+package net.liquidcars.ingestion.infra.postgresql.entity.report;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -7,7 +7,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus;
 import net.liquidcars.ingestion.infra.postgresql.service.mapper.JsonStringListConverter;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
@@ -19,8 +21,8 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "ingestion_reports")
-public class IngestionReportEntity {
+@Table(name = "batch_job_execution_reports")
+public class IngestionBatchReportEntity {
 
     @Id
     @Column(name = "job_id")
@@ -53,4 +55,12 @@ public class IngestionReportEntity {
     @Builder.Default
     @Column(name = "processed", nullable = false)
     private boolean processed = false;
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private OffsetDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt;
 }

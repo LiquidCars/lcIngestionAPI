@@ -4,24 +4,23 @@ import lombok.RequiredArgsConstructor;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.infra.output.kafka.model.BatchIngestionReportMsg;
-import net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportMsg;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class IngestionReportKafkaPublisher {
+public class BatchIngestionReportKafkaPublisher {
 
-    private final KafkaTemplate<String, IngestionReportMsg> kafkaTemplate;
-    private static final String UPDATED_REPORT_TOPIC = "liquidcars.ingestion.event.report.updated-action.0";
+    private final KafkaTemplate<String, BatchIngestionReportMsg> kafkaTemplate;
+    private static final String CREATE_REPORT_TOPIC = "liquidcars.ingestion.event.batchreport.executed-action.0";
 
-    public void sendIngestionReport(IngestionReportMsg ingestionReport) {
+    public void sendBatchIngestionReport(BatchIngestionReportMsg ingestionReport) {
         try {
-            kafkaTemplate.send(UPDATED_REPORT_TOPIC, ingestionReport.getId(), ingestionReport).get();
+            kafkaTemplate.send(CREATE_REPORT_TOPIC, ingestionReport.getJobId(), ingestionReport).get();
         } catch (Exception e) {
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.MESSAGING_BROKER_ERROR)
-                    .message("Error sending ingestion report with id: "+ ingestionReport.getId())
+                    .message("Error sending batch report for job with id: "+ ingestionReport.getJobId())
                     .cause(e)
                     .build();
         }

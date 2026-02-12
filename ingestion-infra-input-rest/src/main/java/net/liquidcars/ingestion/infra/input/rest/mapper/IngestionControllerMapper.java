@@ -19,10 +19,10 @@ public interface IngestionControllerMapper {
 
     @Named("toOfferDtoWithParticipant")
     @Mapping(target = "lastUpdated", expression = "java(java.time.Instant.now().getEpochSecond())")
-    @Mapping(target = "participantId", expression = "java(java.util.UUID.fromString(participantId))")
-    OfferDto toOfferDto(OfferRequest offerRequest, String participantId);
+    @Mapping(target = "participantId", source = "participantId")
+    OfferDto toOfferDto(OfferRequest offerRequest, UUID participantId);
 
-    default List<OfferDto> toOfferDtoList(List<OfferRequest> offerRequestList, String participantId) {
+    default List<OfferDto> toOfferDtoList(List<OfferRequest> offerRequestList, UUID participantId) {
         if (offerRequestList == null) {
             return null;
         }

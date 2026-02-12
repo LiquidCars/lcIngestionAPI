@@ -85,6 +85,8 @@ public class OfferDto implements Serializable {
     private UUID jobIdentifier;
     @Schema(description = "Batch job status")
     private IngestionBatchStatus batchStatus;
+    @Schema(description = "Ingestion report job identifier")
+    private UUID ingestionReportId;
 
     @JsonIgnore
     public UIOffer getUICarOffer(){
