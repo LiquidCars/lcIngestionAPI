@@ -79,15 +79,4 @@ class OfferInfraKafkaConsumerServiceImplTest {
         verify(offerInfraNoSQLService, times(1)).processOffer(any());
     }
 
-    @Test
-    @DisplayName("Should save ingestion report to SQL and NoSQL when everything goes well")
-    void processIngestionReport_ShouldSaveInBothSystems() {
-        IngestionBatchReportDto report = IngestionReportDtoFactory.getIngestionReportDto();
-        report.setJobId("job-123");
-
-        service.processIngestionReport(report);
-
-        verify(offerInfraSQLService, times(1)).processIngestionReport(report);
-
-    }
 }

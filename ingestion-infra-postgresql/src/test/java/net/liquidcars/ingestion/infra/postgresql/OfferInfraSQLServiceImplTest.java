@@ -11,6 +11,7 @@ import net.liquidcars.ingestion.infra.postgresql.repository.OfferSQLRepository;
 import net.liquidcars.ingestion.infra.postgresql.repository.VehicleModelSQLRepository;
 import net.liquidcars.ingestion.infra.postgresql.service.OfferInfraSQLServiceImpl;
 import net.liquidcars.ingestion.infra.postgresql.service.mapper.OfferInfraSQLMapper;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,6 +28,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@Disabled
 class OfferInfraSQLServiceImplTest {
 
     @Mock

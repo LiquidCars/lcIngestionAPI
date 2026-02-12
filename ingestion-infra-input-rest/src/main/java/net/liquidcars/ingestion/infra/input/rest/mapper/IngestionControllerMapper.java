@@ -11,28 +11,30 @@ import org.mapstruct.*;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface IngestionControllerMapper {
 
-    OfferDto toOfferDto(OfferRequest offerRequest, @Context IContextService context);
+    @Named("toOfferDtoWithParticipant")
+    @Mapping(target = "lastUpdated", expression = "java(java.time.Instant.now().getEpochSecond())")
+    @Mapping(target = "participantId", expression = "java(java.util.UUID.fromString(participantId))")
+    OfferDto toOfferDto(OfferRequest offerRequest, String participantId);
 
-    List<OfferDto> toOfferDtoList(List<OfferRequest> offerRequestList, @Context IContextService context);
+    default List<OfferDto> toOfferDtoList(List<OfferRequest> offerRequestList, String participantId) {
+        if (offerRequestList == null) {
+            return null;
+        }
+        return offerRequestList.stream()
+                .map(offerRequest -> toOfferDto(offerRequest, participantId))
+                .collect(Collectors.toList());
+    }
 
     @ValueMappings({
             @ValueMapping(source = "PROFESSIONALSELLER", target = "usedCar_ProfessionalSeller"),
             @ValueMapping(source = "PRIVATESELLER", target = "usedCar_PrivateSeller")
     })
     CarOfferSellerTypeEnumDto toCarOfferSellerTypeEnumDto(CarOfferSellerTypeEnum carOfferSellerTypeEnum);
-
-    @AfterMapping
-    default void enrichOfferDto(@MappingTarget OfferDto offerDto, @Context IContextService contextService) {
-        LCContext context = contextService.getContext();
-        if (context != null && context.getParticipantId() != null) {
-            offerDto.setParticipantId(UUID.fromString(context.getParticipantId()));
-        }
-        offerDto.setLastUpdated(Instant.now().getEpochSecond());
-    }
 
 }

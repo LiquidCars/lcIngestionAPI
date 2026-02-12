@@ -11,7 +11,5 @@ public interface IOfferInfraNoSQLService {
 
     void purgeObsoleteOffers(int daysOld);
 
-    void syncPendingReport(IngestionBatchReportDto pendingReport);
-
     long getOffersFromJobId(UUID jobId);
 }

@@ -73,7 +73,7 @@ public class OfferDto implements Serializable {
     private String mail;
     @Schema(description = "Pickup location, if described")
     private ParticipantAddressDto pickUpAddress;
-    @Schema(description = "A versionning hash code used to detect potential changes of the offer")
+    @Schema(description = "A versioning hash code used to detect potential changes of the offer")
     private int hash; //Do not add to hashCode implementation
     @Schema(description = "Update date")
     private long lastUpdated; //default, now. Do not add to hashCode implementation

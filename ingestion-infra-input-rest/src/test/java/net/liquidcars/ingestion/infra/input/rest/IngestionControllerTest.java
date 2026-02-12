@@ -53,7 +53,7 @@ public class IngestionControllerTest {
 
     @Test
     void ingestBatch_ShouldReturnOk() throws Exception {
-        when(mapper.toOfferDtoList(any())).thenReturn(List.of());
+        when(mapper.toOfferDtoList(any(), any())).thenReturn(List.of());
 
         mockMvc.perform(post("/batch")
                         .content("[]")

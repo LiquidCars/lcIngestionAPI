@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
@@ -89,18 +90,6 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         }
     }
 
-    @Override
-    public void syncPendingReport(IngestionBatchReportDto pendingReport) {
-        try {
-            if ("FAILED".equals(pendingReport.getStatus().name())) {
-                repository.deleteByJobIdentifier(pendingReport.getJobId());
-            } else {
-                repository.updateBatchStatusByJobIdentifier(pendingReport.getJobId(), "COMPLETED");
-            }
-        } catch (Exception e) {
-            log.error("Error syncing report {}", pendingReport.getJobId(), e);
-        }
-    }
 
     @Override
     public long getOffersFromJobId(UUID jobId){

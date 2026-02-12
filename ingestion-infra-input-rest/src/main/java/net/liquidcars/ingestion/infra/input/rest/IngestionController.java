@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.model.security.AccessRoleEnum;
+import net.liquidcars.ingestion.domain.model.security.LCContext;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
 import net.liquidcars.ingestion.domain.service.context.IContextService;
 import net.liquidcars.ingestion.infra.input.rest.mapper.IngestionControllerMapper;
@@ -19,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -35,7 +37,7 @@ public class IngestionController implements IngestionApi {
     @RolesAllowed({AccessRoleEnum.LCSupport_role, AccessRoleEnum.M2M_role})
     @Override
     public ResponseEntity<Void> ingestBatch(List<OfferRequest> offerRequest) {
-        offerIngestionProcessService.processOffers(ingestionControllerMapper.toOfferDtoList(offerRequest, contextService));
+        offerIngestionProcessService.processOffers(ingestionControllerMapper.toOfferDtoList(offerRequest, getParticipantIdFromContext()));
         return ResponseEntity.ok().build();
     }
 
@@ -59,5 +61,13 @@ public class IngestionController implements IngestionApi {
                     .build();
         }
         return ResponseEntity.accepted().build();
+    }
+
+    private String getParticipantIdFromContext(){
+        LCContext context = contextService.getContext();
+        if (context != null && context.getParticipantId() != null) {
+            return context.getParticipantId();
+        }
+        return null;
     }
 }

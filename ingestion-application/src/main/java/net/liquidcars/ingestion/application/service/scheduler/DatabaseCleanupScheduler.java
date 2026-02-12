@@ -31,7 +31,6 @@ public class DatabaseCleanupScheduler {
 
         try {
             noSQLService.purgeObsoleteOffers(daysToKeep);
-            sqlService.purgeObsoleteOffers(daysToKeep);
             log.info("Purge task finished successfully.");
         } catch (Exception e) {
             log.error("Error during scheduled purge execution", e);
