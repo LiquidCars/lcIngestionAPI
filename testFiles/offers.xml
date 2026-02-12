@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <motorflash>
     <anuncio>
+        <!-- añadir hash? -->
         <motorflashid>77339314</motorflashid>
         <dealerid>211</dealerid>
         <instalacion><![CDATA[Canalcar Automoviles]]></instalacion>
@@ -13,7 +14,7 @@
         <carroceria>Compacto</carroceria>
         <estado>usado</estado>
         <disponible>DISPONIBLE</disponible>
-        <precio>9425</precio>
+        <precio>10500</precio>
         <precio_nuevo>30254</precio_nuevo>
         <precio_profesional></precio_profesional>
         <precio_ofertafinanciacion>8671</precio_ofertafinanciacion>
