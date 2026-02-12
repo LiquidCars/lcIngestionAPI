@@ -33,12 +33,8 @@ public class OfferMsg implements Serializable {
     private UUID privateOwnerRegisteredUserId = null;
     @Schema(description = "The VehicleInstance reference")
     private VehicleInstanceMsg vehicleInstance;
-    @Schema(description = "The car owner reference")
-    private String ownerReference;
-    @Schema(description = "The dealer reference")
-    private String dealerReference;
-    @Schema(description = "The dealer channel reference")
-    private String channelReference;
+    @Schema(description = "The external offer identifiers")
+    private ExternalIdInfoMsg externalIdInfo;
     @Schema(description = "The normal price")
     private MoneyMsg price;
     @Schema(description = "The normal price when financing is contracted to buy the car")
@@ -84,6 +80,14 @@ public class OfferMsg implements Serializable {
 
     @JsonIgnore
     public int getHashCodeCalc(){
+        String ownerReference = null;
+        String dealerReference = null;
+        String channelReference = null;
+        if(externalIdInfo!=null){
+            ownerReference = externalIdInfo.getOwnerReference();
+            dealerReference = externalIdInfo.getDealerReference();
+            channelReference = externalIdInfo.getChannelReference();
+        }
         //Init numbers should be primes, and different for each HashCodeBuilder in different classes
         return Math.abs(new HashCodeBuilder(61,73)
                 .append(vehicleInstance !=null ? vehicleInstance.hashCode() : 0).append(ownerReference)

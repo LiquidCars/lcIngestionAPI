@@ -2,20 +2,19 @@ package net.liquidcars.ingestion.domain.model.exception;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-
-import java.util.UUID;
+import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 
 @Getter
 @EqualsAndHashCode(callSuper = true)
 public class LCIngestionParserException extends LCIngestionException {
 
-    private final UUID failedIdentifier;
+    private final ExternalIdInfoDto failedIdentifier;
 
     public LCIngestionParserException(
             LCTechCauseEnum techCause,
             String message,
             Throwable cause,
-            UUID failedIdentifier
+            ExternalIdInfoDto failedIdentifier
     ) {
         super(techCause, message, cause);
         this.failedIdentifier = failedIdentifier;

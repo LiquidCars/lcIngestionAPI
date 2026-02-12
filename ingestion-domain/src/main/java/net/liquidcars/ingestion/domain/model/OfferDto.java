@@ -33,12 +33,8 @@ public class OfferDto implements Serializable {
     private UUID privateOwnerRegisteredUserId = null;
     @Schema(description = "The VehicleInstance reference")
     private VehicleInstanceDto vehicleInstance;
-    @Schema(description = "The car owner reference")
-    private String ownerReference;
-    @Schema(description = "The dealer reference")
-    private String dealerReference;
-    @Schema(description = "The dealer channel reference")
-    private String channelReference;
+    @Schema(description = "The external offer identifiers")
+    private ExternalIdInfoDto externalIdInfo;
     @Schema(description = "The normal price")
     private MoneyDto price;
     @Schema(description = "The normal price when financing is contracted to buy the car")
@@ -92,8 +88,10 @@ public class OfferDto implements Serializable {
         ret.setOriginalCarOfferId(getId());
         ret.setVehicleInstance(getVehicleInstance().getUICarInstance());
         ret.setOwnerReference(getVehicleInstance().getChassisNumber());
-        ret.setDealerReference(getDealerReference());
-        ret.setChannelReference(getChannelReference());
+        if(getExternalIdInfo()!=null){
+            ret.setDealerReference(getExternalIdInfo().getDealerReference());
+            ret.setChannelReference(getExternalIdInfo().getChannelReference());
+        }
         ret.setPrice(getPrice());
         ret.setFinancedPrice(getFinancedPrice());
         ret.setFinancedText(getFinancedText());
@@ -115,6 +113,14 @@ public class OfferDto implements Serializable {
 
     @JsonIgnore
     public int getHashCodeCalc(){
+        String ownerReference = null;
+        String dealerReference = null;
+        String channelReference = null;
+        if(externalIdInfo!=null){
+            ownerReference = externalIdInfo.getOwnerReference();
+            dealerReference = externalIdInfo.getDealerReference();
+            channelReference = externalIdInfo.getChannelReference();
+        }
         //Init numbers should be primes, and different for each HashCodeBuilder in different classes
         return Math.abs(new HashCodeBuilder(61,73)
                 .append(vehicleInstance !=null ? vehicleInstance.hashCode() : 0).append(ownerReference)

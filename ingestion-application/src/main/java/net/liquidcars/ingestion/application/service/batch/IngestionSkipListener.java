@@ -38,7 +38,7 @@ public class IngestionSkipListener implements SkipListener<Object, Object> {
         if (item instanceof OfferDto offer) {
             log.error(">> [SKIP_WRITE] Failed to send offer: {} | Error: {}",
                     offer.getId(), t.getMessage());
-            failedIdsCollector.addId(offer.getId());
+            failedIdsCollector.addId(offer.getExternalIdInfo());
         } else {
             log.error(">> [SKIP_WRITE] Failed to send unknown item type: {}. Error: {}",
                     item, t.getMessage());

@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.JSON.OfferJSONModel;
+import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
@@ -38,42 +39,52 @@ public class OfferJSONProcessor implements IOfferParserService {
     public void parseAndProcess(InputStream inputStream, Consumer<OfferDto> action) {
         try (JsonParser parser = objectMapper.getFactory().createParser(inputStream)) {
             if (parser.nextToken() != JsonToken.START_ARRAY) {
-                throw new RuntimeException("Expected array");
+                throw new RuntimeException("Expected JSON array as input root");
             }
 
             while (parser.nextToken() == JsonToken.START_OBJECT) {
-                UUID currentId = null;
+                ExternalIdInfoDto currentRef = new ExternalIdInfoDto();
+
                 try {
                     com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(parser);
 
                     if (node != null) {
-                        if (node.has("externalId")) {
-                            currentId = UUID.fromString(node.get("externalId").asText());
+                        if (node.has("externalIdInfoDto")) {
+                            com.fasterxml.jackson.databind.JsonNode refNode = node.get("externalIdInfoDto");
+                            currentRef.setOwnerReference(refNode.path("ownerReference").asText(null));
+                            currentRef.setDealerReference(refNode.path("dealerReference").asText(null));
+                            currentRef.setChannelReference(refNode.path("channelReference").asText(null));
                         }
+
                         OfferJSONModel model = objectMapper.treeToValue(node, OfferJSONModel.class);
+
                         if (model != null) {
                             if (model.isValid()) {
                                 action.accept(offerParserMapper.toOfferDto(model));
                             } else {
-                                throw new IllegalArgumentException("Validation failed for model");
+                                throw new IllegalArgumentException("Validation failed for the current vehicle model");
                             }
                         }
                     }
                 } catch (Exception e) {
-                    log.warn("Record {} failed parsing: {}", currentId, e.getMessage());
+                    String errorRef = String.format("Owner: %s, Dealer: %s, Channel: %s",
+                            currentRef.getOwnerReference(), currentRef.getDealerReference(), currentRef.getChannelReference());
+
+                    log.warn("Record [{}] failed parsing: {}", errorRef, e.getMessage());
+
                     offerReader.addErrorToQueue(new LCIngestionParserException(
                             LCTechCauseEnum.CONVERSION_ERROR,
                             "JSON item error: " + e.getMessage(),
                             e,
-                            currentId
+                            currentRef
                     ));
                 }
             }
         } catch (Exception e) {
-            log.error("Fatal error reading JSON stream", e);
+            log.error("Critical error reading JSON stream", e);
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.CONVERSION_ERROR)
-                    .message("Error during JSON stream parsing: " + e.getMessage())
+                    .message("Fatal error during JSON stream parsing: " + e.getMessage())
                     .cause(e)
                     .build();
         }

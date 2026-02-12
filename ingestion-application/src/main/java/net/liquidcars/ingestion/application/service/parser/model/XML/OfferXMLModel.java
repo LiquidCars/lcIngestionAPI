@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -25,12 +26,8 @@ public class OfferXMLModel implements Serializable {
     private UUID privateOwnerRegisteredUserId = null;
     @Schema(description = "The VehicleInstance reference")
     private VehicleInstanceXMLModel vehicleInstance;
-    @Schema(description = "The car owner reference")
-    private String ownerReference;
-    @Schema(description = "The dealer reference")
-    private String dealerReference;
-    @Schema(description = "The dealer channel reference")
-    private String channelReference;
+    @Schema(description = "The external offer identifiers")
+    private ExternalIdInfoXMLModel externalIdInfo;
     @Schema(description = "The normal price")
     private MoneyXMLModel price;
     @Schema(description = "The normal price when financing is contracted to buy the car")

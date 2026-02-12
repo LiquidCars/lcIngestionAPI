@@ -17,7 +17,7 @@ public class BatchIngestionReportMsg {
     private long readCount;
     private long writeCount;
     private long skipCount;
-    private List<String> failedExternalIds;
+    private List<ExternalIdInfoMsg> failedExternalIds;
     private String startTime;
     private String endTime;
 }

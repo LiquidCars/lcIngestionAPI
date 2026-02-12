@@ -144,14 +144,10 @@ components:
         privateOwnerRegisteredUserId:
           type: string
           format: uuid
+        externalIdInfo:
+          $ref: '#/components/schemas/ExternalIdInfo'
         vehicleInstance:
           $ref: '#/components/schemas/VehicleInstance'
-        ownerReference:
-          type: string
-        dealerReference:
-          type: string
-        channelReference:
-          type: string
         price:
           $ref: '#/components/schemas/Money'
         financedPrice:
@@ -194,7 +190,15 @@ components:
         jsonCarOfferId:
           type: string
           format: uuid
-
+    ExternalIdInfo:
+      type: object
+      properties:
+        ownerReference:
+          type: string
+        dealerReference:
+          type: string
+        channelReference:
+          type: string
     VehicleInstance:
       type: object
       properties:

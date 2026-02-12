@@ -22,13 +22,7 @@ public interface IOfferIngestionProcessService {
 
     void processIngestionBatchReport(IngestionBatchReportDto ingestionBatchReportDto);
 
-    @SchedulerLock(
-            name = "IngestionSync_Lock",
-            lockAtMostFor = "4m",  // If the pod dies, the lock is released in 4 minutes
-            lockAtLeastFor = "1m"  //I hope that if the process is very fast, another replica will catch on right away.
-    )
     void syncPendingReports();
 
-    @Transactional
     void processIngestionReport(IngestionReportDto ingestionReportDto);
 }

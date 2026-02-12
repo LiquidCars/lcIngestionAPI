@@ -2,6 +2,7 @@ package net.liquidcars.ingestion.domain.model.batch;
 
 import lombok.Builder;
 import lombok.Data;
+import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -15,7 +16,7 @@ public class IngestionBatchReportDto {
     private long readCount;
     private long writeCount;
     private long skipCount;
-    private List<UUID> failedExternalIds;
+    private List<ExternalIdInfoDto> failedExternalIds;
     private OffsetDateTime startTime;
     private OffsetDateTime endTime;
     private boolean processed;

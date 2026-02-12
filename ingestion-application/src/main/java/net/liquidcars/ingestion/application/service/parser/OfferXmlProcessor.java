@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.XML.*;
+import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
@@ -55,7 +56,8 @@ public class OfferXmlProcessor implements IOfferParserService {
                             action.accept(offerParserMapper.toOfferDto(xmlModel));
                         }
                     } catch (Exception e) {
-                        UUID failedId = (xmlModel.getId() != null) ? xmlModel.getId() : null;
+                        ExternalIdInfoXMLModel failedId = (xmlModel.getExternalIdInfo() != null) ? xmlModel.getExternalIdInfo() : null;
+                        ExternalIdInfoDto failedIdDto = offerParserMapper.toExternalIdInfoDto(failedId);
 
                         log.warn("XML Record {} failed parsing: {}", failedId, e.getMessage());
 
@@ -63,7 +65,7 @@ public class OfferXmlProcessor implements IOfferParserService {
                                 LCTechCauseEnum.CONVERSION_ERROR,
                                 "XML item error: " + e.getMessage(),
                                 e,
-                                failedId
+                                failedIdDto
                         ));
                     }
                 }
@@ -107,14 +109,27 @@ public class OfferXmlProcessor implements IOfferParserService {
         // batchstatus
         try{
             switch (tagName) {
-                case "motorflashid" -> model.setDealerReference(reader.getElementText());
-                case "dealerid" -> model.setChannelReference(reader.getElementText());
+                case "motorflashid" -> {
+                    if(model.getExternalIdInfo()==null){
+                        model.setExternalIdInfo(new ExternalIdInfoXMLModel());
+                    }
+                    model.getExternalIdInfo().setDealerReference(reader.getElementText());
+                }
+                case "dealerid" -> {
+                    if(model.getExternalIdInfo()==null){
+                        model.setExternalIdInfo(new ExternalIdInfoXMLModel());
+                    }
+                    model.getExternalIdInfo().setChannelReference(reader.getElementText());
+                }
                 case "instalacion" -> model.setInstallation(reader.getElementText());
                 case "mail" -> model.setMail(reader.getElementText());
                 case "matricula" -> {
                     String plate = reader.getElementText(); // Leemos UNA SOLA VEZ
                     model.getVehicleInstance().setPlate(plate);
-                    model.setOwnerReference(plate);
+                    if(model.getExternalIdInfo()==null){
+                        model.setExternalIdInfo(new ExternalIdInfoXMLModel());
+                    }
+                    model.getExternalIdInfo().setOwnerReference(plate);
                 }
                 case "chasis" -> model.getVehicleInstance().setChassisNumber(reader.getElementText());
                 case "marca" -> model.getVehicleInstance().getVehicleModel().setBrand(reader.getElementText());

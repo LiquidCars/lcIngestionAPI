@@ -177,11 +177,6 @@ ingestion:
   kafka:
     topics:
       offers: vehicle-offers
-  scheduler:
-    enabled: false
-    remoteUrl: ${OFFERS_TEST_URL:http://localhost:8083/offers.json}
-    cron: "0 */45 * * * *" # Every 45 minutes
-    format: json
   purgeScheduler:
     enabled: true
     cron: "0 0 3 * * SUN" # Every Sunday at 3 AM

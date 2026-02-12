@@ -1,9 +1,11 @@
 package net.liquidcars.ingestion.infra.output.kafka.service.mapper;
 
+import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import net.liquidcars.ingestion.infra.output.kafka.model.BatchIngestionReportMsg;
+import net.liquidcars.ingestion.infra.output.kafka.model.ExternalIdInfoMsg;
 import net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportMsg;
 import net.liquidcars.ingestion.infra.output.kafka.model.OfferMsg;
 import org.mapstruct.Mapper;
