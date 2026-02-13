@@ -33,6 +33,8 @@ public class OfferItemWriter implements ItemWriter<OfferDto>, StepExecutionListe
     public void write(Chunk<? extends OfferDto> chunk) {
         for (OfferDto offer : chunk) {
             offer.setJobIdentifier(this.getJobIdentifier());
+            offer.setIngestionReportId(this.getIngestionReportId());
+            offer.setParticipantId(this.getRequesterParticipantId());
             kafkaProducer.sendOffer(offer);
         }
     }
@@ -52,9 +54,34 @@ public class OfferItemWriter implements ItemWriter<OfferDto>, StepExecutionListe
         return UUID.fromString(ingestionIdParam);
     }
 
-    private BatchStatus getJobStatus() {
-        return stepExecution != null ?
-                stepExecution.getJobExecution().getStatus() :
-                null;
+    private UUID getIngestionReportId() {
+        if (stepExecution == null) {
+            log.warn("StepExecution not yet initialized!");
+            return null;
+        }
+        String ingestionReportIdParam = stepExecution.getJobExecution()
+                .getJobParameters()
+                .getString("ingestionReportId");
+        if (ingestionReportIdParam == null) {
+            log.warn("Skipping ingestion report: ingestionReportId is null");
+            return null;
+        }
+        return UUID.fromString(ingestionReportIdParam);
     }
+
+    private UUID getRequesterParticipantId() {
+        if (stepExecution == null) {
+            log.warn("StepExecution not yet initialized!");
+            return null;
+        }
+        String requesterParticipantIdParam = stepExecution.getJobExecution()
+                .getJobParameters()
+                .getString("requesterParticipantId");
+        if (requesterParticipantIdParam == null) {
+            log.warn("Skipping ingestion report: requesterParticipantId is null");
+            return null;
+        }
+        return UUID.fromString(requesterParticipantIdParam);
+    }
+
 }

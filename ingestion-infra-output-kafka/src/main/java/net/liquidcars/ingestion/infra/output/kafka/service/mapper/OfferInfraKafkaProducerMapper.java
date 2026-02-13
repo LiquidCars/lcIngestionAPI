@@ -26,6 +26,8 @@ public interface OfferInfraKafkaProducerMapper {
 
     @Mapping(target = "startTime", source = "startTime")
     @Mapping(target = "endTime", source = "endTime")
+    @Mapping(target = "createdAt", source = "createdAt")
+    @Mapping(target = "updatedAt", source = "updatedAt")
     BatchIngestionReportMsg toBatchIngestionReportMsg(IngestionBatchReportDto ingestionBatchReportDto);
 
     @Mapping(target = "createdAt", source = "createdAt")

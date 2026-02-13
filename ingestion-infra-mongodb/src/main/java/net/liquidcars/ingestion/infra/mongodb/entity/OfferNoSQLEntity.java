@@ -27,7 +27,7 @@ import java.util.UUID;
 public class OfferNoSQLEntity {
 
     @Id
-    private String id;
+    private UUID id;
 
     @Field("seller_type")
     private CarOfferSellerTypeEnumNoSQLEntity sellerType;
@@ -121,7 +121,7 @@ public class OfferNoSQLEntity {
     private UUID participantId;
 
     @Field("job_identifier")
-    private String jobIdentifier;
+    private UUID jobIdentifier;
 
     @Field("ingestion_report_id")
     private UUID ingestionReportId;

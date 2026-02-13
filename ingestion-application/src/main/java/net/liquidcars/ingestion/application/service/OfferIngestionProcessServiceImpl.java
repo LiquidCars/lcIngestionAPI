@@ -241,18 +241,21 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
             JobExecution execution = null;
             try {
                 UUID ingestionId = UUID.randomUUID();
-                JobDeleteExternalIdsCollector deleteExternalIdsCollector = new JobDeleteExternalIdsCollector();
-                offerReader.start(parser, inputStream, deleteExternalIdsCollector);
-                JobParameters params = new JobParametersBuilder()
-                        .addString("ingestionId", ingestionId.toString())
-                        .addString("format", format.name())
-                        .addLong("time", System.currentTimeMillis())
-                        .toJobParameters();
-
                 IngestionReportDto ingestionReportDto = createIngestionReportDto(inventoryId, requesterParticipantId,
                         dumpType, IngestionProcessType.FILE, externalPublicationId, ingestionId, publicationDate);
                 iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
                 offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
+
+                JobDeleteExternalIdsCollector deleteExternalIdsCollector = new JobDeleteExternalIdsCollector();
+
+                offerReader.start(parser, inputStream, deleteExternalIdsCollector);
+                JobParameters params = new JobParametersBuilder()
+                        .addString("ingestionId", ingestionId.toString())
+                        .addString("ingestionReportId", ingestionReportDto.getId().toString())
+                        .addString("requesterParticipantId", requesterParticipantId.toString())
+                        .addString("format", format.name())
+                        .addLong("time", System.currentTimeMillis())
+                        .toJobParameters();
 
                 execution = jobLauncher.run(offerIngestionJob, params);
 
@@ -349,7 +352,6 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     private static void updateIngestionReportDtoWithBatchReport(
             IngestionReportDto ingestionReportDto,
             IngestionBatchReportDto ingestionBatchReportDto) {
-        ingestionReportDto.setStatus(ingestionBatchReportDto.getStatus());
         ingestionReportDto.setReadCount((int) ingestionBatchReportDto.getReadCount());
         ingestionReportDto.setWriteCount((int) ingestionBatchReportDto.getWriteCount());
         ingestionReportDto.setSkipCount((int) ingestionBatchReportDto.getSkipCount());
