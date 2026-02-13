@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
 
-# --- TUS DATOS ---
+# --- DATOS Y GENERADORES ---
 marcas_modelos = [
     ("BMW", "Serie 1", "116d 85 kW", "Compacto"),
     ("BMW", "Serie 3", "320i 135 kW", "Berlina"),
@@ -252,6 +252,142 @@ def generar_resources(cantidad=3):
 
     return resources_list
 
+def generar_email():
+    dominios = ["gmail.com", "hotmail.com", "yahoo.es", "outlook.com", "concesionario.es", "bmw.es", "audi.es"]
+    nombres = ["ventas", "info", "contacto", "comercial", "atencion", "soporte", "admin"]
+
+    nombre = random.choice(nombres)
+    numero = random.randint(1, 999)
+    dominio = random.choice(dominios)
+
+    return f"{nombre}{numero}@{dominio}"
+
+def generar_address():
+    direcciones = [
+        {
+            "name": "Concesionario Madrid Centro",
+            "gpsLocation": {"name": "Madrid", "longitude": -3.6883, "latitude": 40.4168},
+            "streetNumber": "45",
+            "streetAddress": "Calle de Serrano",
+            "postalCode": "28001",
+            "city": "Madrid",
+            "region": "Madrid",
+            "country": "España",
+            "countryCode": "ES",
+            "type": "business"
+        },
+        {
+            "name": "Automoción Barcelona",
+            "gpsLocation": {"name": "Barcelona", "longitude": 2.1734, "latitude": 41.3851},
+            "streetNumber": "123",
+            "streetAddress": "Passeig de Gràcia",
+            "postalCode": "08008",
+            "city": "Barcelona",
+            "region": "Cataluña",
+            "country": "España",
+            "countryCode": "ES",
+            "type": "business"
+        },
+        {
+            "name": "Motor Valencia",
+            "gpsLocation": {"name": "Valencia", "longitude": -0.3763, "latitude": 39.4699},
+            "streetNumber": "78",
+            "streetAddress": "Avenida del Puerto",
+            "postalCode": "46023",
+            "city": "Valencia",
+            "region": "Valencia",
+            "country": "España",
+            "countryCode": "ES",
+            "type": "business"
+        },
+        {
+            "name": "AutoSevilla Premium",
+            "gpsLocation": {"name": "Sevilla", "longitude": -5.9845, "latitude": 37.3891},
+            "streetNumber": "56",
+            "streetAddress": "Avenida de la Constitución",
+            "postalCode": "41001",
+            "city": "Sevilla",
+            "region": "Andalucía",
+            "country": "España",
+            "countryCode": "ES",
+            "type": "business"
+        },
+        {
+            "name": "Bilbao Motor Group",
+            "gpsLocation": {"name": "Bilbao", "longitude": -2.9253, "latitude": 43.2627},
+            "streetNumber": "34",
+            "streetAddress": "Gran Vía de Don Diego López de Haro",
+            "postalCode": "48009",
+            "city": "Bilbao",
+            "region": "País Vasco",
+            "country": "España",
+            "countryCode": "ES",
+            "type": "business"
+        },
+        {
+            "name": "Málaga Automoción",
+            "gpsLocation": {"name": "Málaga", "longitude": -4.4214, "latitude": 36.7213},
+            "streetNumber": "92",
+            "streetAddress": "Calle Larios",
+            "postalCode": "29015",
+            "city": "Málaga",
+            "region": "Andalucía",
+            "country": "España",
+            "countryCode": "ES",
+            "type": "business"
+        },
+        {
+            "name": "Zaragoza Cars",
+            "gpsLocation": {"name": "Zaragoza", "longitude": -0.8773, "latitude": 41.6488},
+            "streetNumber": "15",
+            "streetAddress": "Paseo de la Independencia",
+            "postalCode": "50001",
+            "city": "Zaragoza",
+            "region": "Aragón",
+            "country": "España",
+            "countryCode": "ES",
+            "type": "business"
+        },
+        {
+            "name": "Murcia Premium Motors",
+            "gpsLocation": {"name": "Murcia", "longitude": -1.1307, "latitude": 37.9922},
+            "streetNumber": "67",
+            "streetAddress": "Gran Vía Escultor Salzillo",
+            "postalCode": "30004",
+            "city": "Murcia",
+            "region": "Murcia",
+            "country": "España",
+            "countryCode": "ES",
+            "type": "business"
+        },
+        {
+            "name": "Alicante Auto",
+            "gpsLocation": {"name": "Alicante", "longitude": -0.4907, "latitude": 38.3452},
+            "streetNumber": "88",
+            "streetAddress": "Avenida de Maisonnave",
+            "postalCode": "03003",
+            "city": "Alicante",
+            "region": "Valencia",
+            "country": "España",
+            "countryCode": "ES",
+            "type": "business"
+        },
+        {
+            "name": "Vigo Motor Sport",
+            "gpsLocation": {"name": "Vigo", "longitude": -8.7207, "latitude": 42.2406},
+            "streetNumber": "21",
+            "streetAddress": "Calle Príncipe",
+            "postalCode": "36202",
+            "city": "Vigo",
+            "region": "Galicia",
+            "country": "España",
+            "countryCode": "ES",
+            "type": "business"
+        }
+    ]
+
+    return random.choice(direcciones)
+
 def generar_offer(indice):
     marca, modelo, version, carroceria = random.choice(marcas_modelos)
     precio = random.randint(15000, 45000)
@@ -259,217 +395,137 @@ def generar_offer(indice):
     road = round(random.uniform(4.0, 5.4), 1)
     avg = round((urban + road) / 2, 1)
 
-    # Retorna la estructura exacta solicitada
     return {
-            "id": generar_uuid(),
-            "sellerType": "usedCar_ProfessionalSeller",
-            "privateOwnerRegisteredUserId": None,
-            "hash": random.randint(100000000, 999999999),
-            "vehicleInstance": {
-                "id": random.randint(10000, 99999),
-                "vehicleModel": {
-                    "id": random.randint(100, 999),
-                    "brand": marca,
-                    "model": modelo,
-                    "version": version,
-                    "bodyType": generar_body_type(),
-                    "numDoors": random.choice([2, 3, 4, 5]),
-                    "cv": random.randint(90, 400),
-                    "numCylinders": random.choice([3, 4, 6]),
-                    "displacement": random.randint(999, 2999),
-                    "urbanConsumption": urban,
-                    "roadConsumption": road,
-                    "avgConsumption": avg,
-                    "numGears": 7,
-                    "kgWeight": random.randint(800, 2000),
-                    "changeType": generar_change_type(),
-                    "fuelType": generar_fuel_type(),
-                    "numSeats": 5,
-                    "drivetrainType": generar_drivetraintype_type(),
-                    "euroTaxCode": f"ET{random.randint(100000, 999999)}",
-                    "environmentalBadge": generar_environmentalbadge_type(),
-                    "cmWidth": 180,
-                    "cmLength": 450,
-                    "cmHeight": 145,
-                    "litresTrunk": 450,
-                    "litresTank": 55,
-                    "maxSpeed": 210,
-                    "maxEmissions": 120,
-                    "acceleration": 7.5
-                },
-                "plate": generar_matricula(),
-                "color": generar_color_type(),
-                "mileage": random.randint(10000, 150000),
-                "registrationYear": random.randint(2018, 2024),
-                "registrationMonth": random.randint(1, 12),
-                "isMetallicPaint": True,
-                "chassisNumber": generar_vin(),
-                "equipments": generar_equipments(),
-                "state": generar_state_type()
+        "sellerType": "usedCar_ProfessionalSeller",
+        "privateOwnerRegisteredUserId": None,
+        "hash": random.randint(100000000, 999999999),
+        "vehicleInstance": {
+            "id": random.randint(10000, 99999),
+            "vehicleModel": {
+                "id": random.randint(100, 999),
+                "brand": marca,
+                "model": modelo,
+                "version": version,
+                "bodyType": generar_body_type(),
+                "numDoors": random.choice([2, 3, 4, 5]),
+                "cv": random.randint(90, 400),
+                "numCylinders": random.choice([3, 4, 6]),
+                "displacement": random.randint(999, 2999),
+                "urbanConsumption": urban,
+                "roadConsumption": road,
+                "avgConsumption": avg,
+                "numGears": 7,
+                "kgWeight": random.randint(800, 2000),
+                "changeType": generar_change_type(),
+                "fuelType": generar_fuel_type(),
+                "numSeats": 5,
+                "drivetrainType": generar_drivetraintype_type(),
+                "euroTaxCode": f"ET{random.randint(100000, 999999)}",
+                "environmentalBadge": generar_environmentalbadge_type(),
+                "cmWidth": 180,
+                "cmLength": 450,
+                "cmHeight": 145,
+                "litresTrunk": 450,
+                "litresTank": 55,
+                "maxSpeed": 210,
+                "maxEmissions": 120,
+                "acceleration": 7.5
             },
+            "plate": generar_matricula(),
+            "color": generar_color_type(),
+            "mileage": random.randint(10000, 150000),
+            "registrationYear": random.randint(2018, 2024),
+            "registrationMonth": random.randint(1, 12),
+            "isMetallicPaint": True,
+            "chassisNumber": generar_vin(),
+            "equipments": generar_equipments(),
+            "state": generar_state_type()
+        },
+        "externalIdInfo": {
             "ownerReference": f"DEALER_{indice:03d}",
             "dealerReference": f"REF-{marca.upper()}-{random.randint(100,999)}",
-            "channelReference": "API_IMPORT",
-            "price": {"amount": float(precio), "currency": "EUR"},
-            "financedPrice": {"amount": float(precio * 0.95), "currency": "EUR"},
-            "financedInstallmentAprox": {"amount": 350.0, "currency": "EUR"},
-            "financedText": "Cuota calculada según condiciones generales.",
-            "priceNew": {"amount": float(precio * 1.4), "currency": "EUR"},
-            "professionalPrice": {"amount": float(precio * 0.9), "currency": "EUR"},
-            "taxDeductible": True,
-            "obs": "Vehículo disponible para entrega inmediata.",
-            "internalNotes": "Revisión pre-entrega realizada.",
-            "resources": generar_resources(),
-            "guarantee": True,
-            "guaranteeMonths": 12,
-            "guaranteeText": "Garantía total de 12 meses.",
-            "certified": True,
-            "installation": "Concesionario Central",
-            "mail": "contacto@concesionario.es",
-            "pickUpAddress": {
-                "type": "B_PICKUP",
-                "address": {
-                    "name": "Punto de Entrega Principal",
-                    "gpsLocation": {"name": "Madrid", "longitude": -3.68, "latitude": 40.41},
-                    "streetNumber": "10",
-                    "streetAddress": "Calle Inventada",
-                    "postalCode": "28001",
-                    "city": "Madrid",
-                    "region": "Madrid",
-                    "country": "España",
-                    "countryCode": "ES",
-                    "type": "business"
-                }
-            },
-            "jsonCarOfferId": generar_uuid()
-        }
-
-def generar_xml_motorflash(indice):
-    # --- OBTENEMOS DATOS ALEATORIOS USANDO TUS FUNCIONES ---
-    marca, modelo, version, carroceria_txt = random.choice(marcas_modelos)
-
-    # Generamos valores técnicos usando tus lógicas de random
-    urban = round(random.uniform(5.5, 8.0), 1)
-    road = round(random.uniform(4.0, 5.4), 1)
-    avg = round((urban + road) / 2, 1)
-
-    # Obtenemos objetos complejos de tus funciones
-    fuel = generar_fuel_type()
-    change = generar_change_type()
-    color = generar_color_type()
-    badge = generar_environmentalbadge_type()
-    state = generar_state_type()
-    resources = generar_resources(random.randint(5, 15)) # Usamos tu sample de 1-54
-    equipments = generar_equipments() # Tu lista de 2-5 equipos complejos
-
-    # --- CONSTRUCCIÓN DEL XML ---
-    motorflash = ET.Element("motorflash")
-    anuncio = ET.SubElement(motorflash, "anuncio")
-
-    # Mapeo de campos simples
-    ET.SubElement(anuncio, "motorflashid").text = generar_uuid()
-    ET.SubElement(anuncio, "dealerid").text = "211"
-    ET.SubElement(anuncio, "instalacion").text = "Canalcar Automoviles"
-    ET.SubElement(anuncio, "mail").text = "ventas@canalcar.es"
-    ET.SubElement(anuncio, "matricula").text = generar_matricula()
-    ET.SubElement(anuncio, "chasis").text = generar_vin()
-
-    ET.SubElement(anuncio, "marca").text = marca
-    ET.SubElement(anuncio, "modelo").text = modelo
-    ET.SubElement(anuncio, "version").text = version
-    ET.SubElement(anuncio, "carroceria").text = carroceria_txt
-    ET.SubElement(anuncio, "estado").text = state["value"].lower() # "Used" -> "used"
-    ET.SubElement(anuncio, "disponible").text = "DISPONIBLE"
-
-    precio = random.randint(15000, 45000)
-    ET.SubElement(anuncio, "precio").text = str(precio)
-    ET.SubElement(anuncio, "precio_nuevo").text = str(int(precio * 1.4))
-    ET.SubElement(anuncio, "precio_profesional").text = str(int(precio * 0.9))
-    ET.SubElement(anuncio, "precio_ofertafinanciacion").text = str(int(precio * 0.95))
-
-    # Datos técnicos con tus randoms
-    ET.SubElement(anuncio, "puertas").text = str(random.choice([3, 5]))
-    ET.SubElement(anuncio, "cambio").text = change["value"]
-    ET.SubElement(anuncio, "ancho").text = "1800"
-    ET.SubElement(anuncio, "largo").text = "4500"
-    ET.SubElement(anuncio, "alto").text = "1450"
-    ET.SubElement(anuncio, "maletero").text = "450"
-    ET.SubElement(anuncio, "deposito").text = "55"
-    ET.SubElement(anuncio, "aceleracion").text = "7.5"
-    ET.SubElement(anuncio, "velocidadmax").text = "210"
-    ET.SubElement(anuncio, "peso").text = str(random.randint(1200, 1800))
-    ET.SubElement(anuncio, "marchas").text = "7"
-    ET.SubElement(anuncio, "kilometros").text = str(random.randint(10000, 150000))
-    ET.SubElement(anuncio, "combustible").text = fuel["value"]
-    ET.SubElement(anuncio, "potencia").text = str(random.randint(90, 300))
-    ET.SubElement(anuncio, "garantia").text = "12"
-    ET.SubElement(anuncio, "iva_deducible").text = "true"
-    ET.SubElement(anuncio, "plazas").text = "5"
-    ET.SubElement(anuncio, "traccion").text = generar_drivetraintype_type()["value"]
-    ET.SubElement(anuncio, "fechamatriculacion").text = f"01 / 01 / {random.randint(2018, 2024)}"
-
-    # --- FOTOS (Usando tu función generar_resources) ---
-    fotos_node = ET.SubElement(anuncio, "fotos")
-    for res in resources:
-        ET.SubElement(fotos_node, "foto").text = res["resource"]
-
-    ET.SubElement(anuncio, "color").text = color["value"]
-    ET.SubElement(anuncio, "distintivo").text = badge["key"]
-
-    # --- CONSUMO (Tus lógicas de uniform) ---
-    cons = ET.SubElement(anuncio, "consumo")
-    ET.SubElement(cons, "carretera").text = str(road)
-    ET.SubElement(cons, "urbano").text = str(urban)
-    ET.SubElement(cons, "mixto").text = str(avg)
-
-    # --- EXTRAS (Usando tu función generar_equipments) ---
-    extras_node = ET.SubElement(anuncio, "extras")
-    for eq in equipments:
-        # Motorflash usa el formato <extra cod="X" precio="Y">Nombre</extra>
-        ext = ET.SubElement(extras_node, "extra",
-                            cod=str(eq["id"]),
-                            precio=str(eq["price"]["amount"]))
-        ext.text = eq["equipment"]["value"] # Accedemos al value del objeto equipment
-
-    # --- OBSERVACIONES Y NOTA ---
-    ET.SubElement(anuncio, "observaciones").text = "Generado aleatoriamente para pruebas API."
-    ET.SubElement(anuncio, "notainterna").text = generar_uuid()
-
-    # Serialización
-    xml_string = ET.tostring(motorflash, encoding='utf-8')
-    reparsed = minidom.parseString(xml_string)
-    return reparsed.toprettyxml(indent="  ")
+            "channelReference": "API_IMPORT"
+        },
+        "price": {"amount": float(precio), "currency": "EUR"},
+        "financedPrice": {"amount": float(precio * 0.95), "currency": "EUR"},
+        "financedInstallmentAprox": {"amount": 350.0, "currency": "EUR"},
+        "financedText": "Cuota calculada según condiciones generales.",
+        "priceNew": {"amount": float(precio * 1.4), "currency": "EUR"},
+        "professionalPrice": {"amount": float(precio * 0.9), "currency": "EUR"},
+        "taxDeductible": True,
+        "obs": "Vehículo disponible para entrega inmediata.",
+        "internalNotes": "Revisión pre-entrega realizada.",
+        "resources": generar_resources(),
+        "guarantee": True,
+        "guaranteeMonths": 12,
+        "guaranteeText": "Garantía total de 12 meses.",
+        "certified": True,
+        "installation": "Concesionario Central",
+        "mail": generar_email(),
+        "pickUpAddress": {
+            "type": "B_PICKUP",
+            "address": generar_address()
+        },
+        "jsonCarOfferId": generar_uuid()
+    }
 
 
 # --- ENTRADA DE DATOS ---
 print("--- CONFIGURACIÓN DE ENVÍO API ---")
+
+inventory_id = input("Ingresa el inventoryId [856b7d9a-cabd-4e86-aaca-b7a9641a9d0b]: ").strip()
+if not inventory_id:
+    inventory_id = "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b"
+    print(f"Usando inventoryId por defecto: {inventory_id}")
+
+dump_type = input("Ingresa el dumpType (UPDATE/REPLACEMENT) [UPDATE]: ").strip().upper()
+if not dump_type:
+    dump_type = "UPDATE"
+
+external_pub_id = input("Ingresa el externalPublicationId [localPub1#]: ").strip()
+if not external_pub_id:
+    external_pub_id = "localPub1#"
+
+offers_to_delete_input = input("Ingresa los offerIds a borrar (separados por comas) o Enter para ninguno: ").strip()
+if offers_to_delete_input:
+    offers_to_delete = [id.strip() for id in offers_to_delete_input.split(',')]
+else:
+    offers_to_delete = []
+
 try:
     total_vehiculos = int(input("¿Cuántas ofertas quieres enviar?: "))
-    print("\nSelecciona el formato de envío:")
-    print("1. batch")
-    print("2. url")
-    print("3. stream")
-    tipo_llamada = input("Elige una opción: ")
 except ValueError:
     print("❌ Error: Número no válido.")
     exit()
 
 # --- TOKEN ---
-url = "http://localhost:8888/api/v1/security/login"
-payload = json.dumps({
+url_login = "http://localhost:8888/api/v1/security/login"
+payload_login = json.dumps({
     "client": "cf68a603-9d8f-44bd-9ac3-398d61aa3182",
     "secret": ".Liquidcars1",
     "securityProfile": "M2M_B2C_Channel"
 })
-headers = {
+headers_login = {
     'Content-Type': 'application/json'
 }
-response = requests.request("POST", url, headers=headers, data=payload)
-response_data = response.json()
-token_input = response_data.get("access_token")
+
+print("\n🔐 Obteniendo token de autenticación...")
+try:
+    response_login = requests.post(url_login, headers=headers_login, data=payload_login, timeout=10)
+    response_data = response_login.json()
+    token_input = response_data.get("access_token")
+
+    if not token_input:
+        print("❌ Error: No se pudo obtener el token de acceso")
+        exit()
+
+    print("✅ Token obtenido correctamente")
+except Exception as e:
+    print(f"❌ Error al obtener token: {e}")
+    exit()
 
 # --- DEFINICIÓN DE URL Y HEADERS ---
-url_api = f"http://localhost:8890/{tipo_llamada}"
+url_api = f"http://localhost:8890/v1/ingestion/batch?inventoryId={inventory_id}&dumpType={dump_type}&externalPublicationId={external_pub_id}"
 
 headers = {
     "Content-Type": "application/json",
@@ -481,30 +537,58 @@ print(f"\n🚀 Iniciando envío a {url_api}...\n")
 exitos = 0
 errores = 0
 
-if tipo_llamada == "batch":
-    for i in range(total_vehiculos):
-        # Pasamos el índice i para la referencia
-        offer_obj = generar_offer(i)
-        payload = [offer_obj]
+# Generar todas las ofertas
+print(f"📦 Generando {total_vehiculos} ofertas...")
+offers = []
+for i in range(total_vehiculos):
+    offer_obj = generar_offer(i)
+    offers.append(offer_obj)
+    # Mostrar información de cada oferta generada
+    print(f"  [{i+1}] {offer_obj['vehicleInstance']['vehicleModel']['brand']} {offer_obj['vehicleInstance']['vehicleModel']['model']} - ID: {offer_obj['jsonCarOfferId']}")
+
+# Crear el payload en el formato correcto para batch
+payload = {
+    "offers": offers,
+    "offersToDelete": offers_to_delete
+}
+
+print(f"\n✅ Ofertas generadas. Enviando batch completo...\n")
+
+# Enviar todas las ofertas en un solo batch
+try:
+    response = requests.post(url_api, headers=headers, json=payload, timeout=30)
+
+    if response.ok:
+        exitos = total_vehiculos
+        print(f"✅ ÉXITO: Batch enviado correctamente con {total_vehiculos} ofertas")
+        print(f"📊 Respuesta del servidor: {response.status_code}")
+
+        # Mostrar resumen de IDs enviados
+        print(f"\n📋 IDs de ofertas enviadas:")
+        for i, offer in enumerate(offers, 1):
+            print(f"  [{i}] {offer['jsonCarOfferId']}")
 
         try:
-            response = requests.post(url_api, headers=headers, json=payload, timeout=10)
+            response_json = response.json()
+            print(f"\n📄 Detalle de respuesta:")
+            print(json.dumps(response_json, indent=2))
+        except:
+            print(f"\n📄 Respuesta del servidor: {response.text[:500]}")
+    else:
+        errores = total_vehiculos
+        print(f"❌ Error {response.status_code}: {response.text}")
+        if response.status_code == 401:
+            print("🛑 Token caducado o inválido")
 
-            if response.ok:
-                exitos += 1
-                print(f"[{i+1}/{total_vehiculos}] ✅ OK: {offer_obj['id']}")
-
-            else:
-                errores += 1
-                print(f"[{i+1}/{total_vehiculos}] ❌ Error {response.status_code}: {response.text}")
-                if response.status_code == 401:
-                    print("🛑 Token caducado. Abortando...")
-                    break
-        except Exception as e:
-            errores += 1
-            print(f"[{i+1}/{total_vehiculos}] ⚠️ Fallo de conexión: {e}")
+except requests.exceptions.Timeout:
+    errores = total_vehiculos
+    print(f"⚠️ Timeout: La petición tardó más de 30 segundos")
+except Exception as e:
+    errores = total_vehiculos
+    print(f"⚠️ Fallo de conexión: {e}")
 
 print(f"\n--- RESUMEN FINAL ---")
 print(f"✅ Éxitos: {exitos}")
 print(f"❌ Errores: {errores}")
+
 input("\nPresiona Enter para salir...")
