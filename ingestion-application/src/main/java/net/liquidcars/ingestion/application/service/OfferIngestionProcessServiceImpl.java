@@ -255,8 +255,11 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
 
                 log.info("Batch job started successfully for format: {}", format);
             } catch (Exception e) {
-                assert execution != null;
-                log.error("Failed to execute batch job: {} . Status: {}", execution.getJobId(), execution.getStatus() , e);
+               if(execution!=null){
+                   log.error("Failed to execute batch job: {} . Status: {}", execution.getJobId(), execution.getStatus() , e);
+               } else {
+                   log.error("Failed to execute batch.", e);
+               }
             }
         });
     }
@@ -344,7 +347,6 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
             IngestionReportDto ingestionReportDto,
             IngestionBatchReportDto ingestionBatchReportDto) {
         ingestionReportDto.setStatus(ingestionBatchReportDto.getStatus());
-        ingestionReportDto.setProcessed(ingestionBatchReportDto.isProcessed());
         ingestionReportDto.setReadCount(ingestionReportDto.getReadCount());
         ingestionReportDto.setWriteCount(ingestionReportDto.getWriteCount());
         ingestionReportDto.setSkipCount(ingestionReportDto.getSkipCount());
@@ -394,7 +396,6 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
             );
         }
         if (shouldMarkAsProcessed) {
-            ingestionReportDto.setProcessed(true);
             ingestionReportDto.setStatus(IngestionBatchStatus.COMPLETED);
             iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
             offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);

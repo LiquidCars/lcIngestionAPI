@@ -24,7 +24,7 @@ import java.util.UUID;
 public class IngestionBatchReportEntity {
 
     @Id
-    @Column(name = "job_id")
+    @Column(name = "job_id", nullable = false, updatable = false)
     private UUID jobId;
 
     @Column(nullable = false)

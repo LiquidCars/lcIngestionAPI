@@ -15,11 +15,11 @@ info:
   version: 1.1.0
 
 servers:
-  - url: http://localhost:8090/v1/ingestion
+  - url: http://localhost:8890
     description: Local development server
 
 paths:
-  /batch:
+  /v1/ingestion/batch:
     post:
       tags:
         - Ingestion
@@ -43,7 +43,7 @@ paths:
         '413':
           description: Payload Too Large.
 
-  /stream:
+  /v1/ingestion/stream:
     post:
       tags:
         - Ingestion
@@ -66,7 +66,7 @@ paths:
         '202':
           description: Stream accepted.
 
-  /url:
+  /v1/ingestion/url:
     post:
       tags:
         - Ingestion

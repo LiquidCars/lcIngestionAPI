@@ -27,7 +27,7 @@ class IngestionApiTest {
 
     @Test
     void ingestBatch_ShouldReturnNotImplementedByDefault() throws Exception {
-        mockMvc.perform(post("/batch")
+        mockMvc.perform(post("/v1/ingestion/batch")
                         .param("inventoryId", TEST_INVENTORY_ID)
                         .param("dumpType", "UPDATE")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -37,7 +37,7 @@ class IngestionApiTest {
 
     @Test
     void ingestFromUrl_ShouldReturnNotImplementedByDefault() throws Exception {
-        mockMvc.perform(post("/url")
+        mockMvc.perform(post("/v1/ingestion/url")
                         .param("format", "json")
                         .param("url", "http://example.com")
                         .param("inventoryId", TEST_INVENTORY_ID)
@@ -47,7 +47,7 @@ class IngestionApiTest {
 
     @Test
     void ingestStream_ShouldReturnNotImplementedByDefault() throws Exception {
-        mockMvc.perform(post("/stream")
+        mockMvc.perform(post("/v1/ingestion/stream")
                         .param("format", "xml")
                         .param("inventoryId", TEST_INVENTORY_ID)
                         .param("dumpType", "UPDATE")
@@ -59,7 +59,7 @@ class IngestionApiTest {
     @Test
     void ingestBatch_ShouldFailWhenInventoryIdIsMissing() throws Exception {
         // Al ser un parámetro @NotNull en la interfaz, el dispatcher fallará si no se envía
-        mockMvc.perform(post("/batch")
+        mockMvc.perform(post("/v1/ingestion/batch")
                         .param("dumpType", "UPDATE")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("[]"))
@@ -68,7 +68,7 @@ class IngestionApiTest {
 
     @Test
     void ingestBatch_ShouldFailWhenContentTypeIsMissing() throws Exception {
-        mockMvc.perform(post("/batch")
+        mockMvc.perform(post("/v1/ingestion/batch")
                         .param("inventoryId", TEST_INVENTORY_ID)
                         .param("dumpType", "UPDATE")
                         .content("[]"))

@@ -14,13 +14,13 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class IngestionInfraKafkaConsumer {
+public class IngestionBatchInfraKafkaConsumer {
 
     private final OfferInfraKafkaConsumerMapper offerInfraKafkaConsumerMapper;
     private final IOfferInfraKafkaConsumerService offerInfraKafkaConsumerService;
 
     @KafkaListener(
-            topics = "liquidcars.ingestion.event.report.executed-action.0",
+            topics = "liquidcars.ingestion.event.batchreport.executed-action.0",
             groupId = "liquidcars-ingestion-group"
     )
     public void consumeOffer(BatchIngestionReportMsg message) {

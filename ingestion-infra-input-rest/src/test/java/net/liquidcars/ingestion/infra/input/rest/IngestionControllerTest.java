@@ -71,7 +71,7 @@ public class IngestionControllerTest {
     void ingestBatch_ShouldReturnAccepted() throws Exception {
         when(mapper.toOfferDtoList(any(), eq(TEST_PARTICIPANT_ID))).thenReturn(List.of());
 
-        mockMvc.perform(post("/batch")
+        mockMvc.perform(post("/v1/ingestion/batch")
                         .param("inventoryId", TEST_INVENTORY_ID.toString())
                         .param("dumpType", "UPDATE")
                         .content("[]")
@@ -89,7 +89,7 @@ public class IngestionControllerTest {
 
     @Test
     void ingestFromUrl_ShouldReturnAccepted() throws Exception {
-        mockMvc.perform(post("/url")
+        mockMvc.perform(post("/v1/ingestion/url")
                         .param("format", "json")
                         .param("url", "https://api.test.com/offers")
                         .param("inventoryId", TEST_INVENTORY_ID.toString())
@@ -111,7 +111,7 @@ public class IngestionControllerTest {
     void ingestStream_ShouldReturnAccepted() throws Exception {
         byte[] content = "<offers></offers>".getBytes();
 
-        mockMvc.perform(post("/stream")
+        mockMvc.perform(post("/v1/ingestion/stream")
                         .param("format", "xml")
                         .param("inventoryId", TEST_INVENTORY_ID.toString())
                         .param("dumpType", "UPDATE")
@@ -141,7 +141,7 @@ public class IngestionControllerTest {
                 .processOffersStream(
                         any(), any(InputStream.class), any(), any(), any(), any(), any());
 
-        mockMvc.perform(post("/stream")
+        mockMvc.perform(post("/v1/ingestion/stream")
                         .param("format", "xml")
                         .param("inventoryId", TEST_INVENTORY_ID.toString())
                         .param("dumpType", "UPDATE")
@@ -156,7 +156,7 @@ public class IngestionControllerTest {
 
     @Test
     void ingestBatch_ShouldReturn400_WhenRequiredParamsMissing() throws Exception {
-        mockMvc.perform(post("/batch")
+        mockMvc.perform(post("/v1/ingestion/batch")
                         .content("[]")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
