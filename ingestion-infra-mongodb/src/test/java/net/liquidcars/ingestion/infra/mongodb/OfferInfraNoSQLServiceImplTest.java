@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.mockito.Mockito.*;
 
@@ -51,10 +52,11 @@ public class OfferInfraNoSQLServiceImplTest {
         OfferDto dto = OfferDtoFactory.getOfferDto();
         OfferNoSQLEntity newEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
         OfferNoSQLEntity existingEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
+        UUID existingId = UUID.randomUUID();
 
         existingEntity.setCreatedAt(Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS));
         newEntity.setCreatedAt(Instant.now());
-        existingEntity.setId("existing-id");
+        existingEntity.setId(existingId);
 
         when(mapper.toEntity(dto)).thenReturn(newEntity);
         when(repository.findById(dto.getId().toString()))
@@ -63,7 +65,7 @@ public class OfferInfraNoSQLServiceImplTest {
         service.processOffer(dto);
 
         verify(repository, times(1)).save(newEntity);
-        assert(newEntity.getId().equals("existing-id"));
+        assert(newEntity.getId().equals(existingId));
     }
 
     @Test

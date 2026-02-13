@@ -1,6 +1,7 @@
 package net.liquidcars.ingestion.application.service.batch;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.batch.JobDeleteExternalIdsCollector;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
 import net.liquidcars.ingestion.factory.OfferDtoFactory;
 import org.junit.jupiter.api.Test;
@@ -24,16 +25,17 @@ class OfferStreamItemReaderTest {
 
     @Test
     void read_ShouldReturnAllOffersAndThenNull() throws Exception {
+        JobDeleteExternalIdsCollector deleteExternalIdsCollector = new JobDeleteExternalIdsCollector();
         // Mock del parser para que produzca dos OfferDto
         doAnswer(inv -> {
             Consumer<OfferDto> action = inv.getArgument(1);
             action.accept(OfferDtoFactory.getOfferDto());
             action.accept(OfferDtoFactory.getOfferDto());
             return null;
-        }).when(parser).parseAndProcess(any(InputStream.class), any());
+        }).when(parser).parseAndProcess(any(InputStream.class), any(), any());
 
         OfferStreamItemReader reader = new OfferStreamItemReader();
-        reader.start(parser, InputStream.nullInputStream());
+        reader.start(parser, InputStream.nullInputStream(), deleteExternalIdsCollector);
 
         OfferDto first = reader.read();
         OfferDto second = reader.read();
@@ -47,10 +49,11 @@ class OfferStreamItemReaderTest {
     @Test
     void read_ShouldThrowException_WhenParserFails() throws Exception {
         // Mock del parser para que lance excepción
-        doThrow(new RuntimeException("Crash!")).when(parser).parseAndProcess(any(InputStream.class), any());
+        JobDeleteExternalIdsCollector deleteExternalIdsCollector = new JobDeleteExternalIdsCollector();
+        doThrow(new RuntimeException("Crash!")).when(parser).parseAndProcess(any(InputStream.class), any(), any());
 
         OfferStreamItemReader reader = new OfferStreamItemReader();
-        reader.start(parser, InputStream.nullInputStream());
+        reader.start(parser, InputStream.nullInputStream(), deleteExternalIdsCollector);
 
         // Como el hilo es asíncrono, hay que esperar un poco hasta que la excepción esté en error
         Thread.sleep(100);

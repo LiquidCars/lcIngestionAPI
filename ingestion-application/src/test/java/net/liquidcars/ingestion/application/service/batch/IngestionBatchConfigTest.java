@@ -59,7 +59,7 @@ class IngestionBatchConfigTest {
         org.springframework.test.util.ReflectionTestUtils.setField(ingestionBatchConfig, "chunkSize", 10);
         org.springframework.test.util.ReflectionTestUtils.setField(ingestionBatchConfig, "skipLimit", 100);
 
-        Step step = ingestionBatchConfig.ingestionStep(jobRepository, transactionManager, offerReader, offerItemWriter, ingestionSkipListener, failedIdsCollector, deleteExternalIdsCollector);
+        Step step = ingestionBatchConfig.ingestionStep(jobRepository, transactionManager, offerReader, offerItemWriter, ingestionSkipListener, failedIdsCollector);
 
         assertThat(step).isNotNull();
         assertThat(step.getName()).isEqualTo("ingestionStep");
@@ -70,7 +70,7 @@ class IngestionBatchConfigTest {
         org.springframework.test.util.ReflectionTestUtils.setField(ingestionBatchConfig, "chunkSize", 50);
         org.springframework.test.util.ReflectionTestUtils.setField(ingestionBatchConfig, "skipLimit", 200);
 
-        Step step = ingestionBatchConfig.ingestionStep(jobRepository, transactionManager, offerReader, offerItemWriter, ingestionSkipListener, failedIdsCollector, deleteExternalIdsCollector);
+        Step step = ingestionBatchConfig.ingestionStep(jobRepository, transactionManager, offerReader, offerItemWriter, ingestionSkipListener, failedIdsCollector);
 
         assertThat(step).isNotNull();
         assertThat(step.getName()).isEqualTo("ingestionStep");

@@ -33,7 +33,7 @@ public class OfferJSONProcessorTest {
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         objectMapper.disable(com.fasterxml.jackson.databind.DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE);
-        processor = new OfferJSONProcessor(objectMapper, offerParserMapper, offerReader, deleteExternalIdsCollector);
+        processor = new OfferJSONProcessor(objectMapper, offerParserMapper, offerReader);
     }
 
     // TODO

@@ -41,6 +41,7 @@ class OfferXmlProcessorTest {
     @Mock
     private JobDeleteExternalIdsCollector deleteExternalIdsCollector;
 
+
     @Captor
     private ArgumentCaptor<OfferDto> offerCaptor;
 
@@ -73,7 +74,7 @@ class OfferXmlProcessorTest {
         when(offerParserMapper.toOfferDto(any(OfferXMLModel.class))).thenReturn(new OfferDto());
 
         List<OfferDto> results = new ArrayList<>();
-        processor.parseAndProcess(new ByteArrayInputStream(xml.getBytes()), results::add);
+        processor.parseAndProcess(new ByteArrayInputStream(xml.getBytes()), results::add, deleteExternalIdsCollector);
 
         assertEquals(1, results.size());
         verify(offerParserMapper).toOfferDto(any(OfferXMLModel.class));
@@ -84,7 +85,7 @@ class OfferXmlProcessorTest {
         InputStream invalidIs = new ByteArrayInputStream("<vehicle><externalId>123".getBytes());
 
         RuntimeException ex = assertThrows(RuntimeException.class, () ->
-                processor.parseAndProcess(invalidIs, dto -> {})
+                processor.parseAndProcess(invalidIs, dto -> {}, deleteExternalIdsCollector)
         );
 
         // Check for the actual parser error message instead of the custom one

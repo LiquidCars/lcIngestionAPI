@@ -130,9 +130,9 @@ public class TestDataFactory {
                 .set(field(IngestionReportDto::isProcessed), false)
                 .set(field(IngestionReportDto::getProcessType), IngestionProcessType.PROCESS)
                 .set(field(IngestionReportDto::getDumpType), IngestionDumpType.REPLACEMENT)
-                .set(field(IngestionReportDto::getReadCount), 0L)
-                .set(field(IngestionReportDto::getWriteCount), 0L)
-                .set(field(IngestionReportDto::getSkipCount), 0L)
+                .set(field(IngestionReportDto::getReadCount), 0)
+                .set(field(IngestionReportDto::getWriteCount), 0)
+                .set(field(IngestionReportDto::getSkipCount), 0)
                 .set(field(IngestionReportDto::getCreatedAt), OffsetDateTime.now())
                 .set(field(IngestionReportDto::getUpdatedAt), OffsetDateTime.now())
                 .create();
@@ -155,14 +155,14 @@ public class TestDataFactory {
             UUID reportId,
             UUID participantId,
             UUID inventoryId,
-            long writeCount) {
+            int writeCount) {
         return Instancio.of(IngestionReportDto.class)
                 .set(field(IngestionReportDto::getId), reportId)
                 .set(field(IngestionReportDto::getRequesterParticipantId), participantId)
                 .set(field(IngestionReportDto::getInventoryId), inventoryId)
                 .set(field(IngestionReportDto::getWriteCount), writeCount)
                 .set(field(IngestionReportDto::getReadCount), writeCount)
-                .set(field(IngestionReportDto::getSkipCount), 0L)
+                .set(field(IngestionReportDto::getSkipCount), 0)
                 .set(field(IngestionReportDto::isProcessed), false)
                 .set(field(IngestionReportDto::getStatus), IngestionBatchStatus.STARTED)
                 .set(field(IngestionReportDto::getProcessType), IngestionProcessType.PROCESS)
@@ -178,7 +178,7 @@ public class TestDataFactory {
                 .set(field(IngestionReportDto::getStatus), IngestionBatchStatus.COMPLETED)
                 .set(field(IngestionReportDto::getWriteCount), count)
                 .set(field(IngestionReportDto::getReadCount), count)
-                .set(field(IngestionReportDto::getSkipCount), 0L)
+                .set(field(IngestionReportDto::getSkipCount), 0)
                 .set(field(IngestionReportDto::isProcessed), true)
                 .set(field(IngestionReportDto::getProcessType), IngestionProcessType.PROCESS)
                 .set(field(IngestionReportDto::getDumpType), IngestionDumpType.REPLACEMENT)

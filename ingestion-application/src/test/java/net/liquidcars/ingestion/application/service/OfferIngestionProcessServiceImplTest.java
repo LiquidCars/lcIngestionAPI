@@ -265,7 +265,7 @@ class OfferIngestionProcessServiceImplTest {
                 testExternalPublicationId);
 
         await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
-            verify(offerReader, atLeastOnce()).start(eq(mockParser), any(InputStream.class));
+            verify(offerReader, atLeastOnce()).start(eq(mockParser), any(InputStream.class), any(JobDeleteExternalIdsCollector.class));
             verify(jobLauncher, atLeastOnce()).run(eq(offerIngestionJob), any(JobParameters.class));
             verify(reportInfraSQLService, atLeastOnce()).upsertIngestionReport(any(IngestionReportDto.class));
             verify(offerInfraKafkaProducerService, atLeastOnce()).sendIngestionJobReport(any(IngestionReportDto.class));
