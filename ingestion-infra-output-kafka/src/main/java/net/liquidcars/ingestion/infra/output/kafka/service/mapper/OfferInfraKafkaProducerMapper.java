@@ -2,12 +2,14 @@ package net.liquidcars.ingestion.infra.output.kafka.service.mapper;
 
 import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.OfferSummaryDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import net.liquidcars.ingestion.infra.output.kafka.model.BatchIngestionReportMsg;
 import net.liquidcars.ingestion.infra.output.kafka.model.ExternalIdInfoMsg;
 import net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportMsg;
 import net.liquidcars.ingestion.infra.output.kafka.model.OfferMsg;
+import net.liquidcars.ingestion.infra.output.kafka.model.OfferSummaryMsg;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -33,4 +35,6 @@ public interface OfferInfraKafkaProducerMapper {
     default String map(OffsetDateTime value) {
         return value == null ? null : value.format(OFFSET_FORMATTER);
     }
+
+    OfferSummaryMsg toOfferSummaryMsg(OfferSummaryDto dto);
 }

@@ -3,17 +3,20 @@ package net.liquidcars.ingestion.infra.output.kafka.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.OfferSummaryDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
+import net.liquidcars.ingestion.infra.output.kafka.model.OfferSummaryMsg;
 import net.liquidcars.ingestion.infra.output.kafka.producer.BatchIngestionReportKafkaPublisher;
 import net.liquidcars.ingestion.infra.output.kafka.producer.IngestionReportKafkaPublisher;
 import net.liquidcars.ingestion.infra.output.kafka.producer.OfferKafkaPublisher;
 import net.liquidcars.ingestion.infra.output.kafka.model.BatchIngestionReportMsg;
 import net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportMsg;
 import net.liquidcars.ingestion.infra.output.kafka.model.OfferMsg;
+import net.liquidcars.ingestion.infra.output.kafka.producer.OfferSummaryKafkaPublisher;
 import net.liquidcars.ingestion.infra.output.kafka.service.mapper.OfferInfraKafkaProducerMapper;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +29,7 @@ public class OfferInfraKafkaProducerServiceImpl implements IOfferInfraKafkaProdu
     private final OfferKafkaPublisher offerKafkaPublisher;
     private final BatchIngestionReportKafkaPublisher batchIngestionReportKafkaPublisher;
     private final IngestionReportKafkaPublisher ingestionReportKafkaPublisher;
+    private final OfferSummaryKafkaPublisher offerSummaryKafkaPublisher;
 
     @Override
     public void sendOffer(OfferDto offer) {
@@ -67,6 +71,22 @@ public class OfferInfraKafkaProducerServiceImpl implements IOfferInfraKafkaProdu
             ingestionReportKafkaPublisher.sendIngestionReport(ingestionReportMsg);
         } catch (Exception e) {
             log.error("Failed to dispatch ingestion report to Kafka topic. JobId: {}", ingestionReportDto.getId(), e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.MESSAGING_BROKER_ERROR)
+                    .message("Infrastructure failure: Kafka publisher is unavailable")
+                    .cause(e)
+                    .build();
+        }
+    }
+
+    @Override
+    public void sendSavedNotification(OfferSummaryDto offerSummary) {
+        try {
+            log.debug("Saved offer with id: {}", offerSummary.getId());
+            OfferSummaryMsg offerMsg = offerInfraKafkaProducerMapper.toOfferSummaryMsg(offerSummary);
+            offerSummaryKafkaPublisher.sendSummaryOffer(offerMsg);
+        } catch (Exception e) {
+            log.error("Failed to dispatch offer to Kafka topic. OfferId: {}", offerSummary.getId(), e);
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.MESSAGING_BROKER_ERROR)
                     .message("Infrastructure failure: Kafka publisher is unavailable")

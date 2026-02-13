@@ -1,5 +1,7 @@
 package net.liquidcars.ingestion.domain.service.application;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.transaction.annotation.Transactional;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
