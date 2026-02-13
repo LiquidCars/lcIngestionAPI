@@ -31,7 +31,7 @@ class IngestionApiTest {
                         .param("inventoryId", TEST_INVENTORY_ID)
                         .param("dumpType", "UPDATE")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("[]"))
+                        .content("{}"))
                 .andExpect(status().isNotImplemented());
     }
 

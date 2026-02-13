@@ -74,7 +74,7 @@ public class IngestionControllerTest {
         mockMvc.perform(post("/v1/ingestion/batch")
                         .param("inventoryId", TEST_INVENTORY_ID.toString())
                         .param("dumpType", "UPDATE")
-                        .content("[]")
+                        .content("{}")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isAccepted());
 
@@ -157,7 +157,7 @@ public class IngestionControllerTest {
     @Test
     void ingestBatch_ShouldReturn400_WhenRequiredParamsMissing() throws Exception {
         mockMvc.perform(post("/v1/ingestion/batch")
-                        .content("[]")
+                        .content("{}")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }

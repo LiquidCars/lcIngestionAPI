@@ -47,7 +47,8 @@ public class IngestionBatchConfig {
             OfferStreamItemReader offerReader,
             OfferItemWriter offerItemWriter,
             IngestionSkipListener ingestionSkipListener,
-            JobFailedIdsCollector failedIdsCollector
+            JobFailedIdsCollector failedIdsCollector,
+            JobDeleteExternalIdsCollector deleteExternalIdsCollector
     ){
         return new StepBuilder("ingestionStep", jobRepository)
                 .<OfferDto, OfferDto>chunk(chunkSize, transactionManager)

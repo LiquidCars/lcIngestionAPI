@@ -4,6 +4,7 @@ import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
+import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
 import net.liquidcars.ingestion.factory.OfferDtoFactory;
 import org.junit.jupiter.api.DisplayName;
@@ -28,6 +29,9 @@ class OfferInfraKafkaConsumerServiceImplTest {
     @Mock
     private IOfferInfraSQLService offerInfraSQLService;
 
+    @Mock
+    private IOfferInfraKafkaProducerService kafkaProducerService;
+
     @Test
     @DisplayName("Should save to SQL and NoSQL when everything goes well")
     void processOfferSave_ShouldSaveInBothSystems() {
@@ -35,28 +39,10 @@ class OfferInfraKafkaConsumerServiceImplTest {
 
         service.processOfferSave(offer);
 
-        verify(offerInfraSQLService, times(1)).processOffer(offer);
         verify(offerInfraNoSQLService, times(1)).processOffer(offer);
+        verify(kafkaProducerService, times(1)).sendSavedNotification(any());
     }
 
-    @Test
-    @DisplayName("Should NOT attempt NoSQL when SQL fails")
-    void processOfferSave_ShouldNotSaveInNoSQL_WhenSQLFails() {
-        OfferDto offer = OfferDtoFactory.getOfferDto();
-
-        doThrow(LCIngestionException.builder()
-                .techCause(LCTechCauseEnum.DATABASE)
-                .message("SQL persistence error for id: " + offer.getId())
-                .build())
-                .when(offerInfraSQLService)
-                .processOffer(any());
-
-        assertThrows(LCIngestionException.class,
-                () -> service.processOfferSave(offer));
-
-        verify(offerInfraSQLService, times(1)).processOffer(any());
-        verify(offerInfraNoSQLService, never()).processOffer(any());
-    }
 
     @Test
     @DisplayName("Should attempt NoSQL after SQL success and fail if NoSQL fails")
@@ -73,7 +59,6 @@ class OfferInfraKafkaConsumerServiceImplTest {
         assertThrows(LCIngestionException.class,
                 () -> service.processOfferSave(offer));
 
-        verify(offerInfraSQLService, times(1)).processOffer(any());
         verify(offerInfraNoSQLService, times(1)).processOffer(any());
     }
 

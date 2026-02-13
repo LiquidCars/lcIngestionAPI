@@ -18,8 +18,6 @@ import java.util.UUID;
 @Schema(title="The VehicleOffer XML object", description="This object represents a commercial offer based con a specific vehicle unit, or VehicleInstance" )
 public class OfferXMLModel implements Serializable {
 
-    @Schema(description = "Offer unique identifier")
-    private UUID id;//Do not add to hashCode implementation
     @Schema(description = "Type of offer, describing who is the final owner accountable for transaction duties, in case it is not the owner of the inventory (the car seller institution)")
     private CarOfferSellerTypeEnumXMLModel sellerType = CarOfferSellerTypeEnumXMLModel.usedCar_ProfessionalSeller;
     @Schema(description = "The registered user Id of the final owner accountable for transaction duties")
@@ -70,8 +68,7 @@ public class OfferXMLModel implements Serializable {
     private UUID jsonCarOfferId;
 
     public boolean isValid() {
-        return id != null
-                && sellerType != null
+        return  sellerType != null
                 && price != null && price.getAmount() != null && price.getAmount().compareTo(BigDecimal.ZERO) > 0
                 && resources != null && !resources.isEmpty()
                 && isSellerContextValid();

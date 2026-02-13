@@ -17,6 +17,7 @@ public class IngestionBatchReportDto {
     private long writeCount;
     private long skipCount;
     private List<ExternalIdInfoDto> failedExternalIds;
+    private List<String> idsForDelete;
     private OffsetDateTime startTime;
     private OffsetDateTime endTime;
     private boolean processed;

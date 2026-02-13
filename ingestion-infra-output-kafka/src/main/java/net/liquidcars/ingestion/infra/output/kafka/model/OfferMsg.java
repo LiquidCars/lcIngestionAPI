@@ -75,7 +75,12 @@ public class OfferMsg implements Serializable {
     private long lastUpdated; //default, now. Do not add to hashCode implementation
     @Schema(description = "Update date")
     private UUID jsonCarOfferId;
+    @Schema(description = "Participant id")
     private UUID participantId;
+    @Schema(description = "Batch job identifier")
+    private UUID jobIdentifier;
+    @Schema(description = "Ingestion report job identifier")
+    private UUID ingestionReportId;
 
 
     @JsonIgnore

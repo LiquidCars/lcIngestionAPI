@@ -190,4 +190,9 @@
     ]]></observaciones>
         <notainterna><![CDATA[https://content.canalcar.es/coches-ocasion/bmw/serie-1/116d-urban?utm_source=motorflash&utm_medium=feed&utm_campaign=feed]]></notainterna>
     </anuncio>
+    <offersToDelete>
+        <id>550e8400-e29b-41d4-a716-446655440001</id>
+        <id>550e8400-e29b-41d4-a716-446655440002</id>
+        <id>550e8400-e29b-41d4-a716-446655440003</id>
+    </offersToDelete>
 </motorflash>

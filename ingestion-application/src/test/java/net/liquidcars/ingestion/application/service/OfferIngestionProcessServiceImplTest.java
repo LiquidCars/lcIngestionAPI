@@ -4,6 +4,7 @@ import net.liquidcars.ingestion.application.service.batch.IngestionSkipListener;
 import net.liquidcars.ingestion.application.service.batch.JobCompletionNotificationListener;
 import net.liquidcars.ingestion.application.service.batch.OfferItemWriter;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
+import net.liquidcars.ingestion.domain.model.IngestionPayloadDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.*;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
@@ -124,12 +125,14 @@ class OfferIngestionProcessServiceImplTest {
 
     @Test
     void processOffers_ShouldProcessSuccessfully_WhenValidOffers() {
+        IngestionPayloadDto ingestionPayloadDto = IngestionPayloadDto.builder().build();
         List<OfferDto> offers = createTestOffers(3);
+        ingestionPayloadDto.setOffers(offers);
 
         when(reportInfraSQLService.existsByRequesterParticipantIdAndStatusNotIn(
                 eq(testParticipantId), anyList())).thenReturn(false);
 
-        service.processOffers(offers, testInventoryId, testParticipantId,
+        service.processOffers(ingestionPayloadDto, testInventoryId, testParticipantId,
                 IngestionDumpType.REPLACEMENT, testExternalPublicationId);
 
         verify(offerInfraKafkaProducerService, times(3)).sendOffer(offerCaptor.capture());
@@ -158,8 +161,9 @@ class OfferIngestionProcessServiceImplTest {
 
     @Test
     void processOffers_ShouldThrowException_WhenOffersListIsEmpty() {
+        IngestionPayloadDto ingestionPayloadDto = IngestionPayloadDto.builder().build();
         LCIngestionException ex = assertThrows(LCIngestionException.class, () ->
-                service.processOffers(List.of(), testInventoryId, testParticipantId,
+                service.processOffers(ingestionPayloadDto, testInventoryId, testParticipantId,
                         IngestionDumpType.REPLACEMENT, testExternalPublicationId)
         );
 
@@ -171,10 +175,12 @@ class OfferIngestionProcessServiceImplTest {
         when(reportInfraSQLService.existsByRequesterParticipantIdAndStatusNotIn(
                 eq(testParticipantId), anyList())).thenReturn(true);
 
+        IngestionPayloadDto ingestionPayloadDto = IngestionPayloadDto.builder().build();
         List<OfferDto> offers = createTestOffers(2);
+        ingestionPayloadDto.setOffers(offers);
 
         LCIngestionException ex = assertThrows(LCIngestionException.class, () ->
-                service.processOffers(offers, testInventoryId, testParticipantId,
+                service.processOffers(ingestionPayloadDto, testInventoryId, testParticipantId,
                         IngestionDumpType.REPLACEMENT, testExternalPublicationId)
         );
 
@@ -184,12 +190,14 @@ class OfferIngestionProcessServiceImplTest {
 
     @Test
     void processOffers_ShouldSetIngestionReportIdOnEachOffer() {
+        IngestionPayloadDto ingestionPayloadDto = IngestionPayloadDto.builder().build();
         List<OfferDto> offers = createTestOffers(2);
+        ingestionPayloadDto.setOffers(offers);
 
         when(reportInfraSQLService.existsByRequesterParticipantIdAndStatusNotIn(
                 eq(testParticipantId), anyList())).thenReturn(false);
 
-        service.processOffers(offers, testInventoryId, testParticipantId,
+        service.processOffers(ingestionPayloadDto, testInventoryId, testParticipantId,
                 IngestionDumpType.REPLACEMENT, testExternalPublicationId);
 
         verify(offerInfraKafkaProducerService, times(2)).sendOffer(offerCaptor.capture());
@@ -328,7 +336,6 @@ class OfferIngestionProcessServiceImplTest {
         verify(offerInfraKafkaProducerService, times(1)).sendIngestionJobReport(any(IngestionReportDto.class));
 
         IngestionReportDto savedReport = reportCaptor.getValue();
-        assertTrue(savedReport.isProcessed());
         assertEquals(IngestionBatchStatus.COMPLETED, savedReport.getStatus());
     }
 

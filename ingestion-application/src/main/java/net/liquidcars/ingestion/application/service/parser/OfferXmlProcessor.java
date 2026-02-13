@@ -2,6 +2,7 @@ package net.liquidcars.ingestion.application.service.parser;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.liquidcars.ingestion.application.service.batch.JobDeleteExternalIdsCollector;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.XML.*;
@@ -33,6 +34,7 @@ public class OfferXmlProcessor implements IOfferParserService {
 
     private final OfferParserMapper offerParserMapper;
     private final OfferStreamItemReader offerReader;
+    private final JobDeleteExternalIdsCollector deleteExternalIdsCollector;
 
     @Override
     public boolean supports(IngestionFormat format) {
@@ -42,31 +44,23 @@ public class OfferXmlProcessor implements IOfferParserService {
     @Override
     public void parseAndProcess(InputStream inputStream, Consumer<OfferDto> action) {
         XMLInputFactory factory = XMLInputFactory.newInstance();
+        // Configuración para evitar ataques XXE y mejorar rendimiento
+        factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
+        factory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
+
         try {
             XMLStreamReader reader = factory.createXMLStreamReader(inputStream);
+
             while (reader.hasNext()) {
                 int event = reader.next();
 
-                if (event == XMLStreamConstants.START_ELEMENT && "anuncio".equals(reader.getLocalName())) {
-                    OfferXMLModel xmlModel = new OfferXMLModel();
-                    try {
-                        fillModelFromXml(reader, xmlModel);
+                if (event == XMLStreamConstants.START_ELEMENT) {
+                    String localName = reader.getLocalName();
 
-                        if (xmlModel.isValid()) {
-                            action.accept(offerParserMapper.toOfferDto(xmlModel));
-                        }
-                    } catch (Exception e) {
-                        ExternalIdInfoXMLModel failedId = (xmlModel.getExternalIdInfo() != null) ? xmlModel.getExternalIdInfo() : null;
-                        ExternalIdInfoDto failedIdDto = offerParserMapper.toExternalIdInfoDto(failedId);
-
-                        log.warn("XML Record {} failed parsing: {}", failedId, e.getMessage());
-
-                        offerReader.addErrorToQueue(new LCIngestionParserException(
-                                LCTechCauseEnum.CONVERSION_ERROR,
-                                "XML item error: " + e.getMessage(),
-                                e,
-                                failedIdDto
-                        ));
+                    if ("anuncio".equals(localName)) {
+                        processAnuncio(reader, action);
+                    } else if ("offersToDelete".equals(localName)) {
+                        processDeletes(reader);
                     }
                 }
             }
@@ -78,6 +72,43 @@ public class OfferXmlProcessor implements IOfferParserService {
                     .message("Error during XML stream parsing: " + e.getMessage())
                     .cause(e)
                     .build();
+        }
+    }
+
+    private void processAnuncio(XMLStreamReader reader, Consumer<OfferDto> action) {
+        OfferXMLModel xmlModel = new OfferXMLModel();
+        try {
+            fillModelFromXml(reader, xmlModel);
+
+            if (xmlModel.isValid()) {
+                action.accept(offerParserMapper.toOfferDto(xmlModel));
+            }
+        } catch (Exception e) {
+            ExternalIdInfoXMLModel failedId = xmlModel.getExternalIdInfo();
+            ExternalIdInfoDto failedIdDto = offerParserMapper.toExternalIdInfoDto(failedId);
+
+            log.warn("XML Record failed parsing: {}", e.getMessage());
+
+            offerReader.addErrorToQueue(new LCIngestionParserException(
+                    LCTechCauseEnum.CONVERSION_ERROR,
+                    "XML item error: " + e.getMessage(),
+                    e,
+                    failedIdDto
+            ));
+        }
+    }
+
+    private void processDeletes(XMLStreamReader reader) throws Exception {
+        while (reader.hasNext()) {
+            int event = reader.next();
+            if (event == XMLStreamConstants.START_ELEMENT && "id".equals(reader.getLocalName())) {
+                String idToDelete = reader.getElementText();
+                if (idToDelete != null && !idToDelete.isBlank()) {
+                    deleteExternalIdsCollector.addId(idToDelete);
+                }
+            } else if (event == XMLStreamConstants.END_ELEMENT && "offersToDelete".equals(reader.getLocalName())) {
+                break;
+            }
         }
     }
 
@@ -95,8 +126,6 @@ public class OfferXmlProcessor implements IOfferParserService {
 
     private void fillOfferData(String tagName, XMLStreamReader reader, OfferXMLModel model) throws Exception {
         final String DEFAULT_CURRENCY = "EUR";
-        UUID id = UUID.randomUUID();
-        model.setId(id);
         // privateownerregistereduserid
         // financedInstallmentAprox
         // fianancedtext

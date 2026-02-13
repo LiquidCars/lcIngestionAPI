@@ -57,7 +57,6 @@ public class OfferRequestTest {
 
         assertThat(req1.equals("any_string")).isFalse();
 
-        req2.setId(UUID.randomUUID());
         assertThat(req1.equals(req2)).isFalse();
 
         OfferRequest reqNull = new OfferRequest();

@@ -7,6 +7,7 @@ import net.liquidcars.ingestion.application.service.batch.IngestionSkipListener;
 import net.liquidcars.ingestion.application.service.batch.JobCompletionNotificationListener;
 import net.liquidcars.ingestion.application.service.batch.OfferItemWriter;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
+import net.liquidcars.ingestion.domain.model.IngestionPayloadDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.*;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.InputStream;
 import java.net.URI;
 import java.time.OffsetDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -64,21 +66,21 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
 
     @Transactional
     @Override
-    public void processOffers(List<OfferDto> offers,
+    public void processOffers(IngestionPayloadDto ingestionPayloadDto,
                               UUID inventoryId,
                               UUID requesterParticipantId,
                               IngestionDumpType dumpType,
                               String externalPublicationId) {
 
-        if (offers == null || offers.isEmpty()) {
+        if (ingestionPayloadDto == null || ingestionPayloadDto.getOffers() == null || ingestionPayloadDto.getOffers().isEmpty()) {
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.INVALID_REQUEST)
                     .message("The offers list is empty or null")
                     .build();
         }
         validateRequesterParticipantHasNotProcessStarted(requesterParticipantId);
-        IngestionReportDto ingestionReportDto = createIngestionReportDto(offers, inventoryId, requesterParticipantId, dumpType, externalPublicationId);
-        offers.forEach(offerDto -> {
+        IngestionReportDto ingestionReportDto = createIngestionReportDto(ingestionPayloadDto, inventoryId, requesterParticipantId, dumpType, externalPublicationId);
+        ingestionPayloadDto.getOffers().forEach(offerDto -> {
             offerDto.setIngestionReportId(ingestionReportDto.getId());
             this.processOffer(offerDto);
         });
@@ -174,15 +176,16 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         }
     }
 
-    private static IngestionReportDto createIngestionReportDto(List<OfferDto> offers,
+    private static IngestionReportDto createIngestionReportDto(IngestionPayloadDto ingestionPayloadDto,
                                                                UUID inventoryId,
                                                                UUID requesterParticipantId,
                                                                IngestionDumpType dumpType,
                                                                String externalPublicationId) {
         IngestionReportDto ingestionReportDto = createIngestionReportDto(inventoryId, requesterParticipantId, dumpType, IngestionProcessType.PROCESS, externalPublicationId, null, null);
-        ingestionReportDto.setReadCount(offers.size());
-        ingestionReportDto.setWriteCount(offers.size());
+        ingestionReportDto.setReadCount(ingestionPayloadDto.getOffers().size());
+        ingestionReportDto.setWriteCount(ingestionPayloadDto.getOffers().size());
         ingestionReportDto.setSkipCount(0);
+        ingestionReportDto.setIdsForDelete(ingestionPayloadDto.getOffersToDelete());
         return ingestionReportDto;
     }
 
@@ -351,6 +354,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         ingestionReportDto.setWriteCount(ingestionReportDto.getWriteCount());
         ingestionReportDto.setSkipCount(ingestionReportDto.getSkipCount());
         ingestionReportDto.setFailedExternalIds(ingestionReportDto.getFailedExternalIds());
+        ingestionReportDto.setIdsForDelete(ingestionReportDto.getIdsForDelete());
         ingestionReportDto.setUpdatedAt(OffsetDateTime.now());
     }
 

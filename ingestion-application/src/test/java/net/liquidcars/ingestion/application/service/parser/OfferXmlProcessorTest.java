@@ -1,5 +1,6 @@
 package net.liquidcars.ingestion.application.service.parser;
 
+import net.liquidcars.ingestion.application.service.batch.JobDeleteExternalIdsCollector;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.XML.OfferXMLModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
@@ -42,6 +43,9 @@ class OfferXmlProcessorTest {
 
     @Mock
     private Consumer<OfferDto> offerConsumer;
+
+    @Mock
+    private JobDeleteExternalIdsCollector deleteExternalIdsCollector;
 
     @Captor
     private ArgumentCaptor<OfferDto> offerCaptor;

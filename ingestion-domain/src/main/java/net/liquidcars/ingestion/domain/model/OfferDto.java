@@ -1,16 +1,14 @@
 package net.liquidcars.ingestion.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import io.swagger.v3.oas.annotations.media.Schema;
-import net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Serializable;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,7 +22,6 @@ import java.util.UUID;
 @AllArgsConstructor
 @Schema(title="The VehicleOffer DTO object", description="This object represents a commercial offer based con a specific vehicle unit, or VehicleInstance" )
 public class OfferDto implements Serializable {
-
     @Schema(description = "Offer unique identifier")
     private UUID id;//Do not add to hashCode implementation
     @Schema(description = "Type of offer, describing who is the final owner accountable for transaction duties, in case it is not the owner of the inventory (the car seller institution)")
@@ -145,8 +142,8 @@ public class OfferDto implements Serializable {
     @Override
     public boolean equals(Object o) {
         if (o == this) return true;
-        if (!(o instanceof OfferDto)) return false;
-        OfferDto other = (OfferDto)o;
+        if (!(o instanceof IngestionPayloadDto)) return false;
+        IngestionPayloadDto other = (IngestionPayloadDto)o;
         return other.hashCode()==this.hashCode();
     }
 }

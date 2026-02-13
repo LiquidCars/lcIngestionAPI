@@ -12,6 +12,7 @@ import net.liquidcars.ingestion.domain.model.security.LCContext;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
 import net.liquidcars.ingestion.domain.service.context.IContextService;
 import net.liquidcars.ingestion.infra.input.rest.mapper.IngestionControllerMapper;
+import net.liquidcars.ingestion.infra.input.rest.model.IngestionPayload;
 import net.liquidcars.ingestion.infra.input.rest.model.OfferRequest;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
@@ -38,7 +39,7 @@ public class IngestionController implements IngestionApi {
     public ResponseEntity<Void> ingestBatch(
             UUID inventoryId,
             IngestionDumpType dumpType,
-            List<OfferRequest> offerRequest,
+            IngestionPayload ingestionPayload,
             String externalPublicationId
     ) {
         log.info("REST: IngestBatch - Inventory: {}, Dump: {}, ExtId: {}", inventoryId, dumpType, externalPublicationId);
@@ -46,7 +47,7 @@ public class IngestionController implements IngestionApi {
         UUID participantId = getParticipantIdFromContext();
 
         offerIngestionProcessService.processOffers(
-                ingestionControllerMapper.toOfferDtoList(offerRequest, participantId),
+                ingestionControllerMapper.toIngestionPayloadDto(ingestionPayload, participantId),
                 inventoryId,
                 participantId,
                 dumpType,

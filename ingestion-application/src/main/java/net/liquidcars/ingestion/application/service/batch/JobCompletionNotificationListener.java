@@ -23,6 +23,7 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
 
     private final IOfferInfraKafkaProducerService kafkaProducer;
     private final JobFailedIdsCollector failedIdsCollector;
+    private final JobDeleteExternalIdsCollector deleteExternalIdsCollector;
     private final IngestionBatchMapper mapper;
 
     @Override
@@ -52,6 +53,7 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
                     .writeCount(writeCount)
                     .skipCount(skipCount)
                     .failedExternalIds(failedIdsCollector.getFailedIds())
+                    .idsForDelete(deleteExternalIdsCollector.getDeleteIds())
                     .startTime(Optional.ofNullable(jobExecution.getStartTime())
                             .map(startTime -> startTime.atZone(ZoneId.systemDefault()).toOffsetDateTime())
                             .orElse(OffsetDateTime.now()))

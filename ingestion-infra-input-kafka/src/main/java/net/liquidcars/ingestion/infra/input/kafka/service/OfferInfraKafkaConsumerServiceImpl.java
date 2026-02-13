@@ -35,7 +35,7 @@ public class OfferInfraKafkaConsumerServiceImpl implements IOfferInfraKafkaConsu
     @Transactional
     @Override
     public void processOfferSave(OfferDto offerDto) {
-        offerInfraSQLService.processOffer(offerDto);
+        //offerInfraSQLService.processOffer(offerDto);
         offerInfraNoSQLService.processOffer(offerDto);
         OfferSummaryDto offerSummary = OfferSummaryDto.builder()
                 .id(offerDto.getId())

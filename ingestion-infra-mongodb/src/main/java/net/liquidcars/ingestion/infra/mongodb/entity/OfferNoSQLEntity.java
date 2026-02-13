@@ -117,6 +117,9 @@ public class OfferNoSQLEntity {
     @Field("updated_at")
     private Instant updatedAt;
 
+    @Field("participant_id")
+    private UUID participantId;
+
     @Field("job_identifier")
     private String jobIdentifier;
 

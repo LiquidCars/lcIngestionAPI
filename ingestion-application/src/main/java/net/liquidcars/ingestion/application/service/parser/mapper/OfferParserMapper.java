@@ -13,8 +13,10 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface OfferParserMapper {
 
+    @Mapping(target = "id", expression = "java(java.util.UUID.randomUUID())")
     OfferDto toOfferDto(OfferJSONModel offerJSONModel);
 
+    @Mapping(target = "id", expression = "java(java.util.UUID.randomUUID())")
     OfferDto toOfferDto(OfferXMLModel offerXMLModel);
 
     ExternalIdInfoDto toExternalIdInfoDto(ExternalIdInfoXMLModel externalIdInfoXMLModel);

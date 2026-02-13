@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus;
 import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
 import net.liquidcars.ingestion.domain.model.batch.IngestionProcessType;
+import net.liquidcars.ingestion.infra.postgresql.service.mapper.JsonStringListConverter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -65,9 +66,14 @@ public class IngestionReportEntity {
     @Column(name = "skip_count")
     private long skipCount;
 
+    @Convert(converter = JsonStringListConverter.class)
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "failed_external_ids", columnDefinition = "jsonb")
     private List<ExternalIdInfoJSONEntity> failedExternalIds;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "ids_for_delete", columnDefinition = "jsonb")
+    private List<String> idsForDelete;
 
     @Builder.Default
     @Column(name = "processed", nullable = false)

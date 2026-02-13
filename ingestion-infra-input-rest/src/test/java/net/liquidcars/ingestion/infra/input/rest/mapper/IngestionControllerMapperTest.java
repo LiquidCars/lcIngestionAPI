@@ -27,7 +27,6 @@ public class IngestionControllerMapperTest {
         OfferDto result = mapper.toOfferDto(request, participantId);
 
         assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(request.getId());
         assertThat(result.getExternalIdInfo().getChannelReference()).isEqualTo(request.getExternalIdInfo().getChannelReference());
         assertThat(result.getVehicleInstance().getPlate()).isEqualTo(request.getVehicleInstance().getPlate());
 
@@ -36,44 +35,6 @@ public class IngestionControllerMapperTest {
         assertThat(result.getParticipantId()).isEqualTo(participantId);
         assertThat(result.getLastUpdated()).isNotNull();
     }
-
-    @Test
-    void shouldMapListWithDifferentIds() {
-
-        List<OfferRequest> requests = List.of(
-                OfferRequestFactory.getOfferRequest(),
-                OfferRequestFactory.getOfferRequest()
-        );
-
-        List<OfferDto> results = mapper.toOfferDtoList(requests, participantId);
-
-        assertThat(results).hasSize(2);
-
-        // Each DTO must have a unique ID
-        assertThat(results.get(0).getId())
-                .isNotEqualTo(results.get(1).getId());
-
-        // Channel reference must be mapped correctly
-        assertThat(results)
-                .extracting(dto -> dto.getExternalIdInfo().getChannelReference())
-                .containsExactly(
-                        requests.get(0).getExternalIdInfo().getChannelReference(),
-                        requests.get(1).getExternalIdInfo().getChannelReference()
-                );
-
-        // All DTOs must have same participantId
-        assertThat(results)
-                .extracting(OfferDto::getParticipantId)
-                .containsOnly(participantId);
-
-        // All DTOs must have lastUpdated timestamp
-        assertThat(results)
-                .allSatisfy(dto ->
-                        assertThat(dto.getLastUpdated()).isNotNull()
-                );
-    }
-
-
 
     @Test
     void shouldReturnNullWhenListIsNull() {

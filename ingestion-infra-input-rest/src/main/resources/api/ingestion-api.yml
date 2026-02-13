@@ -34,9 +34,7 @@ paths:
         content:
           application/json:
             schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/OfferRequest'
+              $ref: '#/components/schemas/IngestionPayload'
       responses:
         '202':
           description: Batch accepted.
@@ -133,12 +131,22 @@ components:
       enum: [UPDATE, REPLACEMENT]
       default: UPDATE
 
+    IngestionPayload:
+      type: object
+      properties:
+        offers:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfferRequest'
+        offersToDelete:
+          type: array
+          items:
+            type: string
+            description: External IDs to be removed
+
     OfferRequest:
       type: object
       properties:
-        id:
-          type: string
-          format: uuid
         sellerType:
           $ref: '#/components/schemas/CarOfferSellerTypeEnum'
         privateOwnerRegisteredUserId:

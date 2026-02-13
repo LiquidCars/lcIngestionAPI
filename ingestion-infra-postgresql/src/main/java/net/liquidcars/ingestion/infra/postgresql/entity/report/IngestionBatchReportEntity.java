@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus;
+import net.liquidcars.ingestion.infra.postgresql.service.mapper.JsonStringListConverter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -43,6 +44,11 @@ public class IngestionBatchReportEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "failed_external_ids", columnDefinition = "jsonb")
     private List<ExternalIdInfoJSONEntity> failedExternalIds;
+
+    @Convert(converter = JsonStringListConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "ids_for_delete", columnDefinition = "jsonb")
+    private List<String> idsForDelete;
 
     @Column(name = "start_time")
     private OffsetDateTime startTime;

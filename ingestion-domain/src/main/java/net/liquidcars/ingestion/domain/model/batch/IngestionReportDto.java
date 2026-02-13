@@ -24,6 +24,7 @@ public class IngestionReportDto {
     private long writeCount;
     private long skipCount;
     private List<ExternalIdInfoDto> failedExternalIds;
+    private List<String> idsForDelete;
     private boolean processed = false;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
