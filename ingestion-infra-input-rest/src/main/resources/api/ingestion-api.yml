@@ -147,11 +147,16 @@ components:
     OfferRequest:
       type: object
       properties:
+        id:
+          type: string
+          format: uuid
         sellerType:
           $ref: '#/components/schemas/CarOfferSellerTypeEnum'
         privateOwnerRegisteredUserId:
           type: string
           format: uuid
+        hash:
+          type: integer
         externalIdInfo:
           $ref: '#/components/schemas/ExternalIdInfo'
         vehicleInstance:
@@ -193,11 +198,10 @@ components:
           format: email
         pickUpAddress:
           $ref: '#/components/schemas/ParticipantAddress'
-        hash:
-          type: integer
         jsonCarOfferId:
           type: string
           format: uuid
+
     ExternalIdInfo:
       type: object
       properties:
@@ -207,6 +211,7 @@ components:
           type: string
         channelReference:
           type: string
+
     VehicleInstance:
       type: object
       properties:
@@ -239,6 +244,8 @@ components:
     VehicleModel:
       type: object
       properties:
+        id:
+          type: integer
         brand:
           type: string
         model:
@@ -247,17 +254,52 @@ components:
           type: string
         bodyType:
           $ref: '#/components/schemas/KeyValue'
-        fuelType:
-          $ref: '#/components/schemas/KeyValue'
-        changeType:
-          $ref: '#/components/schemas/KeyValue'
+        numDoors:
+          type: integer
         cv:
+          type: integer
+        numCylinders:
           type: integer
         displacement:
           type: integer
+        urbanConsumption:
+          type: number
+        roadConsumption:
+          type: number
         avgConsumption:
           type: number
-          format: double
+        numGears:
+          type: integer
+        kgWeight:
+          type: integer
+        changeType:
+          $ref: '#/components/schemas/KeyValue'
+        fuelType:
+          $ref: '#/components/schemas/KeyValue'
+        numSeats:
+          type: integer
+        drivetrainType:
+          $ref: '#/components/schemas/KeyValue'
+        euroTaxCode:
+          type: string
+        environmentalBadge:
+          $ref: '#/components/schemas/KeyValue'
+        cmWidth:
+          type: integer
+        cmLength:
+          type: integer
+        cmHeight:
+          type: integer
+        litresTrunk:
+          type: integer
+        litresTank:
+          type: integer
+        maxSpeed:
+          type: integer
+        maxEmissions:
+          type: integer
+        acceleration:
+          type: number
 
     Money:
       type: object
@@ -283,6 +325,14 @@ components:
           type: integer
         equipment:
           $ref: '#/components/schemas/KeyValue'
+        category:
+          $ref: '#/components/schemas/KeyValue'
+        type:
+          $ref: '#/components/schemas/KeyValue'
+        description:
+          type: string
+        code:
+          type: string
         price:
           $ref: '#/components/schemas/Money'
 
@@ -295,6 +345,9 @@ components:
           $ref: '#/components/schemas/KeyValue'
         resource:
           type: string
+        compressedResource:
+          type: string
+          format: byte
 
     ParticipantAddress:
       type: object
@@ -311,18 +364,32 @@ components:
           type: string
         gpsLocation:
           $ref: '#/components/schemas/GPSLocation'
+        streetNumber:
+          type: string
         streetAddress:
           type: string
-        city:
+        extendedAddress:
           type: string
         postalCode:
           type: string
+        city:
+          type: string
+        region:
+          type: string
+        country:
+          type: string
         countryCode:
+          type: string
+        poBox:
+          type: string
+        type:
           type: string
 
     GPSLocation:
       type: object
       properties:
+        name:
+          type: string
         longitude:
           type: number
           format: double
