@@ -20,9 +20,9 @@ public class IngestionReportDto {
     private OffsetDateTime publicationDate;
     private IngestionBatchStatus status;
     private IngestionDumpType dumpType;
-    private long readCount;
-    private long writeCount;
-    private long skipCount;
+    private Integer readCount;
+    private Integer writeCount;
+    private Integer skipCount;
     private List<ExternalIdInfoDto> failedExternalIds;
     private List<String> idsForDelete;
     private boolean processed = false;

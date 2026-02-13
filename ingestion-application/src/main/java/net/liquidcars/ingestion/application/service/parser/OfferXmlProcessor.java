@@ -2,7 +2,7 @@ package net.liquidcars.ingestion.application.service.parser;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.liquidcars.ingestion.application.service.batch.JobDeleteExternalIdsCollector;
+import net.liquidcars.ingestion.domain.model.batch.JobDeleteExternalIdsCollector;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.XML.*;
@@ -20,11 +20,8 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 import java.io.InputStream;
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 
 @Slf4j
@@ -34,7 +31,6 @@ public class OfferXmlProcessor implements IOfferParserService {
 
     private final OfferParserMapper offerParserMapper;
     private final OfferStreamItemReader offerReader;
-    private final JobDeleteExternalIdsCollector deleteExternalIdsCollector;
 
     @Override
     public boolean supports(IngestionFormat format) {
@@ -42,7 +38,7 @@ public class OfferXmlProcessor implements IOfferParserService {
     }
 
     @Override
-    public void parseAndProcess(InputStream inputStream, Consumer<OfferDto> action) {
+    public void parseAndProcess(InputStream inputStream, Consumer<OfferDto> action, JobDeleteExternalIdsCollector deleteExternalIdsCollector) {
         XMLInputFactory factory = XMLInputFactory.newInstance();
         // Configuración para evitar ataques XXE y mejorar rendimiento
         factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
@@ -60,7 +56,7 @@ public class OfferXmlProcessor implements IOfferParserService {
                     if ("anuncio".equals(localName)) {
                         processAnuncio(reader, action);
                     } else if ("offersToDelete".equals(localName)) {
-                        processDeletes(reader);
+                        processDeletes(reader, deleteExternalIdsCollector);
                     }
                 }
             }
@@ -98,7 +94,7 @@ public class OfferXmlProcessor implements IOfferParserService {
         }
     }
 
-    private void processDeletes(XMLStreamReader reader) throws Exception {
+    private void processDeletes(XMLStreamReader reader, JobDeleteExternalIdsCollector deleteExternalIdsCollector) throws Exception {
         while (reader.hasNext()) {
             int event = reader.next();
             if (event == XMLStreamConstants.START_ELEMENT && "id".equals(reader.getLocalName())) {

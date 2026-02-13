@@ -2,31 +2,15 @@ package net.liquidcars.ingestion.application.service.parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import net.liquidcars.ingestion.application.service.batch.JobDeleteExternalIdsCollector;
+import net.liquidcars.ingestion.domain.model.batch.JobDeleteExternalIdsCollector;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
-import net.liquidcars.ingestion.application.service.parser.model.JSON.OfferJSONModel;
-import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.factory.OfferDtoFactory;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class OfferJSONProcessorTest {

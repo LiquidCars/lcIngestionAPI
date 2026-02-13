@@ -2,8 +2,10 @@ package net.liquidcars.ingestion.application.service.batch;
 
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.batch.JobDeleteExternalIdsCollector;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
+import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.stereotype.Component;
 
@@ -14,13 +16,20 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 @Slf4j
-public class OfferStreamItemReader implements ItemReader<OfferDto> {
+public class OfferStreamItemReader implements ItemReader<OfferDto>, StepExecutionListener {
 
     private final BlockingQueue<ParsingResult> queue = new LinkedBlockingQueue<>(500);
     private volatile boolean isParsingFinished = false;
     private volatile Throwable fatalError = null;
+    private JobDeleteExternalIdsCollector deleteExternalIdsCollector;
 
-    public void start(IOfferParserService parser, InputStream is) {
+    @Override
+    public void beforeStep(org.springframework.batch.core.StepExecution stepExecution) {
+        stepExecution.getJobExecution().getExecutionContext().put("deleteExternalIdsCollector", this.deleteExternalIdsCollector);
+    }
+
+    public void start(IOfferParserService parser, InputStream is, JobDeleteExternalIdsCollector deleteExternalIdsCollector) {
+        this.deleteExternalIdsCollector = deleteExternalIdsCollector;
         this.queue.clear();
         this.isParsingFinished = false;
         this.fatalError = null;
@@ -28,7 +37,7 @@ public class OfferStreamItemReader implements ItemReader<OfferDto> {
         Thread.ofVirtual().start(() -> {
             try (is) {
                 // We pass a lambda that wraps the success in a ParsingResult
-                parser.parseAndProcess(is, offer -> queue.add(ParsingResult.success(offer)));
+                parser.parseAndProcess(is, offer -> queue.add(ParsingResult.success(offer)), deleteExternalIdsCollector);
             } catch (LCIngestionException e) {
                 log.debug("Parser thread caught a record error already queued");
             } catch (Exception e) {

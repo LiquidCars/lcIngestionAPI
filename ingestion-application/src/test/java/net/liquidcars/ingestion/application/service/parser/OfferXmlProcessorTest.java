@@ -1,18 +1,12 @@
 package net.liquidcars.ingestion.application.service.parser;
 
-import net.liquidcars.ingestion.application.service.batch.JobDeleteExternalIdsCollector;
+import net.liquidcars.ingestion.domain.model.batch.JobDeleteExternalIdsCollector;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.XML.OfferXMLModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;

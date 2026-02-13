@@ -1,5 +1,6 @@
 package net.liquidcars.ingestion.application.service.batch;
 
+import net.liquidcars.ingestion.domain.model.batch.JobDeleteExternalIdsCollector;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

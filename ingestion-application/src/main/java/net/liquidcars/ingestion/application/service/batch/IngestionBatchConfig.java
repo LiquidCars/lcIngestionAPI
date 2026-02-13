@@ -3,12 +3,14 @@ package net.liquidcars.ingestion.application.service.batch;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.batch.JobDeleteExternalIdsCollector;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.configuration.annotation.JobScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -47,8 +49,7 @@ public class IngestionBatchConfig {
             OfferStreamItemReader offerReader,
             OfferItemWriter offerItemWriter,
             IngestionSkipListener ingestionSkipListener,
-            JobFailedIdsCollector failedIdsCollector,
-            JobDeleteExternalIdsCollector deleteExternalIdsCollector
+            JobFailedIdsCollector failedIdsCollector
     ){
         return new StepBuilder("ingestionStep", jobRepository)
                 .<OfferDto, OfferDto>chunk(chunkSize, transactionManager)

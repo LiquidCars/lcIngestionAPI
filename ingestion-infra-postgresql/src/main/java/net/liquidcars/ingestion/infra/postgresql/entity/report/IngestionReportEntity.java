@@ -58,13 +58,13 @@ public class IngestionReportEntity {
     private IngestionDumpType dumpType;
 
     @Column(name = "read_count")
-    private long readCount;
+    private Integer readCount;
 
     @Column(name = "write_count")
-    private long writeCount;
+    private Integer writeCount;
 
     @Column(name = "skip_count")
-    private long skipCount;
+    private Integer skipCount;
 
     @Convert(converter = JsonStringListConverter.class)
     @JdbcTypeCode(SqlTypes.JSON)

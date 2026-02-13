@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.liquidcars.ingestion.application.service.batch.JobDeleteExternalIdsCollector;
+import net.liquidcars.ingestion.domain.model.batch.JobDeleteExternalIdsCollector;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.JSON.OfferJSONModel;
@@ -30,7 +30,6 @@ public class OfferJSONProcessor implements IOfferParserService {
     private final ObjectMapper objectMapper;
     private final OfferParserMapper offerParserMapper;
     private final OfferStreamItemReader offerReader;
-    private final JobDeleteExternalIdsCollector deleteExternalIdsCollector;
 
     @Override
     public boolean supports(IngestionFormat format) {
@@ -38,21 +37,16 @@ public class OfferJSONProcessor implements IOfferParserService {
     }
 
     @Override
-    public void parseAndProcess(InputStream inputStream, Consumer<OfferDto> action) {
+    public void parseAndProcess(InputStream inputStream, Consumer<OfferDto> action, JobDeleteExternalIdsCollector deleteExternalIdsCollector) {
         try (JsonParser parser = objectMapper.getFactory().createParser(inputStream)) {
-
-            if (parser.nextToken() != JsonToken.START_OBJECT) {
-                throw new RuntimeException("Expected JSON object as root");
-            }
-
+            if (parser.nextToken() != JsonToken.START_OBJECT) return;
             while (parser.nextToken() != JsonToken.END_OBJECT) {
                 String fieldName = parser.currentName();
-                parser.nextToken();
-
+                JsonToken token = parser.nextToken();
                 if ("offers".equals(fieldName)) {
                     processOffersArray(parser, action);
                 } else if ("offersToDelete".equals(fieldName)) {
-                    processDeleteArray(parser);
+                    processDeleteArray(parser, deleteExternalIdsCollector);
                 } else {
                     parser.skipChildren();
                 }
@@ -62,7 +56,6 @@ public class OfferJSONProcessor implements IOfferParserService {
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.CONVERSION_ERROR)
                     .message("Fatal error during JSON stream parsing: " + e.getMessage())
-                    .cause(e)
                     .build();
         }
     }
@@ -101,7 +94,7 @@ public class OfferJSONProcessor implements IOfferParserService {
         }
     }
 
-    private void processDeleteArray(JsonParser parser) throws IOException {
+    private void processDeleteArray(JsonParser parser, JobDeleteExternalIdsCollector deleteExternalIdsCollector) throws IOException {
         if (parser.currentToken() != JsonToken.START_ARRAY) return;
 
         while (parser.nextToken() != JsonToken.END_ARRAY) {

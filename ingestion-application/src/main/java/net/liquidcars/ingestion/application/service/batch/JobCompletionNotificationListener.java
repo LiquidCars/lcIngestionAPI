@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.application.service.batch.mapper.IngestionBatchMapper;
 import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
+import net.liquidcars.ingestion.domain.model.batch.JobDeleteExternalIdsCollector;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
@@ -23,7 +24,6 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
 
     private final IOfferInfraKafkaProducerService kafkaProducer;
     private final JobFailedIdsCollector failedIdsCollector;
-    private final JobDeleteExternalIdsCollector deleteExternalIdsCollector;
     private final IngestionBatchMapper mapper;
 
     @Override
@@ -44,6 +44,9 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
                 writeCount += stepExecution.getWriteCount();
                 skipCount += stepExecution.getSkipCount();
             }
+            var jobContext = jobExecution.getExecutionContext();
+            JobDeleteExternalIdsCollector deleteExternalIdsCollector =
+                    (JobDeleteExternalIdsCollector) jobContext.get("deleteExternalIdsCollector");
 
             // 2. Build report with Start and End times
             IngestionBatchReportDto report = IngestionBatchReportDto.builder()
@@ -53,7 +56,7 @@ public class JobCompletionNotificationListener implements JobExecutionListener {
                     .writeCount(writeCount)
                     .skipCount(skipCount)
                     .failedExternalIds(failedIdsCollector.getFailedIds())
-                    .idsForDelete(deleteExternalIdsCollector.getDeleteIds())
+                    .idsForDelete(deleteExternalIdsCollector != null ? deleteExternalIdsCollector.getDeleteIds() : null)
                     .startTime(Optional.ofNullable(jobExecution.getStartTime())
                             .map(startTime -> startTime.atZone(ZoneId.systemDefault()).toOffsetDateTime())
                             .orElse(OffsetDateTime.now()))

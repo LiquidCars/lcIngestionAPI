@@ -33,7 +33,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.InputStream;
 import java.net.URI;
 import java.time.OffsetDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -242,7 +241,8 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
             JobExecution execution = null;
             try {
                 UUID ingestionId = UUID.randomUUID();
-                offerReader.start(parser, inputStream);
+                JobDeleteExternalIdsCollector deleteExternalIdsCollector = new JobDeleteExternalIdsCollector();
+                offerReader.start(parser, inputStream, deleteExternalIdsCollector);
                 JobParameters params = new JobParametersBuilder()
                         .addString("ingestionId", ingestionId.toString())
                         .addString("format", format.name())
@@ -350,11 +350,11 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
             IngestionReportDto ingestionReportDto,
             IngestionBatchReportDto ingestionBatchReportDto) {
         ingestionReportDto.setStatus(ingestionBatchReportDto.getStatus());
-        ingestionReportDto.setReadCount(ingestionReportDto.getReadCount());
-        ingestionReportDto.setWriteCount(ingestionReportDto.getWriteCount());
-        ingestionReportDto.setSkipCount(ingestionReportDto.getSkipCount());
-        ingestionReportDto.setFailedExternalIds(ingestionReportDto.getFailedExternalIds());
-        ingestionReportDto.setIdsForDelete(ingestionReportDto.getIdsForDelete());
+        ingestionReportDto.setReadCount((int) ingestionBatchReportDto.getReadCount());
+        ingestionReportDto.setWriteCount((int) ingestionBatchReportDto.getWriteCount());
+        ingestionReportDto.setSkipCount((int) ingestionBatchReportDto.getSkipCount());
+        ingestionReportDto.setFailedExternalIds(ingestionBatchReportDto.getFailedExternalIds());
+        ingestionReportDto.setIdsForDelete(ingestionBatchReportDto.getIdsForDelete());
         ingestionReportDto.setUpdatedAt(OffsetDateTime.now());
     }
 
@@ -387,7 +387,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         long draftOffersCount =
                 offerInfraNoSQLService.countOffersFromReportId(ingestionReportDto.getId());
         boolean shouldMarkAsProcessed = false;
-        if (ingestionReportDto.getWriteCount() == draftOffersCount) {
+        if (ingestionReportDto.getWriteCount()!= null && ingestionReportDto.getWriteCount() == draftOffersCount) {
             log.info(
                     "Ingestion report with id {} for process offers processed and Success job sent.",
                     ingestionReportDto.getId()

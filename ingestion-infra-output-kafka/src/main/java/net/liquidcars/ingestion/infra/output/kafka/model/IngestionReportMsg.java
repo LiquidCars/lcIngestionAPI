@@ -24,9 +24,9 @@ public class IngestionReportMsg {
     private OffsetDateTime publicationDate;
     private String status;
     private IngestionDumpType dumpType;
-    private long readCount;
-    private long writeCount;
-    private long skipCount;
+    private Integer readCount;
+    private Integer writeCount;
+    private Integer skipCount;
     private List<ExternalIdInfoMsg> failedExternalIds;
     private boolean processed = false;
     private String createdAt;
