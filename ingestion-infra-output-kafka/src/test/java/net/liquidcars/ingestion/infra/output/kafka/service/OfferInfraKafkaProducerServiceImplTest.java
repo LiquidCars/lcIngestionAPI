@@ -3,7 +3,7 @@ package net.liquidcars.ingestion.infra.output.kafka.service;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.factory.OfferDtoFactory;
 import net.liquidcars.ingestion.factory.OfferMsgFactory;
-import net.liquidcars.ingestion.infra.output.kafka.client.OfferKafkaPublisher;
+import net.liquidcars.ingestion.infra.output.kafka.producer.OfferKafkaPublisher;
 import net.liquidcars.ingestion.infra.output.kafka.model.OfferMsg;
 import net.liquidcars.ingestion.infra.output.kafka.service.mapper.OfferInfraKafkaProducerMapper;
 import org.junit.jupiter.api.Test;

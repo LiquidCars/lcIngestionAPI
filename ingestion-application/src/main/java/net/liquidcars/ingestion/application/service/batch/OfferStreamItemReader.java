@@ -1,27 +1,47 @@
 package net.liquidcars.ingestion.application.service.batch;
 
+import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.batch.JobDeleteExternalIdsCollector;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
-import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
+import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.item.ItemReader;
+import org.springframework.stereotype.Component;
+
 import java.io.InputStream;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class OfferStreamItemReader implements ItemReader<OfferDto> {
+@Component
+@Slf4j
+public class OfferStreamItemReader implements ItemReader<OfferDto>, StepExecutionListener {
 
-    private final BlockingQueue<OfferDto> queue = new LinkedBlockingQueue<>(500);
-    private boolean isParsingFinished = false;
-    private Throwable error = null;
+    private final BlockingQueue<ParsingResult> queue = new LinkedBlockingQueue<>(500);
+    private volatile boolean isParsingFinished = false;
+    private volatile Throwable fatalError = null;
+    private JobDeleteExternalIdsCollector deleteExternalIdsCollector;
 
-    public OfferStreamItemReader(IOfferParserService parser, InputStream is) {
+    @Override
+    public void beforeStep(org.springframework.batch.core.StepExecution stepExecution) {
+        stepExecution.getJobExecution().getExecutionContext().put("deleteExternalIdsCollector", this.deleteExternalIdsCollector);
+    }
+
+    public void start(IOfferParserService parser, InputStream is, JobDeleteExternalIdsCollector deleteExternalIdsCollector) {
+        this.deleteExternalIdsCollector = deleteExternalIdsCollector;
+        this.queue.clear();
+        this.isParsingFinished = false;
+        this.fatalError = null;
+
         Thread.ofVirtual().start(() -> {
             try (is) {
-                parser.parseAndProcess(is, queue::add);
+                // We pass a lambda that wraps the success in a ParsingResult
+                parser.parseAndProcess(is, offer -> queue.add(ParsingResult.success(offer)), deleteExternalIdsCollector);
+            } catch (LCIngestionException e) {
+                log.debug("Parser thread caught a record error already queued");
             } catch (Exception e) {
-                this.error = e;
+                this.fatalError = e;
             } finally {
                 this.isParsingFinished = true;
             }
@@ -29,28 +49,36 @@ public class OfferStreamItemReader implements ItemReader<OfferDto> {
     }
 
     @Override
-    public OfferDto read() {
-        if (error != null) {
-            throw LCIngestionException.builder()
-                    .techCause(LCTechCauseEnum.CONVERSION_ERROR)
-                    .message("Error during stream parsing: " + error.getMessage())
-                    .cause(error)
-                    .build();
-        }
-        try {
-            while (queue.isEmpty()) {
-                if (isParsingFinished) return null;
-                TimeUnit.MILLISECONDS.sleep(50);
+    public OfferDto read() throws Exception {
+        if (fatalError != null) throw new RuntimeException(fatalError);
+
+        while (true) {
+            ParsingResult result = queue.poll(200, TimeUnit.MILLISECONDS);
+
+            if (result != null) {
+                if (result.isError()) {
+                    throw result.error(); // Spring Batch captures it, SkipListener takes over, and the Job CONTINUES
+                }
+                return result.offer(); // Register OK
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw LCIngestionException.builder()
-                    .techCause(LCTechCauseEnum.INTERNAL_ERROR)
-                    .message("Reader thread interrupted")
-                    .cause(e)
-                    .build();
+
+            if (isParsingFinished && queue.isEmpty()) return null;
         }
-        return queue.poll();
     }
 
+    public void addErrorToQueue(LCIngestionException e) {
+        queue.add(ParsingResult.failure(e));
+    }
+
+    public record ParsingResult(OfferDto offer, LCIngestionException error) {
+        public static ParsingResult success(OfferDto dto) {
+            return new ParsingResult(dto, null);
+        }
+        public static ParsingResult failure(LCIngestionException e) {
+            return new ParsingResult(null, e);
+        }
+        public boolean isError() {
+            return error != null;
+        }
+    }
 }

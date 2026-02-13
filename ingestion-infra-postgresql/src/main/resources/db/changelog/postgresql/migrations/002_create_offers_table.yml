@@ -48,6 +48,12 @@ databaseChangeLog:
               - column:
                   name: source
                   type: VARCHAR(100)
+              - column:
+                  name: job_identifier
+                  type: VARCHAR(100)
+              - column:
+                  name: batch_status
+                  type: VARCHAR(50)
 
         - createIndex:
             indexName: idx_offers_external_id

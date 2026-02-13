@@ -1,11 +1,15 @@
 package net.liquidcars.ingestion.infra.input.rest;
 
-import net.liquidcars.ingestion.config.security.filter.IngestionContextFilter;
 import net.liquidcars.ingestion.config.security.model.SecurityProperties;
+import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
+import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
+import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
+import net.liquidcars.ingestion.domain.model.security.LCContext;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
 import net.liquidcars.ingestion.domain.service.context.IContextService;
 import net.liquidcars.ingestion.infra.input.rest.mapper.IngestionControllerMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
@@ -20,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -45,80 +50,115 @@ public class IngestionControllerTest {
     @MockitoBean
     private IngestionControllerMapper mapper;
 
-    // Infrastructure mocks to satisfy GlobalExceptionHandler and Filters
     @MockitoBean
     private IContextService contextService;
+
     @MockitoBean
     private SecurityProperties securityProperties;
 
-    @Test
-    void ingestBatch_ShouldReturnOk() throws Exception {
-        when(mapper.toOfferDtoList(any())).thenReturn(List.of());
+    private static final UUID TEST_INVENTORY_ID = UUID.randomUUID();
+    private static final UUID TEST_PARTICIPANT_ID = UUID.randomUUID();
 
-        mockMvc.perform(post("/batch")
-                        .content("[]")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-
-        verify(ingestionService).processOffers(any());
+    @BeforeEach
+    void setUp() {
+        // Configuramos el contexto para que getParticipantIdFromContext() no falle
+        LCContext context = mock(LCContext.class);
+        when(context.getParticipantId()).thenReturn(TEST_PARTICIPANT_ID.toString());
+        when(contextService.getContext()).thenReturn(context);
     }
 
+    @Test
+    void ingestBatch_ShouldReturnAccepted() throws Exception {
+        when(mapper.toOfferDtoList(any(), eq(TEST_PARTICIPANT_ID))).thenReturn(List.of());
+
+        mockMvc.perform(post("/v1/ingestion/batch")
+                        .param("inventoryId", TEST_INVENTORY_ID.toString())
+                        .param("dumpType", "UPDATE")
+                        .content("{}")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isAccepted());
+
+        verify(ingestionService).processOffers(
+                any(),
+                eq(TEST_INVENTORY_ID),
+                eq(TEST_PARTICIPANT_ID),
+                eq(IngestionDumpType.UPDATE),
+                any()
+        );
+    }
 
     @Test
     void ingestFromUrl_ShouldReturnAccepted() throws Exception {
-        mockMvc.perform(post("/url")
+        mockMvc.perform(post("/v1/ingestion/url")
                         .param("format", "json")
-                        .param("url", "https://api.test.com/offers"))
+                        .param("url", "https://api.test.com/offers")
+                        .param("inventoryId", TEST_INVENTORY_ID.toString())
+                        .param("dumpType", "REPLACEMENT"))
                 .andExpect(status().isAccepted());
 
-        verify(ingestionService).processOffersFromUrl(eq("json"), any(URI.class));
+        verify(ingestionService).processOffersFromUrl(
+                eq(IngestionFormat.json),
+                any(URI.class),
+                eq(TEST_INVENTORY_ID),
+                eq(TEST_PARTICIPANT_ID),
+                eq(IngestionDumpType.REPLACEMENT),
+                any(),
+                any()
+        );
     }
 
     @Test
     void ingestStream_ShouldReturnAccepted() throws Exception {
-
         byte[] content = "<offers></offers>".getBytes();
 
-        mockMvc.perform(post("/stream")
+        mockMvc.perform(post("/v1/ingestion/stream")
                         .param("format", "xml")
+                        .param("inventoryId", TEST_INVENTORY_ID.toString())
+                        .param("dumpType", "UPDATE")
                         .content(content)
                         .contentType(MediaType.APPLICATION_OCTET_STREAM))
                 .andExpect(status().isAccepted());
 
-        verify(ingestionService).processOffersStream(eq("xml"), any(InputStream.class));
+        verify(ingestionService).processOffersStream(
+                eq(IngestionFormat.xml),
+                any(InputStream.class),
+                eq(TEST_INVENTORY_ID),
+                eq(TEST_PARTICIPANT_ID),
+                eq(IngestionDumpType.UPDATE),
+                any(),
+                any()
+        );
     }
 
     @Test
-    void ingestStream_ShouldReturnInternalServerError_WhenIOExceptionOccurs() throws Exception {
-        // We mock the Resource passed as the @RequestBody/body
-        // Note: Spring usually maps the binary body to a Resource
-        // To trigger your catch block, we simulate a failure in the stream acquisition
+    void ingestStream_ShouldReturnBadRequest_WhenServiceThrowsLCIngestionException() throws Exception {
 
-        mockMvc.perform(post("/stream")
+        doThrow(LCIngestionException.builder()
+                .techCause(LCTechCauseEnum.INVALID_REQUEST)
+                .message("Forced failure")
+                .build())
+                .when(ingestionService)
+                .processOffersStream(
+                        any(), any(InputStream.class), any(), any(), any(), any(), any());
+
+        mockMvc.perform(post("/v1/ingestion/stream")
                         .param("format", "xml")
-                        .content("corrupted data")
-                        .contentType(MediaType.APPLICATION_OCTET_STREAM))
-                // If you want to force the IOException specifically:
-                // You might need to use a custom RequestPostProcessor or MockMultipartFile
-                // but usually, doThrow on the service is easier if the service handles the stream.
-                .andExpect(status().isAccepted());
-    }
-
-    @Test
-    void ingestStream_ShouldReturn500_WhenIOExceptionOccurs() throws Exception {
-        // Force the service to throw the checked exception
-        doAnswer(invocation -> {
-            throw new IOException("Forced failure");
-        }).when(ingestionService).processOffersStream(eq("xml"), any(InputStream.class));
-
-        mockMvc.perform(post("/stream")
-                        .param("format", "xml")
+                        .param("inventoryId", TEST_INVENTORY_ID.toString())
+                        .param("dumpType", "UPDATE")
                         .content("test content")
                         .contentType(MediaType.APPLICATION_OCTET_STREAM))
                 .andExpect(status().isBadRequest())
-                .andExpect(result -> assertTrue(result.getResolvedException() instanceof LCIngestionException));
-        // If you want to be extra precise:
-        // .andExpect(result -> assertTrue(result.getResolvedException() instanceof LCIngestionException));
+                .andExpect(result ->
+                        assertTrue(result.getResolvedException() instanceof LCIngestionException)
+                );
     }
 
+
+    @Test
+    void ingestBatch_ShouldReturn400_WhenRequiredParamsMissing() throws Exception {
+        mockMvc.perform(post("/v1/ingestion/batch")
+                        .content("{}")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
 }

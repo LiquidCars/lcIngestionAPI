@@ -5,72 +5,108 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "offers")
+@Table(name = "inv_ofr_offer")
 public class OfferEntity {
 
     @Id
-    @Column(name = "id")
-    private String id;
-
-    @Column(name = "external_id", nullable = false, unique = true)
-    private String externalId;
+    @Column(name = "ofr_co_id")
+    private UUID id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "vehicle_type")
-    private VehicleTypeDto vehicleType;
+    @Column(name = "ofr_co_sellertype")
+    private CarOfferSellerTypeEnumEntity sellerType;
 
-    @Column(name = "brand")
-    private String brand;
+    @Column(name = "ofr_co_rguownerid")
+    private UUID privateOwnerRegisteredUserId;
 
-    @Column(name = "model")
-    private String model;
+    @Column(name = "ofr_coid_hash")
+    private int hash;
 
-    @Column(name = "year")
-    private Integer year;
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "cari_co_id", nullable = false)
+    private VehicleInstanceEntity vehicleInstance;
 
-    @Column(name = "price")
+    @Column(name = "ofr_ownerref")
+    private String ownerReference;
+
+    @Column(name = "ofr_dealerref")
+    private String dealerReference;
+
+    @Column(name = "ofr_channelref")
+    private String channelReference;
+
+    @Column(name = "ofr_nm_price")
     private BigDecimal price;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status")
-    private OfferStatusDto status;
+    @Column(name = "ofr_nm_price_new")
+    private BigDecimal priceNew;
 
-    @Column(name = "created_at")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cur_co_id", nullable = false)
+    private CurrencyEntity currency;
+
+    @Column(name = "ofr_nm_financedprice")
+    private BigDecimal financedPrice;
+
+    @Column(name = "ofr_ds_financedtext")
+    private String financedText;
+
+    @Column(name = "ofr_bo_taxdeductible")
+    private boolean taxDeductible;
+
+    @Column(name = "ofr_ds_obs")
+    private String obs;
+
+    @Column(name = "ofr_ds_internal_notes")
+    private String internalNotes;
+
+    @Column(name = "ofr_bo_guaranteed")
+    private boolean guarantee;
+
+    @Column(name = "ofr_nm_guarantee_months")
+    private int guaranteeMonths;
+
+    @Column(name = "ofr_ds_guarantee_text")
+    private String guaranteeText;
+
+    @Column(name = "ofr_bo_certified")
+    private boolean certified;
+
+    @Column(name = "ofr_ds_installation")
+    private String installation;
+
+    @Column(name = "ofr_ds_mail")
+    private String mail;
+
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "obj_co_jsoncaroffer_id", referencedColumnName = "obj_co_id")
+    private JsonOfferEntity jsonCarOffer;
+
+    // añadido
+    @Column(name = "ofr_bo_enabled")
+    private boolean enabled;
+
+    @Column(name = "ofr_dt_created")
     private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at")
-    private OffsetDateTime updatedAt;
+    @Column(name = "ofr_dt_updated")
+    private OffsetDateTime lastUpdated;
 
-    @Column(name = "source")
-    private String source;
+    //TODO esto se va a eliminar en cuanto se cambie la lógica
+    //@Column(name = "jobIdentifier")
+    //private String jobIdentifier;
 
-    /**
-     * Vehicle type enumeration
-     */
-    public enum VehicleTypeDto {
-        CAR,
-        TRUCK,
-        MOTORCYCLE,
-        VAN,
-        SUV
-    }
-
-    /**
-     * Offer status enumeration
-     */
-    public enum OfferStatusDto {
-        ACTIVE,
-        SOLD,
-        RESERVED,
-        INACTIVE
-    }
+    //@Column(name = "batchStatus")
+    //private String batchStatus;
 
 }

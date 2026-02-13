@@ -1,5 +1,6 @@
 package net.liquidcars.ingestion.application.service.batch;
 
+import net.liquidcars.ingestion.application.service.batch.mapper.IngestionBatchMapper;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
 import net.liquidcars.ingestion.factory.OfferDtoFactory;
@@ -21,6 +22,9 @@ class OfferItemWriterTest {
 
     @Mock
     private IOfferInfraKafkaProducerService kafkaProducer;
+
+    @Mock
+    private IngestionBatchMapper mapper;
 
     @InjectMocks
     private OfferItemWriter writer;

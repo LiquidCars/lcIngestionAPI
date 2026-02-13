@@ -5,65 +5,56 @@ info:
     API for bulk vehicle offer ingestion (LiquidCars).
     Designed to handle 170k+ records using reactive processing and streaming.
     
-    **Ingestion Strategies:**
-    1. **Batch**: For small JSON integrations.
-    2. **Stream**: For massive binary files (XML/JSON).
-    3. **URL**: For scheduled remote downloads (Pull).
+    **Business Logic (HU):**
+    - `inventoryId`: Target inventory. Defaults to General Inventory if null.
+    - `dumpType`: `UPDATE` (Merge) or `REPLACEMENT` (Full Sync/Delete).
+    - `format`: Now enforced via Enum (xml, json).
   contact:
     name: Platform Engineering Team
     email: support@liquidcars.net
-  version: 1.0.0
+  version: 1.1.0
 
 servers:
-  - url: http://localhost:8090/v1/ingestion
-    description: Local development server (Docker/Local)
+  - url: http://localhost:8890
+    description: Local development server
 
 paths:
-  /batch:
+  /v1/ingestion/batch:
     post:
       tags:
         - Ingestion
       summary: Ingest JSON Batches
-      description: |
-        Protected by `IngestionSecurityFilter`. 
-        Rejects requests larger than 2MB or without `application/json` Content-Type.
       operationId: ingestBatch
+      parameters:
+        - $ref: '#/components/parameters/InventoryIdParam'
+        - $ref: '#/components/parameters/DumpTypeParam'
+        - $ref: '#/components/parameters/ExternalPubIdParam'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/OfferRequest'
+              $ref: '#/components/schemas/IngestionPayload'
       responses:
-        '200':
-          description: Batch successfully sent to Kafka.
-        '400':
-          description: Invalid data or schema mismatch.
+        '202':
+          description: Batch accepted.
         '413':
-          description: Payload Too Large. Batch exceeds the 2MB safety limit.
+          description: Payload Too Large.
 
-  /stream:
+  /v1/ingestion/stream:
     post:
       tags:
         - Ingestion
       summary: Ingest via Binary Stream
-      description: |
-        Processes massive files with no size limit using StAX/Jackson Streaming.
-        Maintains a constant memory footprint (<256MB).
       operationId: ingestStream
       parameters:
-        - name: format
-          in: query
-          required: true
-          description: Format of the binary content.
-          schema:
-            type: string
-            enum: [xml, json]
+        - $ref: '#/components/parameters/FormatParam'
+        - $ref: '#/components/parameters/InventoryIdParam'
+        - $ref: '#/components/parameters/DumpTypeParam'
+        - $ref: '#/components/parameters/PublishDateParam'
+        - $ref: '#/components/parameters/ExternalPubIdParam'
       requestBody:
         required: true
-        description: Binary content of the file (XML or JSON).
         content:
           application/octet-stream:
             schema:
@@ -71,98 +62,278 @@ paths:
               format: binary
       responses:
         '202':
-          description: Stream accepted. Processing will continue asynchronously.
-        '415':
-          description: Unsupported Media Type. Requires application/octet-stream.
+          description: Stream accepted.
 
-  /url:
+  /v1/ingestion/url:
     post:
       tags:
         - Ingestion
       summary: Ingest via URL (Pull)
-      description: |
-        The microservice downloads the file from the provided URL and processes it internally via streaming.
-        Ideal for Scheduled Jobs.
       operationId: ingestFromUrl
       parameters:
-        - name: format
-          in: query
-          required: true
-          schema:
-            type: string
-            enum: [xml, json]
+        - $ref: '#/components/parameters/FormatParam'
         - name: url
           in: query
           required: true
-          description: Resource URL (sftp, http, https).
           schema:
             type: string
             format: uri
+        - $ref: '#/components/parameters/InventoryIdParam'
+        - $ref: '#/components/parameters/DumpTypeParam'
+        - $ref: '#/components/parameters/PublishDateParam'
+        - $ref: '#/components/parameters/ExternalPubIdParam'
       responses:
         '202':
-          description: Download and ingestion started.
+          description: Upload started.
 
 components:
+  parameters:
+    FormatParam:
+      name: format
+      in: query
+      required: true
+      schema:
+        $ref: '#/components/schemas/IngestionFormat'
+    InventoryIdParam:
+      name: inventoryId
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DumpTypeParam:
+      name: dumpType
+      in: query
+      required: true
+      schema:
+        $ref: '#/components/schemas/IngestionDumpType'
+    PublishDateParam:
+      name: publicationDate
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date-time
+    ExternalPubIdParam:
+      name: externalPublicationId
+      in: query
+      required: false
+      schema:
+        type: string
+
   schemas:
+    IngestionFormat:
+      type: string
+      enum: [xml, json]
+
+    IngestionDumpType:
+      type: string
+      enum: [UPDATE, REPLACEMENT]
+      default: UPDATE
+
+    IngestionPayload:
+      type: object
+      properties:
+        offers:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfferRequest'
+        offersToDelete:
+          type: array
+          items:
+            type: string
+            description: External IDs to be removed
+
     OfferRequest:
       type: object
-      required:
-        - externalId
-        - vehicleType
-        - brand
-        - model
-        - year
-        - price
-        - status
       properties:
-        id:
+        sellerType:
+          $ref: '#/components/schemas/CarOfferSellerTypeEnum'
+        privateOwnerRegisteredUserId:
           type: string
           format: uuid
-          readOnly: true
-          example: "550e8400-e29b-41d4-a716-446655440000"
-          description: Internal system-generated ID.
-        externalId:
+        externalIdInfo:
+          $ref: '#/components/schemas/ExternalIdInfo'
+        vehicleInstance:
+          $ref: '#/components/schemas/VehicleInstance'
+        price:
+          $ref: '#/components/schemas/Money'
+        financedPrice:
+          $ref: '#/components/schemas/Money'
+        financedInstallmentAprox:
+          $ref: '#/components/schemas/Money'
+        financedText:
           type: string
-          example: "MF-882931"
-          description: Original provider ID (e.g., motorflashid).
-        vehicleType:
-          $ref: '#/components/schemas/VehicleType'
+        priceNew:
+          $ref: '#/components/schemas/Money'
+        professionalPrice:
+          $ref: '#/components/schemas/Money'
+        taxDeductible:
+          type: boolean
+        obs:
+          type: string
+        internalNotes:
+          type: string
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/CarOfferResource'
+        guarantee:
+          type: boolean
+        guaranteeMonths:
+          type: integer
+        guaranteeText:
+          type: string
+        certified:
+          type: boolean
+        installation:
+          type: string
+        mail:
+          type: string
+          format: email
+        pickUpAddress:
+          $ref: '#/components/schemas/ParticipantAddress'
+        hash:
+          type: integer
+        jsonCarOfferId:
+          type: string
+          format: uuid
+    ExternalIdInfo:
+      type: object
+      properties:
+        ownerReference:
+          type: string
+        dealerReference:
+          type: string
+        channelReference:
+          type: string
+    VehicleInstance:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        vehicleModel:
+          $ref: '#/components/schemas/VehicleModel'
+        plate:
+          type: string
+        color:
+          $ref: '#/components/schemas/KeyValue'
+        mileage:
+          type: integer
+        registrationYear:
+          type: integer
+        registrationMonth:
+          type: integer
+        isMetallicPaint:
+          type: boolean
+        chassisNumber:
+          type: string
+        equipments:
+          type: array
+          items:
+            $ref: '#/components/schemas/CarInstanceEquipment'
+        state:
+          $ref: '#/components/schemas/KeyValue'
+
+    VehicleModel:
+      type: object
+      properties:
         brand:
           type: string
-          example: "BMW"
         model:
           type: string
-          example: "3 Series"
-        year:
+        version:
+          type: string
+        bodyType:
+          $ref: '#/components/schemas/KeyValue'
+        fuelType:
+          $ref: '#/components/schemas/KeyValue'
+        changeType:
+          $ref: '#/components/schemas/KeyValue'
+        cv:
           type: integer
-          minimum: 1900
-          example: 2023
-        price:
+        displacement:
+          type: integer
+        avgConsumption:
           type: number
-          format: decimal
-          minimum: 0.1
-          example: 34500.50
-        status:
-          $ref: '#/components/schemas/OfferStatus'
-        createdAt:
-          type: string
-          format: date-time
-          example: "2026-01-27T10:00:00+01:00"
-        updatedAt:
-          type: string
-          format: date-time
-          example: "2026-01-27T12:00:00+01:00"
-        source:
-          type: string
-          example: "motorflash"
-          description: Origin of the offer for traceability.
+          format: double
 
-    VehicleType:
-      type: string
-      enum: [CAR, TRUCK, MOTORCYCLE, VAN, SUV]
-      description: Type of vehicle.
+    Money:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
 
-    OfferStatus:
+    KeyValue:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+
+    CarInstanceEquipment:
+      type: object
+      properties:
+        id:
+          type: integer
+        equipment:
+          $ref: '#/components/schemas/KeyValue'
+        price:
+          $ref: '#/components/schemas/Money'
+
+    CarOfferResource:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          $ref: '#/components/schemas/KeyValue'
+        resource:
+          type: string
+
+    ParticipantAddress:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/AddressType'
+        address:
+          $ref: '#/components/schemas/PostalAddress'
+
+    PostalAddress:
+      type: object
+      properties:
+        name:
+          type: string
+        gpsLocation:
+          $ref: '#/components/schemas/GPSLocation'
+        streetAddress:
+          type: string
+        city:
+          type: string
+        postalCode:
+          type: string
+        countryCode:
+          type: string
+
+    GPSLocation:
+      type: object
+      properties:
+        longitude:
+          type: number
+          format: double
+        latitude:
+          type: number
+          format: double
+
+    CarOfferSellerTypeEnum:
       type: string
-      enum: [ACTIVE, SOLD, RESERVED, INACTIVE]
-      description: Current state of the offer in the inventory.
+      enum: [usedCar_ProfessionalSeller, usedCar_PrivateSeller]
+
+    AddressType:
+      type: string
+      enum: [P_HOME, B_RETAIL, B_PICKUP, B_EXPERTISE]

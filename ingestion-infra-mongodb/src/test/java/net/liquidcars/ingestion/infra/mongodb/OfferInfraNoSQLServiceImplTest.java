@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.mockito.Mockito.*;
 
@@ -51,19 +52,20 @@ public class OfferInfraNoSQLServiceImplTest {
         OfferDto dto = OfferDtoFactory.getOfferDto();
         OfferNoSQLEntity newEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
         OfferNoSQLEntity existingEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
+        UUID existingId = UUID.randomUUID();
 
         existingEntity.setCreatedAt(Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS));
         newEntity.setCreatedAt(Instant.now());
-        existingEntity.setId("existing-id");
+        existingEntity.setId(existingId);
 
         when(mapper.toEntity(dto)).thenReturn(newEntity);
-        when(repository.findByExternalId(dto.getExternalId()))
+        when(repository.findById(dto.getId().toString()))
                 .thenReturn(Optional.of(existingEntity));
 
         service.processOffer(dto);
 
         verify(repository, times(1)).save(newEntity);
-        assert(newEntity.getId().equals("existing-id"));
+        assert(newEntity.getId().equals(existingId));
     }
 
     @Test
@@ -72,15 +74,15 @@ public class OfferInfraNoSQLServiceImplTest {
         OfferNoSQLEntity newEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
         OfferNoSQLEntity existingEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
 
-        existingEntity.setCreatedAt(Instant.now());
-        newEntity.setCreatedAt(Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS));
+        // existing is artificially in the future → guarantees it is newer
+        existingEntity.setCreatedAt(Instant.now().plus(1, ChronoUnit.DAYS));
 
         when(mapper.toEntity(dto)).thenReturn(newEntity);
-        when(repository.findByExternalId(dto.getExternalId()))
+        when(repository.findById(dto.getId().toString()))
                 .thenReturn(Optional.of(existingEntity));
 
         service.processOffer(dto);
 
-        verify(repository, never()).save(any(OfferNoSQLEntity.class));
+        verify(repository, never()).save(any());
     }
 }

@@ -2,7 +2,9 @@ package net.liquidcars.ingestion.infra.input.kafka.service;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
+import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
+import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
 import net.liquidcars.ingestion.factory.OfferDtoFactory;
 import org.junit.jupiter.api.DisplayName;
@@ -27,37 +29,37 @@ class OfferInfraKafkaConsumerServiceImplTest {
     @Mock
     private IOfferInfraSQLService offerInfraSQLService;
 
+    @Mock
+    private IOfferInfraKafkaProducerService kafkaProducerService;
+
     @Test
-    @DisplayName("Should save to both repositories when everything goes well")
+    @DisplayName("Should save to SQL and NoSQL when everything goes well")
     void processOfferSave_ShouldSaveInBothSystems() {
         OfferDto offer = OfferDtoFactory.getOfferDto();
 
         service.processOfferSave(offer);
 
         verify(offerInfraNoSQLService, times(1)).processOffer(offer);
-        verify(offerInfraSQLService, times(1)).processOffer(offer);
+        verify(kafkaProducerService, times(1)).sendSavedNotification(any());
     }
+
 
     @Test
-    @DisplayName("Should attempt to save to SQL even if NoSQL fails")
-    void processOfferSave_ShouldSaveInSQL_EvenIfNoSQLFails() {
-        OfferDto offer = new OfferDto();
-        doThrow(new RuntimeException("Mongo Down")).when(offerInfraNoSQLService).processOffer(any());
+    @DisplayName("Should attempt NoSQL after SQL success and fail if NoSQL fails")
+    void processOfferSave_ShouldSaveInSQL_AndFailIfNoSQLFails() {
+        OfferDto offer = OfferDtoFactory.getOfferDto();
 
-        assertThrows(LCIngestionException.class, () -> service.processOfferSave(offer));
+        doThrow(LCIngestionException.builder()
+                .techCause(LCTechCauseEnum.DATABASE)
+                .message("SQL persistence error for id: " + offer.getId())
+                .build())
+                .when(offerInfraNoSQLService)
+                .processOffer(any());
 
-        verify(offerInfraNoSQLService, times(1)).processOffer(offer);
+        assertThrows(LCIngestionException.class,
+                () -> service.processOfferSave(offer));
+
+        verify(offerInfraNoSQLService, times(1)).processOffer(any());
     }
 
-    @Test
-    @DisplayName("Should attempt to save to NoSQL even if SQL fails")
-    void processOfferSave_ShouldSaveInNoSQL_EvenIfSQLFails() {
-        OfferDto offer = new OfferDto();
-        doThrow(new RuntimeException("Postgres Down")).when(offerInfraSQLService).processOffer(any());
-
-        assertThrows(LCIngestionException.class, () -> service.processOfferSave(offer));
-
-        verify(offerInfraNoSQLService, times(1)).processOffer(offer);
-        verify(offerInfraSQLService, times(1)).processOffer(offer);
-    }
 }
