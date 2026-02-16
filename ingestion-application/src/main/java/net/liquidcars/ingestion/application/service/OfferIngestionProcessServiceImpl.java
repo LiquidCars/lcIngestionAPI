@@ -413,15 +413,24 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     public void promoteDraftOffersToVehicleOffers(UUID ingestionReportId) {
         log.debug("Calling for start promotion for jobIdentifier: {}", ingestionReportId);
         IngestionReportDto ingestionReportDto = findIngestionReportById(ingestionReportId);
-        if(ingestionReportDto.isProcessed()){
-            log.warn("Cannot promote offers with jobIdentifier: {}. The job was processed yet.", ingestionReportId);
-            return;
-        }
+        if (validatePromotion(ingestionReportId, ingestionReportDto)) return;
         offerInfraNoSQLService.promoteDraftOffersToVehicleOffers(ingestionReportId, ingestionReportDto.getDumpType(), ingestionReportDto.getInventoryId(), ingestionReportDto.getIdsForDelete());
         //Once promotion process is completed we mark job as processed and we update
         ingestionReportDto.setProcessed(true);
         iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
         log.debug("Finish promotion for jobIdentifier: {}", ingestionReportId);
+    }
+
+    private static boolean validatePromotion(UUID ingestionReportId, IngestionReportDto ingestionReportDto) {
+        if(ingestionReportDto.isProcessed()){
+            log.warn("Cannot promote offers with jobIdentifier: {}. The job was processed yet.", ingestionReportId);
+            return true;
+        }
+        if(!ingestionReportDto.getStatus().equals(IngestionBatchStatus.COMPLETED)){
+            log.warn("Cannot promote offers with jobIdentifier: {}. The job is not completed.", ingestionReportId);
+            return true;
+        }
+        return false;
     }
 
     @Override
