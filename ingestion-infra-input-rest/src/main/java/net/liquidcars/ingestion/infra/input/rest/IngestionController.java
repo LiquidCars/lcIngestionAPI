@@ -128,25 +128,25 @@ public class IngestionController implements IngestionApi {
 
     @RolesAllowed({AccessRoleEnum.LCSupport_role, AccessRoleEnum.M2M_role})
     @Override
-    public ResponseEntity<IngestionReport> findIngestionReportById(UUID jobIdentifier) {
-        log.info("REST: FindIngestionReportById - Job: {}", jobIdentifier);
-        IngestionReportDto ingestionReport = offerIngestionProcessService.findIngestionReportById(jobIdentifier);
+    public ResponseEntity<IngestionReport> findIngestionReportById(UUID ingestionReportId) {
+        log.info("REST: FindIngestionReportById - Job: {}", ingestionReportId);
+        IngestionReportDto ingestionReport = offerIngestionProcessService.findIngestionReportById(ingestionReportId);
         return ResponseEntity.ok(ingestionControllerMapper.toIngestionReport(ingestionReport));
     }
 
     @RolesAllowed({AccessRoleEnum.LCSupport_role})
     @Override
-    public ResponseEntity<Void> promoteDraftOffers(UUID jobIdentifier) {
-        log.info("REST: PromoteDraftOffers - Job: {}", jobIdentifier);
-        offerIngestionProcessService.promoteDraftOffersToVehicleOffers(jobIdentifier);
+    public ResponseEntity<Void> promoteDraftOffers(UUID ingestionReportId) {
+        log.info("REST: PromoteDraftOffers - Job: {}", ingestionReportId);
+        offerIngestionProcessService.promoteDraftOffersToVehicleOffers(ingestionReportId);
         return ResponseEntity.ok().build();
     }
 
     @RolesAllowed({AccessRoleEnum.LCSupport_role})
     @Override
-    public ResponseEntity<Void> deleteDraftOffers(UUID jobIdentifier) {
-        log.info("REST: DeleteDraftOffers - Job: {}", jobIdentifier);
-        offerIngestionProcessService.deleteDraftOffersByJobIdentifier(jobIdentifier);
+    public ResponseEntity<Void> deleteDraftOffers(UUID ingestionReportId) {
+        log.info("REST: DeleteDraftOffers - Job: {}", ingestionReportId);
+        offerIngestionProcessService.deleteDraftOffersByIngestionReportId(ingestionReportId);
         return ResponseEntity.noContent().build();
     }
 

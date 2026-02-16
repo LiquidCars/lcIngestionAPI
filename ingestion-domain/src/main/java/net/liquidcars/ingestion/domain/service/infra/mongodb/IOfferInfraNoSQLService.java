@@ -18,5 +18,5 @@ public interface IOfferInfraNoSQLService {
 
     void promoteDraftOffersToVehicleOffers(UUID jobIdentifier, IngestionDumpType dumpType, UUID inventoryId, List<String> externalIdsToDelete);
 
-    void deleteDraftOffersByJobIdentifier(UUID jobIdentifier);
+    void deleteDraftOffersByIngestionReportId(UUID jobIdentifier);
 }

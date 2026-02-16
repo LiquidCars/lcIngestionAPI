@@ -65,6 +65,6 @@ public class OfferInfraKafkaConsumerServiceImpl implements IOfferInfraKafkaConsu
      */
     @Override
     public void processIngestionReportDeleteAction(UUID jobId) {
-        ingestionProcessService.deleteDraftOffersByJobIdentifier(jobId);
+        ingestionProcessService.deleteDraftOffersByIngestionReportId(jobId);
     }
 }

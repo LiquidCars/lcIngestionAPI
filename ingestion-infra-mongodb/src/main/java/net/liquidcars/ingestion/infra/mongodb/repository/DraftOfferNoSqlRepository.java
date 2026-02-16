@@ -16,19 +16,19 @@ public interface DraftOfferNoSqlRepository extends MongoRepository<DraftOfferNoS
 
 
     /**
-     * Deletes offers of a job.
+     * Deletes offers of a job report.
      * Changed return type to long to detect if deletion was effective.
-     * * @param jobIdentifier job id
+     * * @param ingestionReportId job id
      * @return count of deleted documents
      */
-    long deleteByJobIdentifier(UUID jobIdentifier);
+    long deleteByIngestionReportId(UUID ingestionReportId);
 
     /**
-     * Find offers of a job.
-     * * @param jobIdentifier job id
+     * Find offers of a job report.
+     * * @param ingestionReportId job id
      * @return List of documents
      */
-    List<DraftOfferNoSQLEntity> findByJobIdentifier(UUID jobIdentifier);
+    List<DraftOfferNoSQLEntity> findByJobIdentifier(UUID ingestionReportId);
 
     /**
      * Counts offers of a job.

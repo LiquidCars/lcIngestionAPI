@@ -26,11 +26,11 @@ public interface IOfferIngestionProcessService {
 
     void processIngestionReport(IngestionReportDto ingestionReportDto);
 
-    void promoteDraftOffersToVehicleOffers(UUID jobIdentifier);
+    void promoteDraftOffersToVehicleOffers(UUID ingestionReportId);
 
-    void deleteDraftOffersByJobIdentifier(UUID jobIdentifier);
+    void deleteDraftOffersByIngestionReportId(UUID ingestionReportId);
 
     List<IngestionReportDto> findIngestionReports();
 
-    IngestionReportDto findIngestionReportById(UUID jobIdentifier);
+    IngestionReportDto findIngestionReportById(UUID ingestionReportId);
 }

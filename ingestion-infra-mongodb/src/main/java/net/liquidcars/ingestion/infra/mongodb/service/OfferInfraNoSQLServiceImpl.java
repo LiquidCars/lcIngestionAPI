@@ -136,10 +136,10 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     }
 
     @Override
-    public void promoteDraftOffersToVehicleOffers(UUID jobIdentifier, IngestionDumpType dumpType, UUID inventoryId, List<String> externalIdsToDelete) {
-        log.info("Starting promotion for jobIdentifier: {}", jobIdentifier);
+    public void promoteDraftOffersToVehicleOffers(UUID ingestionReportId, IngestionDumpType dumpType, UUID inventoryId, List<String> externalIdsToDelete) {
+        log.info("Starting promotion for ingestionReportId: {}", ingestionReportId);
         // Promote logic
-        List<UUID> promotedIds = promoteDraftOffersAndGetsPromoted(jobIdentifier, inventoryId);
+        List<UUID> promotedIds = promoteDraftOffersAndGetsPromoted(ingestionReportId, inventoryId);
 
         // REPLACEMENT logic
         replaceOffers(dumpType, inventoryId, promotedIds);
@@ -148,9 +148,9 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         deleteOffersInPromotion(inventoryId, externalIdsToDelete);
     }
 
-    private List<UUID> promoteDraftOffersAndGetsPromoted(UUID jobIdentifier, UUID inventoryId) {
+    private List<UUID> promoteDraftOffersAndGetsPromoted(UUID ingestionReportId, UUID inventoryId) {
         // 1. Use a Stream to avoid loading the entire list into memory
-        Query draftQuery = new Query(Criteria.where("job_identifier").is(jobIdentifier));
+        Query draftQuery = new Query(Criteria.where("ingestion_report_id").is(ingestionReportId));
 
         // List to track processed IDs for the REPLACEMENT logic
         List<UUID> promotedIds = new ArrayList<>();
@@ -242,10 +242,10 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     }
 
     @Override
-    public void deleteDraftOffersByJobIdentifier(UUID jobIdentifier) {
-        log.info("Starting delete offers by jobIdentifier: {}", jobIdentifier);
-        long deletedCount = draftOfferNoSqlRepository.deleteByJobIdentifier(jobIdentifier);
-        log.info("Deleted: {} offers with jobIdentifier: {}", deletedCount, jobIdentifier);
+    public void deleteDraftOffersByIngestionReportId(UUID ingestionReportId) {
+        log.info("Starting delete offers by ingestionReportId: {}", ingestionReportId);
+        long deletedCount = draftOfferNoSqlRepository.deleteByIngestionReportId(ingestionReportId);
+        log.info("Deleted: {} offers with ingestionReportId: {}", deletedCount, ingestionReportId);
     }
 
 
