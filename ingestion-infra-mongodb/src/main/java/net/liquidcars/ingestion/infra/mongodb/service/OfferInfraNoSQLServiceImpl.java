@@ -157,38 +157,86 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
 
         // 2. Define batch size for Bulk operations (e.g., every 100 records)
         int batchSize = 100;
-        final int[] count = {0};
+        int count = 0;
+        int totalPromoted = 0;
 
         // Use mongoTemplate.stream to open a cursor and process records one by one
         try (Stream<DraftOfferNoSQLEntity> draftStream = mongoTemplate.stream(draftQuery, DraftOfferNoSQLEntity.class)) {
 
-            // Initialize the first bulk operation reference
-            var bulkOps = new AtomicReference<>(mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, VehicleOfferNoSQLEntity.class));
+            // Initialize the first bulk operation
+            BulkOperations bulkOps = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, VehicleOfferNoSQLEntity.class);
 
-            draftStream.forEach(draft -> {
+            var iterator = draftStream.iterator();
+            while (iterator.hasNext()) {
+
+                DraftOfferNoSQLEntity draft = iterator.next();
+
+                log.info("Processing draft offer - ID: {}, ownerRef: {}, dealerRef: {}, channelRef: {}",
+                        draft.getId(), draft.getOwnerReference(), draft.getDealerReference(), draft.getChannelReference());
+
                 VehicleOfferNoSQLEntity productionEntity = offerInfraNoSQLMapper.toVehicleOfferNoSQLEntity(draft);
                 promotedIds.add(productionEntity.getId());
 
                 // 1. Build the query to find existing record
-                List<Criteria> orCriteria = new ArrayList<>();
-                if (draft.getOwnerReference() != null) orCriteria.add(Criteria.where("owner_reference").is(draft.getOwnerReference()));
-                if (draft.getDealerReference() != null) orCriteria.add(Criteria.where("dealer_reference").is(draft.getDealerReference()));
-                if (draft.getChannelReference() != null) orCriteria.add(Criteria.where("channel_reference").is(draft.getChannelReference()));
+                // Match by inventory_id AND all present references (using AND logic, not OR)
+                List<Criteria> andCriteria = new ArrayList<>();
+                andCriteria.add(Criteria.where("inventory_id").is(inventoryId));
 
-                if (orCriteria.isEmpty()) return;
+                boolean hasAnyReference = false;
 
-                Query upsertQuery = new Query(new Criteria().andOperator(
-                        Criteria.where("inventory_id").is(inventoryId),
-                        new Criteria().orOperator(orCriteria.toArray(new Criteria[0]))
-                ));
+                // Build AND criteria: match all references that exist, consider null for those that don't
+                if (draft.getOwnerReference() != null && !draft.getOwnerReference().isEmpty()) {
+                    andCriteria.add(Criteria.where("owner_reference").is(draft.getOwnerReference()));
+                    hasAnyReference = true;
+                } else {
+                    andCriteria.add(new Criteria().orOperator(
+                            Criteria.where("owner_reference").is(null),
+                            Criteria.where("owner_reference").exists(false)
+                    ));
+                }
+
+                if (draft.getDealerReference() != null && !draft.getDealerReference().isEmpty()) {
+                    andCriteria.add(Criteria.where("dealer_reference").is(draft.getDealerReference()));
+                    hasAnyReference = true;
+                } else {
+                    andCriteria.add(new Criteria().orOperator(
+                            Criteria.where("dealer_reference").is(null),
+                            Criteria.where("dealer_reference").exists(false)
+                    ));
+                }
+
+                if (draft.getChannelReference() != null && !draft.getChannelReference().isEmpty()) {
+                    andCriteria.add(Criteria.where("channel_reference").is(draft.getChannelReference()));
+                    hasAnyReference = true;
+                } else {
+                    andCriteria.add(new Criteria().orOperator(
+                            Criteria.where("channel_reference").is(null),
+                            Criteria.where("channel_reference").exists(false)
+                    ));
+                }
+
+                Query upsertQuery;
+
+                // If we have at least one reference, use the AND criteria
+                // Otherwise, use ID to ensure new record insertion
+                if (hasAnyReference) {
+                    upsertQuery = new Query(new Criteria().andOperator(andCriteria.toArray(new Criteria[0])));
+                } else {
+                    // No references available at all - use ID to ensure new record insertion
+                    upsertQuery = new Query(Criteria.where("_id").is(productionEntity.getId()));
+                }
 
                 // 2. Prepare the Update object using $set for all fields
                 Document doc = new Document();
                 mongoTemplate.getConverter().write(productionEntity, doc);
+
+                // Remove both _id and _class - never update _id in MongoDB
                 doc.remove("_id");
                 doc.remove("_class"); // Avoid inheritance issues
 
                 Update update = new Update();
+
+                // Add all fields EXCEPT _id
                 for (String key : doc.keySet()) {
                     Object value = doc.get(key);
                     if (value != null) {
@@ -197,20 +245,44 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                 }
 
                 // 3. Add to bulk
-                bulkOps.get().upsert(upsertQuery, update);
+                bulkOps.upsert(upsertQuery, update);
 
-                count[0]++;
-                if (count[0] % batchSize == 0) {
-                    log.debug("Executing bulk of {} operations", count[0]);
-                    bulkOps.get().execute(); // Force execution
-                    bulkOps.set(mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, VehicleOfferNoSQLEntity.class));
+                count++;
+
+                // Execute batch when reaching batch size
+                if (count >= batchSize) {
+                    log.info("Executing bulk of {} operations", count);
+                    try {
+                        var result = bulkOps.execute();
+                        totalPromoted += count;
+                        log.info("Bulk execution result - Inserted: {}, Modified: {}",
+                                result.getInsertedCount(), result.getModifiedCount());
+                    } catch (Exception e) {
+                        log.error("Error executing bulk operation", e);
+                        throw e;
+                    }
+
+                    // Reset for next batch
+                    bulkOps = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, VehicleOfferNoSQLEntity.class);
+                    count = 0;
                 }
-            });
+            }
 
             // Execute any remaining operations in the last batch
-            if (count[0] % batchSize != 0) {
-                bulkOps.get().execute();
+            if (count > 0) {
+                log.debug("Executing final bulk of {} operations", count);
+                try {
+                    var result = bulkOps.execute();
+                    totalPromoted += count;
+                    log.debug("Final bulk execution result - Inserted: {}, Modified: {}",
+                            result.getInsertedCount(), result.getModifiedCount());
+                } catch (Exception e) {
+                    log.error("Error executing final bulk operation", e);
+                    throw e;
+                }
             }
+
+            log.info("Promoted {} draft offers to vehicle offers for ingestionReportId: {}", totalPromoted, ingestionReportId);
         }
         return promotedIds;
     }
@@ -227,7 +299,8 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         if (externalIdsToDelete != null && !externalIdsToDelete.isEmpty()) {
             log.info("Processing {} explicit deletions for inventory {}", externalIdsToDelete.size(), inventoryId);
 
-            // Build an OR query: the ID could be in any of the three reference fields
+            // Build query to match records where ANY of the three references match the deletion list
+            // This is correct with OR because we want to delete if ANY reference matches
             Criteria orDeleteCriteria = new Criteria().orOperator(
                     Criteria.where("owner_reference").in(externalIdsToDelete),
                     Criteria.where("dealer_reference").in(externalIdsToDelete),
