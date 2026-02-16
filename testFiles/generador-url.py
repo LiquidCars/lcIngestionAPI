@@ -627,92 +627,104 @@ with open(filename, 'wb') as f:
 
 file_size_bytes = os.path.getsize(filename)
 file_size_mb = file_size_bytes / (1024 * 1024)
+numero_anuncios_detectados = xml_content.decode('utf-8').count('<anuncio>')
 
 print(f"✅ XML generado correctamente")
 print(f"📄 Archivo guardado: {filename}")
 print(f"⚖️  Tamaño del archivo: {file_size_bytes} bytes ({file_size_mb:.2f} MB)")
 print(f"📊 Total de anuncios: {num_anuncios}")
+print(f"📊 Conteo real en archivo: {numero_anuncios_detectados} anuncios")
+print(f"—" * 40)
 
 if offers_to_delete:
     print(f"🗑️  Ofertas marcadas para eliminar: {len(offers_to_delete)}")
 
-# --- TOKEN ---
-url_login = "http://localhost:8888/api/v1/security/login"
-payload_login = json.dumps({
-    "client": "cf68a603-9d8f-44bd-9ac3-398d61aa3182",
-    "secret": ".Liquidcars1",
-    "securityProfile": "M2M_B2C_Channel"
-})
-headers_login = {
-    'Content-Type': 'application/json'
-}
+# --- PREGUNTA PARA EJECUTAR INGESTIÓN ---
+ejecutar_ingestion = input("\n🚀 ¿Deseas ejecutar la URL de ingesta ahora? (s/n) [n]: ").strip().lower()
 
-print("\n🔐 Obteniendo token de autenticación...")
-try:
-    response_login = requests.post(url_login, headers=headers_login, data=payload_login, timeout=10)
-    response_data = response_login.json()
-    token_input = response_data.get("access_token")
+if ejecutar_ingestion == 's':
+    # --- TOKEN ---
+    url_login = "http://localhost:8888/api/v1/security/login"
+    payload_login = json.dumps({
+        "client": "cf68a603-9d8f-44bd-9ac3-398d61aa3182",
+        "secret": ".Liquidcars1",
+        "securityProfile": "M2M_B2C_Channel"
+    })
+    headers_login = {
+        'Content-Type': 'application/json'
+    }
 
-    if not token_input:
-        print("❌ Error: No se pudo obtener el token de acceso")
+    print("\n🔐 Obteniendo token de autenticación...")
+    try:
+        response_login = requests.post(url_login, headers=headers_login, data=payload_login, timeout=10)
+        response_data = response_login.json()
+        token_input = response_data.get("access_token")
+
+        if not token_input:
+            print("❌ Error: No se pudo obtener el token de acceso")
+            exit()
+
+        print("✅ Token obtenido correctamente")
+    except Exception as e:
+        print(f"❌ Error al obtener token: {e}")
         exit()
 
-    print("✅ Token obtenido correctamente")
-except Exception as e:
-    print(f"❌ Error al obtener token: {e}")
-    exit()
+    # --- DEFINICIÓN DE URL Y HEADERS ---
+    url = f"http://localhost:8890/v1/ingestion/url?format=xml&url=http://localhost:8083/motorflash_export.xml&inventoryId={inventory_id}&dumpType={dump_type}&externalPublicationId={external_pub_id}"
 
-# --- DEFINICIÓN DE URL Y HEADERS ---
-url=f"http://localhost:8890/v1/ingestion/url?format=xml&url=http://localhost:8083/motorflash_export.xml&inventoryId={inventory_id}&dumpType={dump_type}&externalPublicationId={external_pub_id}"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token_input}"
+    }
 
-headers = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {token_input}"
-}
+    print(f"\n🚀 Iniciando envío a {url}...\n")
 
-print(f"\n🚀 Iniciando envío a {url}...\n")
+    exitos = 0
+    errores = 0
 
-exitos = 0
-errores = 0
-"""
-try:
-    response = requests.post(url, headers=headers, timeout=300)
+    try:
+        response = requests.post(url, headers=headers, timeout=300)
 
-    if response.ok:
-        exitos = 1
-        print(f"\n✅ ÉXITO: XML enviado correctamente")
-        print(f"📊 Respuesta del servidor: {response.status_code}")
+        if response.ok:
+            exitos = 1
+            print(f"✅ ÉXITO: XML enviado correctamente")
+            print(f"📊 Respuesta del servidor: {response.status_code}")
 
-        try:
-            response_json = response.json()
-            print(f"\n📄 Detalle de respuesta:")
-            print(json.dumps(response_json, indent=2))
-        except:
-            print(f"\n📄 Respuesta del servidor: {response.text[:500]}")
-    else:
+            try:
+                response_json = response.json()
+                print(f"\n📄 Detalle de respuesta:")
+                print(json.dumps(response_json, indent=2))
+            except:
+                print(f"\n📄 Respuesta del servidor: {response.text[:500]}")
+        else:
+            errores = 1
+            print(f"❌ Error {response.status_code}: {response.text}")
+            if response.status_code == 401:
+                print("🛑 Token caducado o inválido")
+
+    except requests.exceptions.Timeout:
         errores = 1
-        print(f"\n❌ Error {response.status_code}: {response.text}")
-        if response.status_code == 401:
-            print("🛑 Token caducado o inválido")
+        print(f"⚠️ Timeout: La petición tardó más de 300 segundos")
+    except Exception as e:
+        errores = 1
+        print(f"⚠️ Fallo de conexión: {e}")
 
-except requests.exceptions.Timeout:
-    errores = 1
-    print(f"\n⚠️ Timeout: La petición tardó más de 30 segundos")
-except Exception as e:
-    errores = 1
-    print(f"\n⚠️ Fallo de conexión: {e}")
+    print(f"\n" + "=" * 60)
+    print("RESUMEN FINAL")
+    print("=" * 60)
+    print(f"✅ Éxitos: {exitos}")
+    print(f"❌ Errores: {errores}")
+    print(f"📄 Archivo XML: {filename}")
+else:
+    print("\n⏸️  Ingestión omitida. El archivo se mantiene en el directorio para uso manual.")
 
-print(f"\n" + "=" * 60)
-print("RESUMEN FINAL")
-print("=" * 60)
-print(f"✅ Éxitos: {exitos}")
-print(f"❌ Errores: {errores}")
-print(f"📄 Archivo XML: {filename}")
-"""
-input("\nPresiona Enter para salir...")
+input("\nPresiona Enter para finalizar...")
 
-try:
-    os.remove(filename)
-    print(f"🗑️  Archivo {filename} eliminado correctamente")
-except Exception as e:
-    print(f"⚠️  Error al eliminar el archivo: {e}")
+# Opcional: Solo borrar el archivo si se ejecutó la ingesta o si tú quieres
+borrar = input("🗑️ ¿Deseas eliminar el archivo XML generado? (s/n) [n]: ").strip().lower()
+if borrar == 's':
+    try:
+        os.remove(filename)
+        print(f"✅ Archivo {filename} eliminado correctamente")
+    except Exception as e:
+        print(f"⚠️ Error al eliminar: {e}")
