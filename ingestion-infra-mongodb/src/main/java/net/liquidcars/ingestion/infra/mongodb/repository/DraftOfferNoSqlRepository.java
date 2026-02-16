@@ -1,27 +1,19 @@
 package net.liquidcars.ingestion.infra.mongodb.repository;
 
+import net.liquidcars.ingestion.infra.mongodb.entity.DraftOfferNoSQLEntity;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
-import org.springframework.data.mongodb.repository.Update;
 import org.springframework.stereotype.Repository;
 
 import net.liquidcars.ingestion.infra.mongodb.entity.OfferNoSQLEntity;
 
 import java.time.Instant;
-import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface OfferNoSqlRepository extends MongoRepository<OfferNoSQLEntity, String> {
+public interface DraftOfferNoSqlRepository extends MongoRepository<DraftOfferNoSQLEntity, UUID> {
 
-    /**
-     * Updates batch status in offers of a job
-     * @param jobIdentifier job id
-     * @param batchStatus batch job status
-     */
-    @Query("{ 'jobIdentifier' : ?0 }")
-    @Update("{ '$set' : { 'batchStatus' : ?1 } }")
-    void updateBatchStatusByJobIdentifier(UUID jobIdentifier, String batchStatus);
 
     /**
      * Deletes offers of a job.
@@ -30,6 +22,13 @@ public interface OfferNoSqlRepository extends MongoRepository<OfferNoSQLEntity, 
      * @return count of deleted documents
      */
     long deleteByJobIdentifier(UUID jobIdentifier);
+
+    /**
+     * Find offers of a job.
+     * * @param jobIdentifier job id
+     * @return List of documents
+     */
+    List<DraftOfferNoSQLEntity> findByJobIdentifier(UUID jobIdentifier);
 
     /**
      * Counts offers of a job.

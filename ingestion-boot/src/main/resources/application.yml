@@ -35,9 +35,10 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         jdbc:
-          batch_size: 25
-        order_inserts: true
-        order_updates: true
+          jdbc.batch_size: 50
+          order_inserts: true
+          order_updates: true
+          batch_versioned_data: true
   
   # Kafka Configuration
   kafka:

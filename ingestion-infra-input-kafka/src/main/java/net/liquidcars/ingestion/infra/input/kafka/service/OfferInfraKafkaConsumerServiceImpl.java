@@ -35,7 +35,6 @@ public class OfferInfraKafkaConsumerServiceImpl implements IOfferInfraKafkaConsu
     @Transactional
     @Override
     public void processOfferSave(OfferDto offerDto) {
-        //offerInfraSQLService.processOffer(offerDto);
         offerInfraNoSQLService.processOffer(offerDto);
         OfferSummaryDto offerSummary = OfferSummaryDto.builder()
                 .id(offerDto.getId())
@@ -49,5 +48,23 @@ public class OfferInfraKafkaConsumerServiceImpl implements IOfferInfraKafkaConsu
     @Override
     public void processIngestionReport(IngestionBatchReportDto ingestionBatchReportDto) {
         ingestionProcessService.processIngestionBatchReport(ingestionBatchReportDto);
+    }
+
+    /**
+     * Promotes draft offers by jobId
+     * @param jobId ingestion report id
+     */
+    @Override
+    public void processIngestionReportPromoteAction(UUID jobId) {
+        ingestionProcessService.promoteDraftOffersToVehicleOffers(jobId);
+    }
+
+    /**
+     * Deletes draft offers by jobId
+     * @param jobId ingestion report id
+     */
+    @Override
+    public void processIngestionReportDeleteAction(UUID jobId) {
+        ingestionProcessService.deleteDraftOffersByJobIdentifier(jobId);
     }
 }

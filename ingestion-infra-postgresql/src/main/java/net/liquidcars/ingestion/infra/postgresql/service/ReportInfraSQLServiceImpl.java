@@ -47,11 +47,25 @@ public class ReportInfraSQLServiceImpl implements IReportInfraSQLService {
             log.error("Failed to get ingestion report in SQL database. ID: {}", id, e);
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.DATABASE)
-                    .message("SQL  error for get ingestion report with id: " + id)
+                    .message("SQL error for get ingestion report with id: " + id)
                     .cause(e)
                     .build();
         }
 
+    }
+
+    @Override
+    public List<IngestionReportDto> findIngestionReports() {
+        try {
+            return mapper.toIngestionReportDtoList(reportRepository.findAll());
+        } catch (Exception e) {
+            log.error("Failed to get ingestion reports in SQL database.", e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.DATABASE)
+                    .message("SQL error for get ingestion reports")
+                    .cause(e)
+                    .build();
+        }
     }
 
     @Override

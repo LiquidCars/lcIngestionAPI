@@ -69,7 +69,7 @@ public class IngestionControllerTest {
 
     @Test
     void ingestBatch_ShouldReturnAccepted() throws Exception {
-        when(mapper.toOfferDtoList(any(), eq(TEST_PARTICIPANT_ID))).thenReturn(List.of());
+        when(mapper.toOfferDtoList(any(), eq(TEST_PARTICIPANT_ID), eq(TEST_INVENTORY_ID))).thenReturn(List.of());
 
         mockMvc.perform(post("/v1/ingestion/batch")
                         .param("inventoryId", TEST_INVENTORY_ID.toString())

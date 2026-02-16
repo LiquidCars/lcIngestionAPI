@@ -9,6 +9,7 @@ import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import java.io.InputStream;
 import java.net.URI;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public interface IOfferIngestionProcessService {
@@ -24,4 +25,12 @@ public interface IOfferIngestionProcessService {
     void syncPendingReports();
 
     void processIngestionReport(IngestionReportDto ingestionReportDto);
+
+    void promoteDraftOffersToVehicleOffers(UUID jobIdentifier);
+
+    void deleteDraftOffersByJobIdentifier(UUID jobIdentifier);
+
+    List<IngestionReportDto> findIngestionReports();
+
+    IngestionReportDto findIngestionReportById(UUID jobIdentifier);
 }

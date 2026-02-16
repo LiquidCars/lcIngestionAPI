@@ -19,12 +19,13 @@ public class IngestionControllerMapperTest {
     private IngestionControllerMapper mapper;
 
     private final UUID participantId = UUID.randomUUID();
+    private final UUID inventoryId = UUID.randomUUID();
 
     @Test
     void shouldMapOfferRequestToOfferDtoWithGeneratedId() {
         OfferRequest request = OfferRequestFactory.getOfferRequest();
 
-        OfferDto result = mapper.toOfferDto(request, participantId);
+        OfferDto result = mapper.toOfferDto(request, participantId, inventoryId);
 
         assertThat(result).isNotNull();
         assertThat(result.getExternalIdInfo().getChannelReference()).isEqualTo(request.getExternalIdInfo().getChannelReference());
@@ -33,12 +34,13 @@ public class IngestionControllerMapperTest {
         assertThat(result.getMail()).isEqualTo(request.getMail());
         assertThat(result.getPrice().getAmount()).isEqualByComparingTo(request.getPrice().getAmount());
         assertThat(result.getParticipantId()).isEqualTo(participantId);
+        assertThat(result.getInventoryId()).isEqualTo(inventoryId);
         assertThat(result.getLastUpdated()).isNotNull();
     }
 
     @Test
     void shouldReturnNullWhenListIsNull() {
-        List<OfferDto> result = mapper.toOfferDtoList(null, participantId);
+        List<OfferDto> result = mapper.toOfferDtoList(null, participantId, inventoryId);
 
         assertThat(result).isNull();
     }
@@ -47,7 +49,7 @@ public class IngestionControllerMapperTest {
     void shouldReturnEmptyListWhenSourceListIsEmpty() {
         List<OfferRequest> emptyList = List.of();
 
-        List<OfferDto> result = mapper.toOfferDtoList(emptyList, participantId);
+        List<OfferDto> result = mapper.toOfferDtoList(emptyList, participantId, inventoryId);
 
         assertThat(result).isEmpty();
     }
@@ -56,7 +58,7 @@ public class IngestionControllerMapperTest {
     void shouldMapParticipantIdCorrectly() {
         OfferRequest request = OfferRequestFactory.getOfferRequest();
 
-        OfferDto result = mapper.toOfferDto(request, participantId);
+        OfferDto result = mapper.toOfferDto(request, participantId, inventoryId);
 
         assertThat(result.getParticipantId())
                 .isNotNull()

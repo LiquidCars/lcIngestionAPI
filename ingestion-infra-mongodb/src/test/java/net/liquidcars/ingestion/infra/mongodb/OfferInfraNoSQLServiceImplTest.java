@@ -1,9 +1,10 @@
 package net.liquidcars.ingestion.infra.mongodb;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.factory.OfferNoSQLEntityFactory;
+import net.liquidcars.ingestion.factory.DraftOfferNoSQLEntityFactory;
+import net.liquidcars.ingestion.infra.mongodb.entity.DraftOfferNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.OfferNoSQLEntity;
-import net.liquidcars.ingestion.infra.mongodb.repository.OfferNoSqlRepository;
+import net.liquidcars.ingestion.infra.mongodb.repository.DraftOfferNoSqlRepository;
 import net.liquidcars.ingestion.infra.mongodb.service.OfferInfraNoSQLServiceImpl;
 import net.liquidcars.ingestion.infra.mongodb.service.mapper.OfferInfraNoSQLMapper;
 import org.junit.jupiter.api.Test;
@@ -14,8 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import net.liquidcars.ingestion.factory.OfferDtoFactory;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,7 +25,7 @@ import static org.mockito.Mockito.*;
 public class OfferInfraNoSQLServiceImplTest {
 
     @Mock
-    private OfferNoSqlRepository repository;
+    private DraftOfferNoSqlRepository repository;
 
     @Mock
     private OfferInfraNoSQLMapper mapper;
@@ -37,7 +36,7 @@ public class OfferInfraNoSQLServiceImplTest {
     @Test
     void save_ShouldMapAndPersistInMongo() {
         OfferDto dto = OfferDtoFactory.getOfferDto();
-        OfferNoSQLEntity entity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
+        DraftOfferNoSQLEntity entity = DraftOfferNoSQLEntityFactory.getDraftOfferNoSQLEntity();
 
         when(mapper.toEntity(dto)).thenReturn(entity);
 
@@ -50,8 +49,8 @@ public class OfferInfraNoSQLServiceImplTest {
     @Test
     void processOffer_WhenOfferExistsAndIsNewer_ShouldUpdate() {
         OfferDto dto = OfferDtoFactory.getOfferDto();
-        OfferNoSQLEntity newEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
-        OfferNoSQLEntity existingEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
+        DraftOfferNoSQLEntity newEntity = DraftOfferNoSQLEntityFactory.getDraftOfferNoSQLEntity();
+        DraftOfferNoSQLEntity existingEntity = DraftOfferNoSQLEntityFactory.getDraftOfferNoSQLEntity();
         UUID existingId = UUID.randomUUID();
 
         existingEntity.setCreatedAt(Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS));
@@ -59,7 +58,7 @@ public class OfferInfraNoSQLServiceImplTest {
         existingEntity.setId(existingId);
 
         when(mapper.toEntity(dto)).thenReturn(newEntity);
-        when(repository.findById(dto.getId().toString()))
+        when(repository.findById(dto.getId()))
                 .thenReturn(Optional.of(existingEntity));
 
         service.processOffer(dto);
@@ -71,14 +70,14 @@ public class OfferInfraNoSQLServiceImplTest {
     @Test
     void processOffer_WhenOfferExistsButIsOlder_ShouldNotUpdate() {
         OfferDto dto = OfferDtoFactory.getOfferDto();
-        OfferNoSQLEntity newEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
-        OfferNoSQLEntity existingEntity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
+        DraftOfferNoSQLEntity newEntity = DraftOfferNoSQLEntityFactory.getDraftOfferNoSQLEntity();
+        DraftOfferNoSQLEntity existingEntity = DraftOfferNoSQLEntityFactory.getDraftOfferNoSQLEntity();
 
         // existing is artificially in the future → guarantees it is newer
         existingEntity.setCreatedAt(Instant.now().plus(1, ChronoUnit.DAYS));
 
         when(mapper.toEntity(dto)).thenReturn(newEntity);
-        when(repository.findById(dto.getId().toString()))
+        when(repository.findById(dto.getId()))
                 .thenReturn(Optional.of(existingEntity));
 
         service.processOffer(dto);

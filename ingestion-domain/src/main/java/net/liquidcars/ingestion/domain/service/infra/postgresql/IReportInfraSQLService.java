@@ -11,6 +11,8 @@ public interface IReportInfraSQLService {
 
     IngestionReportDto findIngestionReportById(UUID id);
 
+    List<IngestionReportDto> findIngestionReports();
+
     IngestionReportDto findIngestionReportByBatchJobId(UUID batchJobId);
 
     boolean existsByRequesterParticipantIdAndStatusNotIn(UUID requesterParticipantId, List<IngestionBatchStatus> statuses);

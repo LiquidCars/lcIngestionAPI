@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
 import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
+import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.model.security.AccessRoleEnum;
@@ -13,7 +14,7 @@ import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProces
 import net.liquidcars.ingestion.domain.service.context.IContextService;
 import net.liquidcars.ingestion.infra.input.rest.mapper.IngestionControllerMapper;
 import net.liquidcars.ingestion.infra.input.rest.model.IngestionPayload;
-import net.liquidcars.ingestion.infra.input.rest.model.OfferRequest;
+import net.liquidcars.ingestion.infra.input.rest.model.IngestionReport;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,6 +35,8 @@ public class IngestionController implements IngestionApi {
     private final IngestionControllerMapper ingestionControllerMapper;
     private final IContextService contextService;
 
+    // --- Ingestion Endpoints ---
+
     @RolesAllowed({AccessRoleEnum.LCSupport_role, AccessRoleEnum.M2M_role})
     @Override
     public ResponseEntity<Void> ingestBatch(
@@ -43,11 +46,10 @@ public class IngestionController implements IngestionApi {
             String externalPublicationId
     ) {
         log.info("REST: IngestBatch - Inventory: {}, Dump: {}, ExtId: {}", inventoryId, dumpType, externalPublicationId);
-
         UUID participantId = getParticipantIdFromContext();
 
         offerIngestionProcessService.processOffers(
-                ingestionControllerMapper.toIngestionPayloadDto(ingestionPayload, participantId),
+                ingestionControllerMapper.toIngestionPayloadDto(ingestionPayload, participantId, inventoryId),
                 inventoryId,
                 participantId,
                 dumpType,
@@ -114,11 +116,45 @@ public class IngestionController implements IngestionApi {
 
         return ResponseEntity.accepted().build();
     }
+
+    // --- Management Endpoints ---
+    @RolesAllowed({AccessRoleEnum.LCSupport_role, AccessRoleEnum.M2M_role})
+    @Override
+    public ResponseEntity<List<IngestionReport>> findIngestionReports() {
+        log.info("REST: FindIngestionReports - Request by user");
+        List<IngestionReportDto> ingestionReports = offerIngestionProcessService.findIngestionReports();
+        return ResponseEntity.ok(ingestionControllerMapper.toIngestionReportList(ingestionReports));
+    }
+
+    @RolesAllowed({AccessRoleEnum.LCSupport_role, AccessRoleEnum.M2M_role})
+    @Override
+    public ResponseEntity<IngestionReport> findIngestionReportById(UUID jobIdentifier) {
+        log.info("REST: FindIngestionReportById - Job: {}", jobIdentifier);
+        IngestionReportDto ingestionReport = offerIngestionProcessService.findIngestionReportById(jobIdentifier);
+        return ResponseEntity.ok(ingestionControllerMapper.toIngestionReport(ingestionReport));
+    }
+
+    @RolesAllowed({AccessRoleEnum.LCSupport_role})
+    @Override
+    public ResponseEntity<Void> promoteDraftOffers(UUID jobIdentifier) {
+        log.info("REST: PromoteDraftOffers - Job: {}", jobIdentifier);
+        offerIngestionProcessService.promoteDraftOffersToVehicleOffers(jobIdentifier);
+        return ResponseEntity.ok().build();
+    }
+
+    @RolesAllowed({AccessRoleEnum.LCSupport_role})
+    @Override
+    public ResponseEntity<Void> deleteDraftOffers(UUID jobIdentifier) {
+        log.info("REST: DeleteDraftOffers - Job: {}", jobIdentifier);
+        offerIngestionProcessService.deleteDraftOffersByJobIdentifier(jobIdentifier);
+        return ResponseEntity.noContent().build();
+    }
+
     /**
      * Extract the participant ID (Vendor/Dealer) from the security context (JWT/Header).
      */
     private UUID getParticipantIdFromContext() {
         LCContext context = contextService.getContext();
-        return (context != null) ? UUID.fromString(context.getParticipantId()): null;
+        return (context != null) ? UUID.fromString(context.getParticipantId()) : null;
     }
 }

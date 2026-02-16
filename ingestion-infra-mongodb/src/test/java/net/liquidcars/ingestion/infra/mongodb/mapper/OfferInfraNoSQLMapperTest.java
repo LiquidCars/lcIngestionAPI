@@ -2,7 +2,8 @@ package net.liquidcars.ingestion.infra.mongodb.mapper;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.factory.OfferDtoFactory;
-import net.liquidcars.ingestion.factory.OfferNoSQLEntityFactory;
+import net.liquidcars.ingestion.factory.DraftOfferNoSQLEntityFactory;
+import net.liquidcars.ingestion.infra.mongodb.entity.DraftOfferNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.OfferNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.service.mapper.OfferInfraNoSQLMapper;
 import org.junit.jupiter.api.Disabled;
@@ -11,7 +12,6 @@ import org.mapstruct.factory.Mappers;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,7 +25,7 @@ public class OfferInfraNoSQLMapperTest {
         // Arrange
         OfferDto dto = OfferDtoFactory.getOfferDto();
 
-        OfferNoSQLEntity entity = mapper.toEntity(dto);
+        DraftOfferNoSQLEntity entity = mapper.toEntity(dto);
 
         assertThat(entity).isNotNull();
         assertThat(entity.getId()).isEqualTo(dto.getId().toString());
@@ -34,7 +34,7 @@ public class OfferInfraNoSQLMapperTest {
 
     @Test
     void toDto_ShouldMapGeneratedEntityToDto() {
-        OfferNoSQLEntity entity = OfferNoSQLEntityFactory.getOfferNoSQLEntity();
+        DraftOfferNoSQLEntity entity = DraftOfferNoSQLEntityFactory.getDraftOfferNoSQLEntity();
 
         OfferDto dto = mapper.toDto(entity);
 

@@ -2,8 +2,10 @@ package net.liquidcars.ingestion.infra.mongodb.service.mapper;
 
 import net.liquidcars.ingestion.domain.model.KeyValueDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.infra.mongodb.entity.DraftOfferNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.KeyValueNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.OfferNoSQLEntity;
+import net.liquidcars.ingestion.infra.mongodb.entity.VehicleOfferNoSQLEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -16,9 +18,11 @@ import java.util.UUID;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface OfferInfraNoSQLMapper {
 
-    OfferNoSQLEntity toEntity(OfferDto offerDto);
+    DraftOfferNoSQLEntity toEntity(OfferDto offerDto);
 
-    OfferDto toDto(OfferNoSQLEntity offerNoSQLEntity);
+    VehicleOfferNoSQLEntity toVehicleOfferNoSQLEntity(DraftOfferNoSQLEntity draftOfferNoSQLEntity);
+
+    OfferDto toDto(DraftOfferNoSQLEntity offerNoSQLEntity);
 
     default Instant map(OffsetDateTime value) {
         return value == null ? null : value.toInstant();
@@ -38,7 +42,7 @@ public interface OfferInfraNoSQLMapper {
                 .build();
     }
 
-    // Mapeo de KeyValueNoSQLEntity a KeyValueDto
+    // Mapper from KeyValueNoSQLEntity to KeyValueDto
     default KeyValueDto<String, String> map(KeyValueNoSQLEntity keyValueNoSQLEntity) {
         if (keyValueNoSQLEntity == null) {
             return null;
@@ -46,12 +50,12 @@ public interface OfferInfraNoSQLMapper {
         return new KeyValueDto<>(keyValueNoSQLEntity.getKey(), keyValueNoSQLEntity.getValue());
     }
 
-    // Mapeo de UUID a String
+    // Mapper from UUID to String
     default String map(UUID uuid) {
         return uuid != null ? uuid.toString() : null;
     }
 
-    // Mapeo de String a UUID
+    // Mapper from String to UUID
     default UUID mapToUuid(String value) {
         return value != null ? UUID.fromString(value) : null;
     }

@@ -1,14 +1,11 @@
 package net.liquidcars.ingestion.infra.mongodb.entity;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.CompoundIndex;
+import lombok.experimental.SuperBuilder;
 import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
@@ -16,18 +13,10 @@ import java.util.List;
 import java.util.UUID;
 
 @Data
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "vehicleoffers_ingestion_draft")
-@CompoundIndex(
-        name = "idx_offers_composite",
-        def = "{ 'owner_reference': 1, 'dealer_reference': 1, 'channel_reference': 1 }"
-)
 public class OfferNoSQLEntity {
-
-    @Id
-    private UUID id;
 
     @Field("seller_type")
     private CarOfferSellerTypeEnumNoSQLEntity sellerType;
@@ -120,11 +109,8 @@ public class OfferNoSQLEntity {
     @Field("participant_id")
     private UUID participantId;
 
-    @Field("job_identifier")
-    private UUID jobIdentifier;
-
-    @Field("ingestion_report_id")
-    private UUID ingestionReportId;
+    @Field("inventory_id")
+    private UUID inventoryId;
 
 }
 

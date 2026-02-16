@@ -5,26 +5,27 @@ info:
     API for bulk vehicle offer ingestion (LiquidCars).
     Designed to handle 170k+ records using reactive processing and streaming.
     
-    **Business Logic (HU):**
-    - `inventoryId`: Target inventory. Defaults to General Inventory if null.
-    - `dumpType`: `UPDATE` (Merge) or `REPLACEMENT` (Full Sync/Delete).
-    - `format`: Now enforced via Enum (xml, json).
+    **Security Roles:**
+    - `LCSupport_role`: Support and administration.
+    - `M2M_role`: Automated system integration.
   contact:
     name: Platform Engineering Team
     email: support@liquidcars.net
-  version: 1.1.0
+  version: 1.2.0
 
 servers:
   - url: http://localhost:8890
     description: Local development server
 
 paths:
+  # --- Ingestion Operations ---
   /v1/ingestion/batch:
     post:
       tags:
         - Ingestion
       summary: Ingest JSON Batches
       operationId: ingestBatch
+      x-roles: [LCSupport_role, M2M_role]
       parameters:
         - $ref: '#/components/parameters/InventoryIdParam'
         - $ref: '#/components/parameters/DumpTypeParam'
@@ -38,8 +39,6 @@ paths:
       responses:
         '202':
           description: Batch accepted.
-        '413':
-          description: Payload Too Large.
 
   /v1/ingestion/stream:
     post:
@@ -47,6 +46,7 @@ paths:
         - Ingestion
       summary: Ingest via Binary Stream
       operationId: ingestStream
+      x-roles: [LCSupport_role, M2M_role]
       parameters:
         - $ref: '#/components/parameters/FormatParam'
         - $ref: '#/components/parameters/InventoryIdParam'
@@ -70,6 +70,7 @@ paths:
         - Ingestion
       summary: Ingest via URL (Pull)
       operationId: ingestFromUrl
+      x-roles: [LCSupport_role, M2M_role]
       parameters:
         - $ref: '#/components/parameters/FormatParam'
         - name: url
@@ -85,6 +86,82 @@ paths:
       responses:
         '202':
           description: Upload started.
+
+  # --- Management Operations ---
+  /v1/ingestion/reports:
+    get:
+      tags:
+        - Ingestion
+      summary: List all ingestion reports
+      operationId: findIngestionReports
+      x-roles: [LCSupport_role, M2M_role]
+      responses:
+        '200':
+          description: List of reports retrieved.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IngestionReport'
+
+  /v1/ingestion/reports/{jobIdentifier}:
+    get:
+      tags:
+        - Ingestion
+      summary: Get report by job/report identifier
+      operationId: findIngestionReportById
+      x-roles: [LCSupport_role, M2M_role]
+      parameters:
+        - name: jobIdentifier
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Report details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionReport'
+
+  /v1/ingestion/promote/{jobIdentifier}:
+    post:
+      tags:
+        - Ingestion
+      summary: Promote draft offers to production collection
+      operationId: promoteDraftOffers
+      x-roles: [LCSupport_role]
+      parameters:
+        - name: jobIdentifier
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Promotion triggered successfully.
+
+  /v1/ingestion/draft/{jobIdentifier}:
+    delete:
+      tags:
+        - Ingestion
+      summary: Clean up draft offers from temporary collection
+      operationId: deleteDraftOffers
+      x-roles: [LCSupport_role]
+      parameters:
+        - name: jobIdentifier
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Drafts deleted.
 
 components:
   parameters:
@@ -404,3 +481,52 @@ components:
     AddressType:
       type: string
       enum: [P_HOME, B_RETAIL, B_PICKUP, B_EXPERTISE]
+
+    IngestionReport:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        processType:
+          type: string
+        batchJobId:
+          type: string
+          format: uuid
+        requesterParticipantId:
+          type: string
+          format: uuid
+        inventoryId:
+          type: string
+          format: uuid
+        externalRequestId:
+          type: string
+        publicationDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+        dumpType:
+          $ref: '#/components/schemas/IngestionDumpType'
+        readCount:
+          type: integer
+        writeCount:
+          type: integer
+        skipCount:
+          type: integer
+        failedExternalIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalIdInfo'
+        idsForDelete:
+          type: array
+          items:
+            type: string
+        processed:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

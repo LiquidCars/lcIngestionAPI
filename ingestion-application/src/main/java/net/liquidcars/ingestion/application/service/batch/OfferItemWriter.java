@@ -32,11 +32,16 @@ public class OfferItemWriter implements ItemWriter<OfferDto>, StepExecutionListe
     @Override
     public void write(Chunk<? extends OfferDto> chunk) {
         for (OfferDto offer : chunk) {
-            offer.setJobIdentifier(this.getJobIdentifier());
-            offer.setIngestionReportId(this.getIngestionReportId());
-            offer.setParticipantId(this.getRequesterParticipantId());
+            setExternalIdsToOffer(offer);
             kafkaProducer.sendOffer(offer);
         }
+    }
+
+    private void setExternalIdsToOffer(OfferDto offer) {
+        offer.setJobIdentifier(this.getJobIdentifier());
+        offer.setIngestionReportId(this.getIngestionReportId());
+        offer.setParticipantId(this.getRequesterParticipantId());
+        offer.setInventoryId(this.getInventoryId());
     }
 
     private UUID getJobIdentifier() {
@@ -82,6 +87,21 @@ public class OfferItemWriter implements ItemWriter<OfferDto>, StepExecutionListe
             return null;
         }
         return UUID.fromString(requesterParticipantIdParam);
+    }
+
+    private UUID getInventoryId() {
+        if (stepExecution == null) {
+            log.warn("StepExecution not yet initialized!");
+            return null;
+        }
+        String inventoryIdParam = stepExecution.getJobExecution()
+                .getJobParameters()
+                .getString("inventoryId");
+        if (inventoryIdParam == null) {
+            log.warn("Skipping ingestion report: inventoryId is null");
+            return null;
+        }
+        return UUID.fromString(inventoryIdParam);
     }
 
 }

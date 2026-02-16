@@ -253,6 +253,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                         .addString("ingestionId", ingestionId.toString())
                         .addString("ingestionReportId", ingestionReportDto.getId().toString())
                         .addString("requesterParticipantId", requesterParticipantId.toString())
+                        .addString("inventoryId", inventoryId.toString())
                         .addString("format", format.name())
                         .addLong("time", System.currentTimeMillis())
                         .toJobParameters();
@@ -406,5 +407,38 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
             iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
             offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
         }
+    }
+
+    @Override
+    public void promoteDraftOffersToVehicleOffers(UUID jobIdentifier) {
+        log.debug("Calling for start promotion for jobIdentifier: {}", jobIdentifier);
+        IngestionReportDto ingestionReportDto = findIngestionReportById(jobIdentifier);
+        if(ingestionReportDto.isProcessed()){
+            log.warn("Cannot promote offers with jobIdentifier: {}. The job was processed yet.", jobIdentifier);
+            return;
+        }
+        offerInfraNoSQLService.promoteDraftOffersToVehicleOffers(jobIdentifier, ingestionReportDto.getDumpType(), ingestionReportDto.getInventoryId(), ingestionReportDto.getIdsForDelete());
+        //Once promotion process is completed we mark job as processed and we update
+        ingestionReportDto.setProcessed(true);
+        iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
+        log.debug("Finish promotion for jobIdentifier: {}", jobIdentifier);
+    }
+
+    @Override
+    public void deleteDraftOffersByJobIdentifier(UUID jobIdentifier) {
+        log.debug("Calling delete draft offers with jobIdentifier: {}", jobIdentifier);
+        offerInfraNoSQLService.deleteDraftOffersByJobIdentifier(jobIdentifier);
+    }
+
+    @Override
+    public List<IngestionReportDto> findIngestionReports() {
+        log.debug("Calling find all ingestion reports");
+        return iReportInfraSQLService.findIngestionReports();
+    }
+
+    @Override
+    public IngestionReportDto findIngestionReportById(UUID jobIdentifier) {
+        log.debug("Calling find ingestion report by jobIdentifier: {}", jobIdentifier);
+        return iReportInfraSQLService.findIngestionReportById(jobIdentifier);
     }
 }

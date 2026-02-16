@@ -3,8 +3,10 @@ package net.liquidcars.ingestion.infra.input.rest.mapper;
 import net.liquidcars.ingestion.domain.model.CarOfferSellerTypeEnumDto;
 import net.liquidcars.ingestion.domain.model.IngestionPayloadDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import net.liquidcars.ingestion.infra.input.rest.model.CarOfferSellerTypeEnum;
 import net.liquidcars.ingestion.infra.input.rest.model.IngestionPayload;
+import net.liquidcars.ingestion.infra.input.rest.model.IngestionReport;
 import net.liquidcars.ingestion.infra.input.rest.model.OfferRequest;
 import org.mapstruct.*;
 
@@ -16,21 +18,22 @@ import java.util.stream.Collectors;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface IngestionControllerMapper {
 
-    @Mapping(target = "offers", expression = "java(toOfferDtoList(ingestionPayload.getOffers(), participantId))")
-    IngestionPayloadDto toIngestionPayloadDto(IngestionPayload ingestionPayload, UUID participantId);
+    @Mapping(target = "offers", expression = "java(toOfferDtoList(ingestionPayload.getOffers(), participantId, inventoryId))")
+    IngestionPayloadDto toIngestionPayloadDto(IngestionPayload ingestionPayload, UUID participantId, UUID inventoryId);
 
     @Named("toOfferDtoWithParticipant")
     @Mapping(target = "id", expression = "java(java.util.UUID.randomUUID())")
     @Mapping(target = "lastUpdated", expression = "java(java.time.Instant.now().getEpochSecond())")
     @Mapping(target = "participantId", source = "participantId")
-    OfferDto toOfferDto(OfferRequest offerRequest, UUID participantId);
+    @Mapping(target = "inventoryId", source = "inventoryId")
+    OfferDto toOfferDto(OfferRequest offerRequest, UUID participantId, UUID inventoryId);
 
-    default List<OfferDto> toOfferDtoList(List<OfferRequest> offerRequestList, UUID participantId) {
+    default List<OfferDto> toOfferDtoList(List<OfferRequest> offerRequestList, UUID participantId, UUID inventoryId) {
         if (offerRequestList == null) {
             return null;
         }
         return offerRequestList.stream()
-                .map(offerRequest -> toOfferDto(offerRequest, participantId))
+                .map(offerRequest -> toOfferDto(offerRequest, participantId,  inventoryId))
                 .collect(Collectors.toList());
     }
 
@@ -40,4 +43,7 @@ public interface IngestionControllerMapper {
     })
     CarOfferSellerTypeEnumDto toCarOfferSellerTypeEnumDto(CarOfferSellerTypeEnum carOfferSellerTypeEnum);
 
+    IngestionReport toIngestionReport(IngestionReportDto ingestionReportDto);
+
+    List<IngestionReport> toIngestionReportList(List<IngestionReportDto> ingestionReportDtoList);
 }

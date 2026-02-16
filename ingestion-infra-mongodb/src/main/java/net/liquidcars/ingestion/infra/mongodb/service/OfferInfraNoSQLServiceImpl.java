@@ -3,26 +3,42 @@ package net.liquidcars.ingestion.infra.mongodb.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
-import net.liquidcars.ingestion.infra.mongodb.entity.OfferNoSQLEntity;
-import net.liquidcars.ingestion.infra.mongodb.repository.OfferNoSqlRepository;
+import net.liquidcars.ingestion.infra.mongodb.entity.DraftOfferNoSQLEntity;
+import net.liquidcars.ingestion.infra.mongodb.entity.VehicleOfferNoSQLEntity;
+import net.liquidcars.ingestion.infra.mongodb.repository.DraftOfferNoSqlRepository;
+import net.liquidcars.ingestion.infra.mongodb.repository.VehicleOfferNoSqlRepository;
 import net.liquidcars.ingestion.infra.mongodb.service.mapper.OfferInfraNoSQLMapper;
+import org.bson.Document;
+import org.springframework.data.mongodb.core.BulkOperations;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
 
-    private final OfferNoSqlRepository repository;
+    private final DraftOfferNoSqlRepository draftOfferNoSqlRepository;
     private final OfferInfraNoSQLMapper offerInfraNoSQLMapper;
+
+    private final MongoTemplate mongoTemplate;
+    private final VehicleOfferNoSqlRepository vehicleOfferNoSqlRepository;
 
     @Override
     @Transactional
@@ -30,12 +46,12 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         log.info("Processing NoSQL persistence for id: {}", offer.getId());
 
         try {
-            OfferNoSQLEntity entity = offerInfraNoSQLMapper.toEntity(offer);
+            DraftOfferNoSQLEntity entity = offerInfraNoSQLMapper.toEntity(offer);
             entity.setCreatedAt(Instant.now());
-            repository.findById(offer.getId().toString())
+            draftOfferNoSqlRepository.findById(offer.getId())
                     .ifPresentOrElse(
                             existingOffer -> updateIfNewer(existingOffer, entity),
-                            () -> repository.save(entity)
+                            () -> draftOfferNoSqlRepository.save(entity)
                     );
 
         } catch (Exception e) {
@@ -48,7 +64,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         }
     }
 
-    private void updateIfNewer(OfferNoSQLEntity existing, OfferNoSQLEntity incoming) {
+    private void updateIfNewer(DraftOfferNoSQLEntity existing, DraftOfferNoSQLEntity incoming) {
         boolean shouldUpdate = existing.getCreatedAt() == null ||
                 incoming.getCreatedAt().isAfter(existing.getCreatedAt());
 
@@ -58,7 +74,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
             if (existing.getCreatedAt() != null) {
                 incoming.setCreatedAt(existing.getCreatedAt());
             }
-            repository.save(incoming);
+            draftOfferNoSqlRepository.save(incoming);
         } else {
             log.debug("Incoming offer is older than existing one. Skipping update. ExternalID: {}", incoming.getId());
         }
@@ -76,7 +92,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
              * We execute a bulk delete operation. Using a single query with $ne and $lt
              * is highly efficient as MongoDB performs the filter and deletion in one pass.
              */
-            long offersDeleted = repository.deleteByBatchStatusNotCompletedAndUpdatedAtBefore(threshold);
+            long offersDeleted = draftOfferNoSqlRepository.deleteByBatchStatusNotCompletedAndUpdatedAtBefore(threshold);
             log.info("Obsolete offers purge completed successfully. Deleted {} offers", offersDeleted);
         } catch (Exception e) {
             log.error("Failed to purge obsolete offers from NoSQL", e);
@@ -92,7 +108,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     @Override
     public long countOffersFromJobId(UUID jobId){
         try {
-            return repository.countByJobIdentifier(jobId);
+            return draftOfferNoSqlRepository.countByJobIdentifier(jobId);
         } catch (Exception e) {
             log.error("Failed to get offers from NoSQL by jobId: {}", jobId, e);
             throw LCIngestionException.builder()
@@ -107,7 +123,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     @Override
     public long countOffersFromReportId(UUID ingestionReportId){
         try {
-            return repository.countByIngestionReportId(ingestionReportId);
+            return draftOfferNoSqlRepository.countByIngestionReportId(ingestionReportId);
         } catch (Exception e) {
             log.error("Failed to get offers from NoSQL by ingestionReportId: {}", ingestionReportId, e);
             throw LCIngestionException.builder()
@@ -117,6 +133,119 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                     .build();
         }
 
+    }
+
+    @Override
+    public void promoteDraftOffersToVehicleOffers(UUID jobIdentifier, IngestionDumpType dumpType, UUID inventoryId, List<String> externalIdsToDelete) {
+        log.info("Starting promotion for jobIdentifier: {}", jobIdentifier);
+        // Promote logic
+        List<UUID> promotedIds = promoteDraftOffersAndGetsPromoted(jobIdentifier, inventoryId);
+
+        // REPLACEMENT logic
+        replaceOffers(dumpType, inventoryId, promotedIds);
+
+        // Process explicit deletions (offersToDelete from JSON)
+        deleteOffersInPromotion(inventoryId, externalIdsToDelete);
+    }
+
+    private List<UUID> promoteDraftOffersAndGetsPromoted(UUID jobIdentifier, UUID inventoryId) {
+        // 1. Use a Stream to avoid loading the entire list into memory
+        Query draftQuery = new Query(Criteria.where("job_identifier").is(jobIdentifier));
+
+        // List to track processed IDs for the REPLACEMENT logic
+        List<UUID> promotedIds = new ArrayList<>();
+
+        // 2. Define batch size for Bulk operations (e.g., every 100 records)
+        int batchSize = 100;
+        final int[] count = {0};
+
+        // Use mongoTemplate.stream to open a cursor and process records one by one
+        try (Stream<DraftOfferNoSQLEntity> draftStream = mongoTemplate.stream(draftQuery, DraftOfferNoSQLEntity.class)) {
+
+            // Initialize the first bulk operation reference
+            var bulkOps = new AtomicReference<>(mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, VehicleOfferNoSQLEntity.class));
+
+            draftStream.forEach(draft -> {
+                // Convert draft offers to vehicle offers
+                VehicleOfferNoSQLEntity productionEntity = offerInfraNoSQLMapper.toVehicleOfferNoSQLEntity(draft);
+                promotedIds.add(productionEntity.getId());
+
+                // Dynamic query with OR for the references
+                List<Criteria> orCriteria = new ArrayList<>();
+                if (draft.getOwnerReference() != null) orCriteria.add(Criteria.where("owner_reference").is(draft.getOwnerReference()));
+                if (draft.getDealerReference() != null) orCriteria.add(Criteria.where("dealer_reference").is(draft.getDealerReference()));
+                if (draft.getChannelReference() != null) orCriteria.add(Criteria.where("channel_reference").is(draft.getChannelReference()));
+
+                if (orCriteria.isEmpty()) {
+                    log.warn("Draft offer {} has no references, skipping", draft.getId());
+                    return;
+                }
+
+                // Ensure the OR logic is scoped to the specific inventory
+                Query upsertQuery = new Query(new Criteria().andOperator(
+                        Criteria.where("inventory_id").is(inventoryId),
+                        new Criteria().orOperator(orCriteria.toArray(new Criteria[0]))
+                ));
+
+                // Convert entity to document for update
+                Document doc = new Document();
+                mongoTemplate.getConverter().write(productionEntity, doc);
+                doc.remove("_id"); // Let MongoDB keep existing ID or generate a new one if it's an insert
+
+                Update update = Update.fromDocument(doc);
+                bulkOps.get().upsert(upsertQuery, update);
+
+                count[0]++;
+
+                // Execute bulk and reset the operation reference every batchSize records
+                if (count[0] % batchSize == 0) {
+                    bulkOps.get().execute();
+                    bulkOps.set(mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, VehicleOfferNoSQLEntity.class));
+                }
+            });
+
+            // Execute any remaining operations in the last batch
+            if (count[0] % batchSize != 0) {
+                bulkOps.get().execute();
+            }
+        }
+        return promotedIds;
+    }
+
+    private void replaceOffers(IngestionDumpType dumpType, UUID inventoryId, List<UUID> promotedIds) {
+        if (dumpType == IngestionDumpType.REPLACEMENT) {
+            log.info("Executing REPLACEMENT cleanup for inventoryId {}", inventoryId);
+            // Delete offers in production for this participant that were NOT processed in this Job
+            vehicleOfferNoSqlRepository.deleteByInventoryIdAndIdNotIn(inventoryId, promotedIds);
+        }
+    }
+
+    private void deleteOffersInPromotion(UUID inventoryId, List<String> externalIdsToDelete) {
+        if (externalIdsToDelete != null && !externalIdsToDelete.isEmpty()) {
+            log.info("Processing {} explicit deletions for inventory {}", externalIdsToDelete.size(), inventoryId);
+
+            // Build an OR query: the ID could be in any of the three reference fields
+            Criteria orDeleteCriteria = new Criteria().orOperator(
+                    Criteria.where("owner_reference").in(externalIdsToDelete),
+                    Criteria.where("dealer_reference").in(externalIdsToDelete),
+                    Criteria.where("channel_reference").in(externalIdsToDelete)
+            );
+
+            Query deleteQuery = new Query(new Criteria().andOperator(
+                    Criteria.where("inventory_id").is(inventoryId),
+                    orDeleteCriteria
+            ));
+
+            long deletedCount = mongoTemplate.remove(deleteQuery, VehicleOfferNoSQLEntity.class).getDeletedCount();
+            log.info("Explicitly deleted {} offers from production", deletedCount);
+        }
+    }
+
+    @Override
+    public void deleteDraftOffersByJobIdentifier(UUID jobIdentifier) {
+        log.info("Starting delete offers by jobIdentifier: {}", jobIdentifier);
+        long deletedCount = draftOfferNoSqlRepository.deleteByJobIdentifier(jobIdentifier);
+        log.info("Deleted: {} offers with jobIdentifier: {}", deletedCount, jobIdentifier);
     }
 
 
