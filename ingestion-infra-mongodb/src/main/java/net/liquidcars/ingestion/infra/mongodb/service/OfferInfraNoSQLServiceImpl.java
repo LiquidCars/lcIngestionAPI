@@ -166,40 +166,43 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
             var bulkOps = new AtomicReference<>(mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, VehicleOfferNoSQLEntity.class));
 
             draftStream.forEach(draft -> {
-                // Convert draft offers to vehicle offers
                 VehicleOfferNoSQLEntity productionEntity = offerInfraNoSQLMapper.toVehicleOfferNoSQLEntity(draft);
                 promotedIds.add(productionEntity.getId());
 
-                // Dynamic query with OR for the references
+                // 1. Build the query to find existing record
                 List<Criteria> orCriteria = new ArrayList<>();
                 if (draft.getOwnerReference() != null) orCriteria.add(Criteria.where("owner_reference").is(draft.getOwnerReference()));
                 if (draft.getDealerReference() != null) orCriteria.add(Criteria.where("dealer_reference").is(draft.getDealerReference()));
                 if (draft.getChannelReference() != null) orCriteria.add(Criteria.where("channel_reference").is(draft.getChannelReference()));
 
-                if (orCriteria.isEmpty()) {
-                    log.warn("Draft offer {} has no references, skipping", draft.getId());
-                    return;
-                }
+                if (orCriteria.isEmpty()) return;
 
-                // Ensure the OR logic is scoped to the specific inventory
                 Query upsertQuery = new Query(new Criteria().andOperator(
                         Criteria.where("inventory_id").is(inventoryId),
                         new Criteria().orOperator(orCriteria.toArray(new Criteria[0]))
                 ));
 
-                // Convert entity to document for update
+                // 2. Prepare the Update object using $set for all fields
                 Document doc = new Document();
                 mongoTemplate.getConverter().write(productionEntity, doc);
-                doc.remove("_id"); // Let MongoDB keep existing ID or generate a new one if it's an insert
+                doc.remove("_id");
+                doc.remove("_class"); // Avoid inheritance issues
 
-                Update update = Update.fromDocument(doc);
+                Update update = new Update();
+                for (String key : doc.keySet()) {
+                    Object value = doc.get(key);
+                    if (value != null) {
+                        update.set(key, value);
+                    }
+                }
+
+                // 3. Add to bulk
                 bulkOps.get().upsert(upsertQuery, update);
 
                 count[0]++;
-
-                // Execute bulk and reset the operation reference every batchSize records
                 if (count[0] % batchSize == 0) {
-                    bulkOps.get().execute();
+                    log.debug("Executing bulk of {} operations", count[0]);
+                    bulkOps.get().execute(); // Force execution
                     bulkOps.set(mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, VehicleOfferNoSQLEntity.class));
                 }
             });
