@@ -21,6 +21,14 @@ operations:
     messages:
       - $ref: '#/channels/ingestionReportChannel/messages/ingestionReportMessage'
 
+  sendOfferSummary:
+    action: send
+    channel:
+      $ref: '#/channels/offerSummaryChannel'
+    summary: Publicar resumen de oferta guardada.
+    messages:
+      - $ref: '#/channels/offerSummaryChannel/messages/offerSummaryMessage'
+
 channels:
   offerCreationChannel:
     address: liquidcars.ingestion.event.offer.create-action.0
@@ -33,6 +41,12 @@ channels:
     messages:
       ingestionReportMessage:
         $ref: '#/components/messages/IngestionReport'
+
+  offerSummaryChannel:
+    address: liquidcars.ingestion.event.offer.saved-action.0
+    messages:
+      offerSummaryMessage:
+        $ref: '#/components/messages/OfferSummary'
 
 components:
   messages:
@@ -49,6 +63,56 @@ components:
         $ref: '#/components/schemas/IngestionReportMsg'
 
   schemas:
+    OfferSummaryMsg:
+      type: object
+      required: [ id ]
+      description: This object represents a summary of an offer. Used to send saved notifications
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Offer unique identifier
+        hash:
+          type: integer
+          format: int32
+          description: A versioning hash code used to detect potential changes of the offer
+        externalIdInfo:
+          $ref: '#/components/schemas/ExternalIdInfoMsg'
+        lastUpdated:
+          type: integer
+          format: int64
+          description: Update date (timestamp)
+        participantId:
+          type: string
+          format: uuid
+          description: Participant id
+        jobIdentifier:
+          type: string
+          format: uuid
+          description: Batch job identifier
+        ingestionReportId:
+          type: string
+          format: uuid
+          description: Ingestion report job identifier
+        inventoryId:
+          type: string
+          format: uuid
+          description: Inventory of offers
+
+    ExternalIdInfoMsg:
+      type: object
+      description: Information about external identifier
+      properties:
+        ownerReference:
+          type: string
+          description: The car owner reference
+        dealerReference:
+          type: string
+          description: The dealer reference
+        channelReference:
+          type: string
+          description: The dealer channel reference
+
     OfferMsg:
       type: object
       required: [externalId, brand, model, year, price]
