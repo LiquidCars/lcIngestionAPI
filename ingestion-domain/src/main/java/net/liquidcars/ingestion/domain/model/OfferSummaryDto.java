@@ -22,4 +22,15 @@ public class OfferSummaryDto implements Serializable {
     private int hash;
     @Schema(description = "The external offer identifiers")
     private ExternalIdInfoDto externalIdInfo;
+    @Schema(description = "Update date")
+    private long lastUpdated;
+    @Schema(description = "Participant id")
+    private UUID participantId;
+    @Schema(description = "Batch job identifier")
+    private UUID jobIdentifier;
+    @Schema(description = "Ingestion report job identifier")
+    private UUID ingestionReportId;
+    @Schema(description = "Inventory of offers")
+    private UUID inventoryId;
+
 }

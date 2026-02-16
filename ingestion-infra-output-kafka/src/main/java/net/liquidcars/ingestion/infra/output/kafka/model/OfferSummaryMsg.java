@@ -20,4 +20,14 @@ public class OfferSummaryMsg {
     @Schema(description = "A versioning hash code used to detect potential changes of the offer")
     private int hash;
     private ExternalIdInfoMsg externalIdInfo;
+    @Schema(description = "Update date")
+    private long lastUpdated;
+    @Schema(description = "Participant id")
+    private UUID participantId;
+    @Schema(description = "Batch job identifier")
+    private UUID jobIdentifier;
+    @Schema(description = "Ingestion report job identifier")
+    private UUID ingestionReportId;
+    @Schema(description = "Inventory of offers")
+    private UUID inventoryId;
 }
