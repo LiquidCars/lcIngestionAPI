@@ -95,6 +95,70 @@ paths:
       summary: List all ingestion reports
       operationId: findIngestionReports
       x-roles: [LCSupport_role, M2M_role]
+      parameters:
+        - name: processType
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/IngestionProcessType'
+        - name: requesterParticipantId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: inventoryId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: externalRequestId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/IngestionBatchStatus'
+        - name: dumpType
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/IngestionDumpType'
+        - name: processed
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: createdFrom
+          in: query
+          required: false
+          description: Filter reports created after this date
+          schema:
+            type: string
+            format: date-time
+        - name: createdTo
+          in: query
+          required: false
+          description: Filter reports created before this date
+          schema:
+            type: string
+            format: date-time
+        - name: updatedFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: updatedTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
       responses:
         '200':
           description: List of reports retrieved.
@@ -202,6 +266,16 @@ components:
     IngestionFormat:
       type: string
       enum: [xml, json]
+
+    IngestionProcessType:
+      type: string
+      enum: [ FILE, PROCESS ]
+      default: FILE
+
+    IngestionBatchStatus:
+      type: string
+      enum: [ COMPLETED, STARTING, STARTED, STOPPING, STOPPED, FAILED, ABANDONED, UNKNOWN ]
+      default: COMPLETED
 
     IngestionDumpType:
       type: string

@@ -466,9 +466,9 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     }
 
     @Override
-    public List<IngestionReportDto> findIngestionReports() {
-        log.debug("Calling find all ingestion reports");
-        return iReportInfraSQLService.findIngestionReports();
+    public List<IngestionReportDto> findIngestionReports(IngestionReportFilterDto filter) {
+        log.debug("Calling find all ingestion reports with filter: {}", filter);
+        return iReportInfraSQLService.findIngestionReports(filter);
     }
 
     @Override

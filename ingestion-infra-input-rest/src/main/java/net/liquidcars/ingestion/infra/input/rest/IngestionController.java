@@ -3,9 +3,7 @@ package net.liquidcars.ingestion.infra.input.rest;
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
-import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
-import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
+import net.liquidcars.ingestion.domain.model.batch.*;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.model.security.AccessRoleEnum;
@@ -120,9 +118,35 @@ public class IngestionController implements IngestionApi {
     // --- Management Endpoints ---
     @RolesAllowed({AccessRoleEnum.LCSupport_role, AccessRoleEnum.M2M_role})
     @Override
-    public ResponseEntity<List<IngestionReport>> findIngestionReports() {
-        log.info("REST: FindIngestionReports - Request by user");
-        List<IngestionReportDto> ingestionReports = offerIngestionProcessService.findIngestionReports();
+    public ResponseEntity<List<IngestionReport>> findIngestionReports(
+            IngestionProcessType processType,
+            UUID requesterParticipantId,
+            UUID inventoryId,
+            String externalRequestId,
+            IngestionBatchStatus status,
+            IngestionDumpType dumpType,
+            Boolean processed,
+            OffsetDateTime createdFrom,
+            OffsetDateTime createdTo,
+            OffsetDateTime updatedFrom,
+            OffsetDateTime updatedTo
+    ){
+
+        IngestionReportFilterDto filter = IngestionReportFilterDto.builder()
+                .processType(processType)
+                .requesterParticipantId(requesterParticipantId)
+                .inventoryId(inventoryId)
+                .externalRequestId(externalRequestId)
+                .status(status)
+                .dumpType(dumpType)
+                .processed(processed != null ? processed : false)
+                .createdFrom(createdFrom)
+                .createdTo(createdTo)
+                .updatedFrom(updatedFrom)
+                .updatedTo(updatedTo)
+                .build();
+        log.info("REST: FindIngestionReports - Filtering request for filter {}", filter);
+        List<IngestionReportDto> ingestionReports = offerIngestionProcessService.findIngestionReports(filter);
         return ResponseEntity.ok(ingestionControllerMapper.toIngestionReportList(ingestionReports));
     }
 
