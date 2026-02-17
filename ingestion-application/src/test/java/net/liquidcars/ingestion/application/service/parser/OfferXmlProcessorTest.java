@@ -1,83 +1,66 @@
 package net.liquidcars.ingestion.application.service.parser;
 
+import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
+import net.liquidcars.ingestion.application.service.parser.model.JSON.OfferJSONModel;
+import net.liquidcars.ingestion.application.service.parser.model.XML.ExternalIdInfoXMLModel;
+import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 import net.liquidcars.ingestion.domain.model.batch.JobDeleteExternalIdsCollector;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.XML.OfferXMLModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
 import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
+import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserException;
+import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
+import net.liquidcars.ingestion.factory.TestDataFactory;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 import static org.mockito.Mockito.*;
 
-@Disabled
+
 @ExtendWith(MockitoExtension.class)
 class OfferXmlProcessorTest {
+
+    @Mock
+    private OfferParserMapper offerParserMapper;
 
     @InjectMocks
     private OfferXmlProcessor processor;
 
     @Mock
-    private OfferParserMapper offerParserMapper;
-
-    @Mock
-    private Consumer<OfferDto> offerConsumer;
-
-    @Mock
     private JobDeleteExternalIdsCollector deleteExternalIdsCollector;
 
+    @Mock
+    private OfferStreamItemReader offerReader;
 
-    @Captor
-    private ArgumentCaptor<OfferDto> offerCaptor;
 
     @Test
     void supports_ShouldReturnTrueOnlyForXml() {
         assertTrue(processor.supports(IngestionFormat.xml));
         assertFalse(processor.supports(IngestionFormat.json));
         assertFalse(processor.supports(null));
-    }
-
-    @Test
-    void parseAndProcess_ShouldProcessValidXml() {
-        String xml = """
-            <inventory>
-                <vehicle>
-                  <externalId>MF-882931</externalId>
-                  <vehicleType>CAR</vehicleType>
-                  <brand>BMW</brand>
-                  <model>3 Series</model>
-                  <year>2023</year>
-                  <price>34500.5</price>
-                  <status>ACTIVE</status>
-                  <createdAt>2026-01-27T10:00:00+01:00</createdAt>
-                  <updatedAt>2026-01-27T12:00:00+01:00</updatedAt>
-                  <source>motorflash</source>
-              </vehicle>
-            </inventory>
-            """;
-
-        when(offerParserMapper.toOfferDto(any(OfferXMLModel.class))).thenReturn(new OfferDto());
-
-        List<OfferDto> results = new ArrayList<>();
-        processor.parseAndProcess(new ByteArrayInputStream(xml.getBytes()), results::add, deleteExternalIdsCollector);
-
-        assertEquals(1, results.size());
-        verify(offerParserMapper).toOfferDto(any(OfferXMLModel.class));
     }
 
     @Test
@@ -93,157 +76,101 @@ class OfferXmlProcessorTest {
                 ex.getMessage().contains("expecting a close tag"));
     }
 
-    // todo
-    /*
     @Test
-    void testParseAndProcessMultipleOffers() throws IOException {
-        Path path = Paths.get("..", "testFiles", "offers.xml");
-        assertTrue(Files.exists(path), "File not found at: " + path.toAbsolutePath());
+    @DisplayName("Debe parsear correctamente un XML con un anuncio y llamar al action")
+    void parseAndProcess_ShouldProcessAnuncio() {
+        String xml = """
+            <root>
+                <anuncio>
+                    <motorflashid>MF-123</motorflashid>
+                    <marca>BMW</marca>
+                    <modelo>Serie 3</modelo>
+                    <precio>30000</precio>
+                    <fotos>
+                        <foto>http://image.com/1.jpg</foto>
+                    </fotos>
+                </anuncio>
+            </root>
+            """;
+        InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
 
-        when(offerParserMapper.toOfferDto(any(OfferXMLModel.class))).thenAnswer(invocation -> {
-            OfferXMLModel xml = invocation.getArgument(0);
-            OfferDto dto = new OfferDto();
-            dto.setExternalId(xml.getExternalId());
-            dto.setBrand(xml.getBrand());
-            dto.setModel(xml.getModel());
-            dto.setPrice(xml.getPrice());
-            dto.setYear(xml.getYear());
-            dto.setSource(xml.getSource());
-            dto.setCreatedAt(xml.getCreatedAt());
-            dto.setUpdatedAt(xml.getUpdatedAt());
-            dto.setVehicleType(OfferDto.VehicleTypeDto.valueOf(xml.getVehicleType().name()));
-            dto.setStatus(OfferDto.OfferStatusDto.valueOf(xml.getStatus().name()));
-            return dto;
-        });
+        // USO DE INSTANCIO: Generamos el DTO de salida esperado con datos aleatorios
+        OfferDto expectedDto = TestDataFactory.createOfferDto();
 
-        try (InputStream inputStream = Files.newInputStream(path)) {
-            processor.parseAndProcess(inputStream, offerConsumer);
-        }
+        when(offerParserMapper.toOfferDto(any(OfferXMLModel.class))).thenReturn(expectedDto);
 
-        verify(offerConsumer, times(10)).accept(offerCaptor.capture());
-        List<OfferDto> results = offerCaptor.getAllValues();
+        // WHEN
+        List<OfferDto> results = new ArrayList<>();
+        processor.parseAndProcess(inputStream, results::add, deleteExternalIdsCollector);
 
-        assertEquals(10, results.size(), "Debería haber procesado exactamente 4 anuncios");
+        // THEN
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0)).isEqualTo(expectedDto);
+        verify(offerParserMapper).toOfferDto(argThat((OfferXMLModel model) ->
+                "BMW".equals(model.getVehicleInstance().getVehicleModel().getBrand()) &&
+                        model.getPrice().getAmount().compareTo(new BigDecimal("30000")) == 0
+        ));
+    }
 
-        // 1. BMW
-        assertEquals("MF-882931", results.get(0).getExternalId());
-        assertEquals("BMW", results.get(0).getBrand());
-        assertEquals("3 Series", results.get(0).getModel());
-        assertEquals(new BigDecimal("34500.5"), results.get(0).getPrice());
-        assertEquals(2023, results.get(0).getYear());
-        assertEquals(OfferDto.VehicleTypeDto.CAR, results.get(0).getVehicleType());
-        assertEquals(OfferDto.OfferStatusDto.ACTIVE, results.get(0).getStatus());
-        assertEquals(OffsetDateTime.parse("2026-01-27T10:00:00+01:00"), results.get(0).getCreatedAt());
-        assertEquals(OffsetDateTime.parse("2026-01-27T12:00:00+01:00"), results.get(0).getUpdatedAt());
-        assertEquals("motorflash", results.get(0).getSource());
+    @Test
+    @DisplayName("Debe recolectar IDs de ofertas a borrar")
+    void parseAndProcess_ShouldCollectDeletes() {
+        // GIVEN
+        String xml = """
+            <root>
+                <offersToDelete>
+                    <id>DEL-001</id>
+                    <id>DEL-002</id>
+                </offersToDelete>
+            </root>
+            """;
+        InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
 
-        // 2. Audi
-        assertEquals("MF-882932", results.get(1).getExternalId());
-        assertEquals("Audi", results.get(1).getBrand());
-        assertEquals("A4", results.get(1).getModel());
-        assertEquals(new BigDecimal("32000.0"), results.get(1).getPrice());
-        assertEquals(2022, results.get(1).getYear());
-        assertEquals(OfferDto.VehicleTypeDto.CAR, results.get(1).getVehicleType());
-        assertEquals(OfferDto.OfferStatusDto.ACTIVE, results.get(1).getStatus());
-        assertEquals(OffsetDateTime.parse("2026-01-27T11:00:00+01:00"), results.get(1).getCreatedAt());
-        assertEquals(OffsetDateTime.parse("2026-01-27T13:00:00+01:00"), results.get(1).getUpdatedAt());
-        assertEquals("motorflash", results.get(1).getSource());
+        // WHEN
+        processor.parseAndProcess(inputStream, dto -> {}, deleteExternalIdsCollector);
 
-        // 3. Mercedes
-        assertEquals("MF-882933", results.get(2).getExternalId());
-        assertEquals("Mercedes", results.get(2).getBrand());
-        assertEquals("C-Class", results.get(2).getModel());
-        assertEquals(new BigDecimal("37000.75"), results.get(2).getPrice());
-        assertEquals(2023, results.get(2).getYear());
-        assertEquals(OfferDto.VehicleTypeDto.CAR, results.get(2).getVehicleType());
-        assertEquals(OfferDto.OfferStatusDto.ACTIVE, results.get(2).getStatus());
-        assertEquals(OffsetDateTime.parse("2026-01-27T10:30:00+01:00"), results.get(2).getCreatedAt());
-        assertEquals(OffsetDateTime.parse("2026-01-27T12:30:00+01:00"), results.get(2).getUpdatedAt());
-        assertEquals("motorflash", results.get(2).getSource());
+        // THEN
+        verify(deleteExternalIdsCollector).addId("DEL-001");
+        verify(deleteExternalIdsCollector).addId("DEL-002");
+    }
 
-        // 4. Volkswagen
-        assertEquals("MF-882934", results.get(3).getExternalId());
-        assertEquals("Volkswagen", results.get(3).getBrand());
-        assertEquals("Golf", results.get(3).getModel());
-        assertEquals(new BigDecimal("21500.0"), results.get(3).getPrice());
-        assertEquals(2021, results.get(3).getYear());
-        assertEquals(OfferDto.VehicleTypeDto.CAR, results.get(3).getVehicleType());
-        assertEquals(OfferDto.OfferStatusDto.ACTIVE, results.get(3).getStatus());
-        assertEquals(OffsetDateTime.parse("2026-01-27T09:00:00+01:00"), results.get(3).getCreatedAt());
-        assertEquals(OffsetDateTime.parse("2026-01-27T11:00:00+01:00"), results.get(3).getUpdatedAt());
-        assertEquals("motorflash", results.get(3).getSource());
+    @Test
+    void parseAndProcess_ShouldHandleDeletes() {
+        String xml = """
+    <root>
+        <offersToDelete>
+            <id>123</id>
+            <id>456</id>
+        </offersToDelete>
+    </root>
+    """;
+        processor.parseAndProcess(new ByteArrayInputStream(xml.getBytes()), d -> {}, deleteExternalIdsCollector);
+        verify(deleteExternalIdsCollector, times(2)).addId(anyString());
+    }
 
-        // 5. Toyota
-        assertEquals("MF-882935", results.get(4).getExternalId());
-        assertEquals("Toyota", results.get(4).getBrand());
-        assertEquals("Corolla", results.get(4).getModel());
-        assertEquals(new BigDecimal("19500.0"), results.get(4).getPrice());
-        assertEquals(2022, results.get(4).getYear());
-        assertEquals(OfferDto.VehicleTypeDto.CAR, results.get(4).getVehicleType());
-        assertEquals(OfferDto.OfferStatusDto.ACTIVE, results.get(4).getStatus());
-        assertEquals(OffsetDateTime.parse("2026-01-27T08:30:00+01:00"), results.get(4).getCreatedAt());
-        assertEquals(OffsetDateTime.parse("2026-01-27T10:30:00+01:00"), results.get(4).getUpdatedAt());
-        assertEquals("motorflash", results.get(4).getSource());
+    @Test
+    void parseAndProcess_ShouldAddErrorToQueue_WhenMapperFails() throws Exception {
 
-        // 6. Honda
-        assertEquals("MF-882936", results.get(5).getExternalId());
-        assertEquals("Honda", results.get(5).getBrand());
-        assertEquals("Civic", results.get(5).getModel());
-        assertEquals(new BigDecimal("22000.5"), results.get(5).getPrice());
-        assertEquals(2023, results.get(5).getYear());
-        assertEquals(OfferDto.VehicleTypeDto.CAR, results.get(5).getVehicleType());
-        assertEquals(OfferDto.OfferStatusDto.ACTIVE, results.get(5).getStatus());
-        assertEquals(OffsetDateTime.parse("2026-01-27T07:45:00+01:00"), results.get(5).getCreatedAt());
-        assertEquals(OffsetDateTime.parse("2026-01-27T09:45:00+01:00"), results.get(5).getUpdatedAt());
-        assertEquals("motorflash", results.get(5).getSource());
+        File file = new File("../testFiles/offers.xml");
+        InputStream inputStream = new FileInputStream(file);
 
-        // 7. Ford
-        assertEquals("MF-882937", results.get(6).getExternalId());
-        assertEquals("Ford", results.get(6).getBrand());
-        assertEquals("Focus", results.get(6).getModel());
-        assertEquals(new BigDecimal("18500.0"), results.get(6).getPrice());
-        assertEquals(2021, results.get(6).getYear());
-        assertEquals(OfferDto.VehicleTypeDto.CAR, results.get(6).getVehicleType());
-        assertEquals(OfferDto.OfferStatusDto.ACTIVE, results.get(6).getStatus());
-        assertEquals(OffsetDateTime.parse("2026-01-27T10:15:00+01:00"), results.get(6).getCreatedAt());
-        assertEquals(OffsetDateTime.parse("2026-01-27T12:15:00+01:00"), results.get(6).getUpdatedAt());
-        assertEquals("motorflash", results.get(6).getSource());
+        when(offerParserMapper.toOfferDto(any(OfferXMLModel.class)))
+                .thenThrow(new RuntimeException("Mapping error"));
 
-        // 8. Nissan
-        assertEquals("MF-882938", results.get(7).getExternalId());
-        assertEquals("Nissan", results.get(7).getBrand());
-        assertEquals("Sentra", results.get(7).getModel());
-        assertEquals(new BigDecimal("19500.75"), results.get(7).getPrice());
-        assertEquals(2022, results.get(7).getYear());
-        assertEquals(OfferDto.VehicleTypeDto.CAR, results.get(7).getVehicleType());
-        assertEquals(OfferDto.OfferStatusDto.ACTIVE, results.get(7).getStatus());
-        assertEquals(OffsetDateTime.parse("2026-01-27T09:30:00+01:00"), results.get(7).getCreatedAt());
-        assertEquals(OffsetDateTime.parse("2026-01-27T11:30:00+01:00"), results.get(7).getUpdatedAt());
-        assertEquals("motorflash", results.get(7).getSource());
+        processor.parseAndProcess(
+                inputStream,
+                dto -> {},
+                deleteExternalIdsCollector
+        );
 
-        // 9. Hyundai
-        assertEquals("MF-882939", results.get(8).getExternalId());
-        assertEquals("Hyundai", results.get(8).getBrand());
-        assertEquals("Elantra", results.get(8).getModel());
-        assertEquals(new BigDecimal("21000.0"), results.get(8).getPrice());
-        assertEquals(2023, results.get(8).getYear());
-        assertEquals(OfferDto.VehicleTypeDto.CAR, results.get(8).getVehicleType());
-        assertEquals(OfferDto.OfferStatusDto.ACTIVE, results.get(8).getStatus());
-        assertEquals(OffsetDateTime.parse("2026-01-27T08:00:00+01:00"), results.get(8).getCreatedAt());
-        assertEquals(OffsetDateTime.parse("2026-01-27T10:00:00+01:00"), results.get(8).getUpdatedAt());
-        assertEquals("motorflash", results.get(8).getSource());
+        verify(offerReader).addErrorToQueue(any());
+    }
 
-        // 10. Kia
-        assertEquals("MF-882940", results.get(9).getExternalId());
-        assertEquals("Kia", results.get(9).getBrand());
-        assertEquals("Cerato", results.get(9).getModel());
-        assertEquals(new BigDecimal("20000.0"), results.get(9).getPrice());
-        assertEquals(2022, results.get(9).getYear());
-        assertEquals(OfferDto.VehicleTypeDto.CAR, results.get(9).getVehicleType());
-        assertEquals(OfferDto.OfferStatusDto.ACTIVE, results.get(9).getStatus());
-        assertEquals(OffsetDateTime.parse("2026-01-27T07:00:00+01:00"), results.get(9).getCreatedAt());
-        assertEquals(OffsetDateTime.parse("2026-01-27T09:00:00+01:00"), results.get(9).getUpdatedAt());
-        assertEquals("motorflash", results.get(9).getSource());
+    @Test
+    void supports_ShouldReturnTrue_ForSupportedClass() {
+        boolean result = processor.supports(IngestionFormat.xml);
+        assertTrue(result, "El processor debería soportar OfferXMLModel.class");
+    }
 
-    }*/
+
 }

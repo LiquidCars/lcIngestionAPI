@@ -1,5 +1,7 @@
 package net.liquidcars.ingestion.factory;
 
+import net.liquidcars.ingestion.application.service.parser.model.JSON.KeyValueJSONModel;
+import net.liquidcars.ingestion.application.service.parser.model.JSON.VehicleModelJSONModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.VehicleInstanceDto;
 import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
@@ -196,6 +198,23 @@ public class TestDataFactory {
     public static VehicleInstanceDto createVehicleInstanceWithChassisNumber(String chassisNumber) {
         return Instancio.of(VehicleInstanceDto.class)
                 .set(field(VehicleInstanceDto::getChassisNumber), chassisNumber)
+                .create();
+    }
+
+    // ==================== VehicleModelJSONModel Factory ====================
+
+    public static VehicleModelJSONModel createVehicleModelJSONModel() {
+        return Instancio.of(VehicleModelJSONModel.class).create();
+    }
+
+    public static VehicleModelJSONModel createVehicleModelJSONModelWithData(Long id, String brand, String model, Integer cv, Double acc, KeyValueJSONModel bt) {
+        return Instancio.of(VehicleModelJSONModel.class)
+                .set(field(VehicleModelJSONModel::getId), id)
+                .set(field(VehicleModelJSONModel::getBrand), brand)
+                .set(field(VehicleModelJSONModel::getModel), model)
+                .set(field(VehicleModelJSONModel::getCv), cv)
+                .set(field(VehicleModelJSONModel::getAcceleration), acc)
+                .set(field(VehicleModelJSONModel::getBodyType), bt)
                 .create();
     }
 

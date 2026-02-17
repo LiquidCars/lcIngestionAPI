@@ -122,16 +122,6 @@ public class OfferXmlProcessor implements IOfferParserService {
 
     private void fillOfferData(String tagName, XMLStreamReader reader, OfferXMLModel model) throws Exception {
         final String DEFAULT_CURRENCY = "EUR";
-        // privateownerregistereduserid
-        // financedInstallmentAprox
-        // fianancedtext
-        // guaranteetext
-        // pickupaddress
-        // lastupdated
-        // jsoncarofferid
-        // participantid
-        //jobidentifier
-        // batchstatus
         try{
             switch (tagName) {
                 case "motorflashid" -> {
