@@ -20,6 +20,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -362,7 +363,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         }
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRED)
     private List<UUID> processBatchToSQL(List<OfferDto> offers) {
         // This entire method runs in ONE SQL transaction
         // All offers in the batch are committed together

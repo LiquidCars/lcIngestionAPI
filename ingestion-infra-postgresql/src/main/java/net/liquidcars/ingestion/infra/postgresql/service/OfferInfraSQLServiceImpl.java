@@ -50,7 +50,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
 
                     if (incomingDate.isAfter(existingDate)) {
                         log.debug("Updating existing offer ID: {}", offer.getId());
-                        updateFullOffer(existingEntity, offer, incomingDate);
+                        updateFullOffer(existingEntity, offer, incomingDate, vehicleModelEntity);
                     }
                 },
                 () -> {
@@ -148,7 +148,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
 
                         if (incomingDate.isAfter(existingDate)) {
                             log.info("Updating existing offer ID: {}", offer.getId());
-                            updateFullOffer(existingEntity, offer, incomingDate);
+                            updateFullOffer(existingEntity, offer, incomingDate, vehicleModelEntity);
                         }
                     },
                     // Create logic
@@ -193,7 +193,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     /**
      * Lógica de actualización
      */
-    private void updateFullOffer(OfferEntity existing, OfferDto dto, OffsetDateTime updateDate) {
+    private void updateFullOffer(OfferEntity existing, OfferDto dto, OffsetDateTime updateDate, VehicleModelEntity correctModel) {
         // Save the existing vehicleInstance ID before mapping overwrites it
         Long existingVehicleInstanceId = existing.getVehicleInstance() != null
                 ? existing.getVehicleInstance().getId()
@@ -203,13 +203,17 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         existing.setLastUpdated(updateDate);
 
         // Restore the ID on the (possibly re-mapped) vehicleInstance
-        if (existing.getVehicleInstance() != null && existingVehicleInstanceId != null) {
-            existing.getVehicleInstance().setId(existingVehicleInstanceId);
-        } else if (existing.getVehicleInstance() != null && existing.getVehicleInstance().getId() == null) {
-            // Fallback: assign a new random ID if there was no prior ID either
-            existing.getVehicleInstance().setId(
-                    ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L)
-            );
+        if (existing.getVehicleInstance() != null) {
+            existing.getVehicleInstance().setVehicleModel(correctModel);
+
+            // 4. Restaurar el ID de la instancia de vehículo
+            if (existingVehicleInstanceId != null) {
+                existing.getVehicleInstance().setId(existingVehicleInstanceId);
+            } else if (existing.getVehicleInstance().getId() == null) {
+                existing.getVehicleInstance().setId(
+                        ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L)
+                );
+            }
         }
 
         if (existing.getJsonCarOffer() != null) {
