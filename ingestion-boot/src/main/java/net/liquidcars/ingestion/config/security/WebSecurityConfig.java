@@ -60,6 +60,7 @@ public class WebSecurityConfig {
                             "/webjars/**",
                             "/favicon.ico",
                             "/error",
+                            "/api/**",
                             "/api/ingestion-api.yml"
                     ).permitAll()
                     .anyRequest().authenticated()
