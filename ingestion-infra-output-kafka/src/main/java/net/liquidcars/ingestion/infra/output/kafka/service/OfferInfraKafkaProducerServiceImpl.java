@@ -2,6 +2,7 @@ package net.liquidcars.ingestion.infra.output.kafka.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.liquidcars.ingestion.domain.model.IngestionReportResponseActionDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.OfferSummaryDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
@@ -9,14 +10,8 @@ import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
-import net.liquidcars.ingestion.infra.output.kafka.model.OfferSummaryMsg;
-import net.liquidcars.ingestion.infra.output.kafka.producer.BatchIngestionReportKafkaPublisher;
-import net.liquidcars.ingestion.infra.output.kafka.producer.IngestionReportKafkaPublisher;
-import net.liquidcars.ingestion.infra.output.kafka.producer.OfferKafkaPublisher;
-import net.liquidcars.ingestion.infra.output.kafka.model.BatchIngestionReportMsg;
-import net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportMsg;
-import net.liquidcars.ingestion.infra.output.kafka.model.OfferMsg;
-import net.liquidcars.ingestion.infra.output.kafka.producer.OfferSummaryKafkaPublisher;
+import net.liquidcars.ingestion.infra.output.kafka.model.*;
+import net.liquidcars.ingestion.infra.output.kafka.producer.*;
 import net.liquidcars.ingestion.infra.output.kafka.service.mapper.OfferInfraKafkaProducerMapper;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +25,8 @@ public class OfferInfraKafkaProducerServiceImpl implements IOfferInfraKafkaProdu
     private final BatchIngestionReportKafkaPublisher batchIngestionReportKafkaPublisher;
     private final IngestionReportKafkaPublisher ingestionReportKafkaPublisher;
     private final OfferSummaryKafkaPublisher offerSummaryKafkaPublisher;
+    private final IngestionReportPromoteActionKafkaPublisher ingestionReportPromoteActionKafkaPublisher;
+    private final IngestionReportDeleteActionKafkaPublisher ingestionReportDeleteActionKafkaPublisher;
 
     @Override
     public void sendOffer(OfferDto offer) {
@@ -94,5 +91,38 @@ public class OfferInfraKafkaProducerServiceImpl implements IOfferInfraKafkaProdu
                     .build();
         }
     }
+
+    @Override
+    public void sendIngestionReportPromoteActionNotification(IngestionReportResponseActionDto ingestionReportResponseActionDto) {
+        try {
+            log.debug("Ingestion report with id: {} promoted result", ingestionReportResponseActionDto.getIngestionReportId());
+            IngestionReportResponseActionMsg ingestionReportResponseActionMsg = offerInfraKafkaProducerMapper.toIngestionReportResponseActionMsg(ingestionReportResponseActionDto);
+            ingestionReportPromoteActionKafkaPublisher.sendIngestionReportResponseAction(ingestionReportResponseActionMsg);
+        } catch (Exception e) {
+            log.error("Failed to dispatch report with id: {} promoted result", ingestionReportResponseActionDto.getIngestionReportId(), e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.MESSAGING_BROKER_ERROR)
+                    .message("Infrastructure failure: Kafka publisher is unavailable")
+                    .cause(e)
+                    .build();
+        }
+    }
+
+    @Override
+    public void sendIngestionReportDeleteActionNotification(IngestionReportResponseActionDto ingestionReportResponseActionDto) {
+        try {
+            log.debug("Ingestion report with id: {} delete result", ingestionReportResponseActionDto.getIngestionReportId());
+            IngestionReportResponseActionMsg ingestionReportResponseActionMsg = offerInfraKafkaProducerMapper.toIngestionReportResponseActionMsg(ingestionReportResponseActionDto);
+            ingestionReportDeleteActionKafkaPublisher.sendIngestionReportResponseAction(ingestionReportResponseActionMsg);
+        } catch (Exception e) {
+            log.error("Failed to dispatch report with id: {} delete result", ingestionReportResponseActionDto.getIngestionReportId(), e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.MESSAGING_BROKER_ERROR)
+                    .message("Infrastructure failure: Kafka publisher is unavailable")
+                    .cause(e)
+                    .build();
+        }
+    }
+
 
 }

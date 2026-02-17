@@ -307,7 +307,7 @@ class OfferIngestionProcessServiceImplTest {
 
         when(reportSqlService.findIngestionReportById(jobId)).thenReturn(report);
 
-        service.promoteDraftOffersToVehicleOffers(jobId);
+        service.promoteDraftOffersToVehicleOffers(jobId, false);
 
         verify(offerNoSqlService, times(1)).promoteDraftOffersToVehicleOffers(
                 eq(jobId),
@@ -336,7 +336,7 @@ class OfferIngestionProcessServiceImplTest {
         when(reportSqlService.findIngestionReportById(jobId)).thenReturn(report);
 
         // WHEN
-        service.promoteDraftOffersToVehicleOffers(jobId);
+        service.promoteDraftOffersToVehicleOffers(jobId, false);
 
         // THEN
         // Verificamos que NO se llame al servicio de NoSQL para promover
@@ -360,7 +360,7 @@ class OfferIngestionProcessServiceImplTest {
 
         when(reportSqlService.findIngestionReportById(jobId)).thenReturn(report);
 
-        service.promoteDraftOffersToVehicleOffers(jobId);
+        service.promoteDraftOffersToVehicleOffers(jobId, false);
 
         verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any());
         verify(reportSqlService, never()).upsertIngestionReport(any());
@@ -371,7 +371,7 @@ class OfferIngestionProcessServiceImplTest {
     void shouldDeleteDraftOffers() {
         UUID jobId = UUID.randomUUID();
 
-        service.deleteDraftOffersByIngestionReportId(jobId);
+        service.deleteDraftOffersByIngestionReportId(jobId, false);
 
         verify(offerNoSqlService, times(1)).deleteDraftOffersByIngestionReportId(jobId);
     }

@@ -56,7 +56,7 @@ public class OfferInfraKafkaConsumerServiceImpl implements IOfferInfraKafkaConsu
      */
     @Override
     public void processIngestionReportPromoteAction(UUID jobId) {
-        ingestionProcessService.promoteDraftOffersToVehicleOffers(jobId);
+        ingestionProcessService.promoteDraftOffersToVehicleOffers(jobId, true);
     }
 
     /**
@@ -65,6 +65,6 @@ public class OfferInfraKafkaConsumerServiceImpl implements IOfferInfraKafkaConsu
      */
     @Override
     public void processIngestionReportDeleteAction(UUID jobId) {
-        ingestionProcessService.deleteDraftOffersByIngestionReportId(jobId);
+        ingestionProcessService.deleteDraftOffersByIngestionReportId(jobId, true);
     }
 }

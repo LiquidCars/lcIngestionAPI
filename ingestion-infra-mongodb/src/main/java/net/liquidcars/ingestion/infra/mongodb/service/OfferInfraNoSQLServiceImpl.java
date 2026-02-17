@@ -145,154 +145,162 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     public void promoteDraftOffersToVehicleOffers(UUID ingestionReportId, IngestionDumpType dumpType, UUID inventoryId, List<String> externalIdsToDelete) {
         log.info("Starting promotion for ingestionReportId: {}", ingestionReportId);
 
-        // 1. Promote to NoSQL (vehicle offers collection)
-        List<UUID> promotedNoSQLIds = promoteDraftOffersAndGetsPromoted(ingestionReportId, inventoryId);
+            // 1. Promote to NoSQL (vehicle offers collection)
+            List<UUID> promotedNoSQLIds = promoteDraftOffersAndGetsPromoted(ingestionReportId, inventoryId);
 
-        // 2. Promote to SQL (PostgreSQL) and get promoted IDs
-        List<UUID> promotedSQLIds = promoteDraftOffersToSQL(ingestionReportId);
+            // 2. Promote to SQL (PostgreSQL) and get promoted IDs
+            List<UUID> promotedSQLIds = promoteDraftOffersToSQL(ingestionReportId);
 
-        // 3. REPLACEMENT logic for both databases
-        replaceOffers(dumpType, inventoryId, promotedNoSQLIds, promotedSQLIds);
+            // 3. REPLACEMENT logic for both databases
+            replaceOffers(dumpType, inventoryId, promotedNoSQLIds, promotedSQLIds);
 
-        // 4. Process explicit deletions (offersToDelete from JSON) in both databases
-        deleteOffersInPromotion(inventoryId, externalIdsToDelete);
+            // 4. Process explicit deletions (offersToDelete from JSON) in both databases
+            deleteOffersInPromotion(inventoryId, externalIdsToDelete);
     }
 
     private List<UUID> promoteDraftOffersAndGetsPromoted(UUID ingestionReportId, UUID inventoryId) {
-        // 1. Use a Stream to avoid loading the entire list into memory
+        // 1. Use a Stream to avoid loading the entire list into memory and prevent OOM
         Query draftQuery = new Query(Criteria.where("ingestion_report_id").is(ingestionReportId));
 
         // List to track processed IDs for the REPLACEMENT logic
         List<UUID> promotedIds = new ArrayList<>();
 
-        // 2. Define batch size for Bulk operations (e.g., every 100 records)
+        // 2. Define batch size for Bulk operations (e.g., every 100 records) for better performance
         int batchSize = 100;
         int count = 0;
         int totalPromoted = 0;
+        int totalErrors = 0;
 
         // Use mongoTemplate.stream to open a cursor and process records one by one
         try (Stream<DraftOfferNoSQLEntity> draftStream = mongoTemplate.stream(draftQuery, DraftOfferNoSQLEntity.class)) {
 
-            // Initialize the first bulk operation
+            // Initialize the first bulk operation using UNORDERED mode for maximum speed
             BulkOperations bulkOps = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, VehicleOfferNoSQLEntity.class);
 
             var iterator = draftStream.iterator();
             while (iterator.hasNext()) {
+                try {
+                    DraftOfferNoSQLEntity draft = iterator.next();
 
-                DraftOfferNoSQLEntity draft = iterator.next();
+                    log.info("Processing draft offer - ID: {}, ownerRef: {}, dealerRef: {}, channelRef: {}",
+                            draft.getId(), draft.getOwnerReference(), draft.getDealerReference(), draft.getChannelReference());
 
-                log.info("Processing draft offer - ID: {}, ownerRef: {}, dealerRef: {}, channelRef: {}",
-                        draft.getId(), draft.getOwnerReference(), draft.getDealerReference(), draft.getChannelReference());
+                    VehicleOfferNoSQLEntity productionEntity = offerInfraNoSQLMapper.toVehicleOfferNoSQLEntity(draft);
+                    promotedIds.add(productionEntity.getId());
 
-                VehicleOfferNoSQLEntity productionEntity = offerInfraNoSQLMapper.toVehicleOfferNoSQLEntity(draft);
-                promotedIds.add(productionEntity.getId());
+                    // 3. Build the query to find existing record
+                    // Match by inventory_id AND all present business references (AND logic)
+                    List<Criteria> andCriteria = new ArrayList<>();
+                    andCriteria.add(Criteria.where("inventory_id").is(inventoryId));
 
-                // 1. Build the query to find existing record
-                // Match by inventory_id AND all present references (using AND logic, not OR)
-                List<Criteria> andCriteria = new ArrayList<>();
-                andCriteria.add(Criteria.where("inventory_id").is(inventoryId));
+                    boolean hasAnyReference = false;
 
-                boolean hasAnyReference = false;
-
-                // Build AND criteria: match all references that exist, consider null for those that don't
-                if (draft.getOwnerReference() != null && !draft.getOwnerReference().isEmpty()) {
-                    andCriteria.add(Criteria.where("owner_reference").is(draft.getOwnerReference()));
-                    hasAnyReference = true;
-                } else {
-                    andCriteria.add(new Criteria().orOperator(
-                            Criteria.where("owner_reference").is(null),
-                            Criteria.where("owner_reference").exists(false)
-                    ));
-                }
-
-                if (draft.getDealerReference() != null && !draft.getDealerReference().isEmpty()) {
-                    andCriteria.add(Criteria.where("dealer_reference").is(draft.getDealerReference()));
-                    hasAnyReference = true;
-                } else {
-                    andCriteria.add(new Criteria().orOperator(
-                            Criteria.where("dealer_reference").is(null),
-                            Criteria.where("dealer_reference").exists(false)
-                    ));
-                }
-
-                if (draft.getChannelReference() != null && !draft.getChannelReference().isEmpty()) {
-                    andCriteria.add(Criteria.where("channel_reference").is(draft.getChannelReference()));
-                    hasAnyReference = true;
-                } else {
-                    andCriteria.add(new Criteria().orOperator(
-                            Criteria.where("channel_reference").is(null),
-                            Criteria.where("channel_reference").exists(false)
-                    ));
-                }
-
-                Query upsertQuery;
-
-                // If we have at least one reference, use the AND criteria
-                // Otherwise, use ID to ensure new record insertion
-                if (hasAnyReference) {
-                    upsertQuery = new Query(new Criteria().andOperator(andCriteria.toArray(new Criteria[0])));
-                } else {
-                    // No references available at all - use ID to ensure new record insertion
-                    upsertQuery = new Query(Criteria.where("_id").is(productionEntity.getId()));
-                }
-
-                // 2. Prepare the Update object using $set for all fields
-                Document doc = new Document();
-                mongoTemplate.getConverter().write(productionEntity, doc);
-
-                // Remove both _id and _class - never update _id in MongoDB
-                doc.remove("_id");
-                doc.remove("_class"); // Avoid inheritance issues
-
-                Update update = new Update();
-
-                // Add all fields EXCEPT _id
-                for (String key : doc.keySet()) {
-                    Object value = doc.get(key);
-                    if (value != null) {
-                        update.set(key, value);
+                    // Handle Owner Reference: match exact value or ensure it's null/doesn't exist
+                    if (draft.getOwnerReference() != null && !draft.getOwnerReference().isEmpty()) {
+                        andCriteria.add(Criteria.where("owner_reference").is(draft.getOwnerReference()));
+                        hasAnyReference = true;
+                    } else {
+                        andCriteria.add(new Criteria().orOperator(
+                                Criteria.where("owner_reference").is(null),
+                                Criteria.where("owner_reference").exists(false)
+                        ));
                     }
-                }
 
-                // 3. Add to bulk
-                bulkOps.upsert(upsertQuery, update);
+                    // Handle Dealer Reference: match exact value or ensure it's null/doesn't exist
+                    if (draft.getDealerReference() != null && !draft.getDealerReference().isEmpty()) {
+                        andCriteria.add(Criteria.where("dealer_reference").is(draft.getDealerReference()));
+                        hasAnyReference = true;
+                    } else {
+                        andCriteria.add(new Criteria().orOperator(
+                                Criteria.where("dealer_reference").is(null),
+                                Criteria.where("dealer_reference").exists(false)
+                        ));
+                    }
 
-                count++;
+                    // Handle Channel Reference: match exact value or ensure it's null/doesn't exist
+                    if (draft.getChannelReference() != null && !draft.getChannelReference().isEmpty()) {
+                        andCriteria.add(Criteria.where("channel_reference").is(draft.getChannelReference()));
+                        hasAnyReference = true;
+                    } else {
+                        andCriteria.add(new Criteria().orOperator(
+                                Criteria.where("channel_reference").is(null),
+                                Criteria.where("channel_reference").exists(false)
+                        ));
+                    }
 
-                // Execute batch when reaching batch size
-                if (count >= batchSize) {
-                    log.info("Executing bulk of {} operations", count);
-                    try {
+                    Query upsertQuery;
+
+                    // If business references exist, use composite AND criteria. Else, fallback to ID.
+                    if (hasAnyReference) {
+                        upsertQuery = new Query(new Criteria().andOperator(andCriteria.toArray(new Criteria[0])));
+                    } else {
+                        upsertQuery = new Query(Criteria.where("_id").is(productionEntity.getId()));
+                    }
+
+                    // 4. Prepare the Update object using $set for all fields
+                    Document doc = new Document();
+                    mongoTemplate.getConverter().write(productionEntity, doc);
+
+                    // IMPORTANT: Remove _id and _class to prevent immutable field errors in MongoDB
+                    doc.remove("_id");
+                    doc.remove("_class");
+
+                    Update update = new Update();
+                    for (String key : doc.keySet()) {
+                        Object value = doc.get(key);
+                        if (value != null) {
+                            update.set(key, value);
+                        }
+                    }
+
+                    // Add to bulk execution plan
+                    bulkOps.upsert(upsertQuery, update);
+                    count++;
+
+                    // Execute batch when reaching chunk size
+                    if (count >= batchSize) {
+                        log.info("Executing bulk of {} operations", count);
                         var result = bulkOps.execute();
-                        totalPromoted += count;
-                        log.info("Bulk execution result - Inserted: {}, Modified: {}",
-                                result.getInsertedCount(), result.getModifiedCount());
-                    } catch (Exception e) {
-                        log.error("Error executing bulk operation", e);
-                        throw e;
-                    }
+                        totalPromoted += (result.getInsertedCount() + result.getModifiedCount() + result.getUpserts().size());
 
-                    // Reset for next batch
-                    bulkOps = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, VehicleOfferNoSQLEntity.class);
-                    count = 0;
+                        // Reset for next batch
+                        bulkOps = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, VehicleOfferNoSQLEntity.class);
+                        count = 0;
+                    }
+                } catch (Exception e) {
+                    totalErrors++;
+                    log.error("Error processing individual draft for promotion", e);
+                    // We don't throw here to allow other records in the stream to finish
                 }
             }
 
-            // Execute any remaining operations in the last batch
+            // 5. Execute any remaining operations in the last batch
             if (count > 0) {
                 log.debug("Executing final bulk of {} operations", count);
-                try {
-                    var result = bulkOps.execute();
-                    totalPromoted += count;
-                    log.debug("Final bulk execution result - Inserted: {}, Modified: {}",
-                            result.getInsertedCount(), result.getModifiedCount());
-                } catch (Exception e) {
-                    log.error("Error executing final bulk operation", e);
-                    throw e;
-                }
+                var result = bulkOps.execute();
+                totalPromoted += (result.getInsertedCount() + result.getModifiedCount() + result.getUpserts().size());
             }
 
-            log.info("Promoted {} draft offers to vehicle offers for ingestionReportId: {}", totalPromoted, ingestionReportId);
+            log.info("Promotion finished for report {}. Success: {}, Errors: {}", ingestionReportId, totalPromoted, totalErrors);
+
+            // 6. Final Validation: If we have errors and zero success, we must inform the Application Service
+            if (totalErrors > 0 && totalPromoted == 0) {
+                throw LCIngestionException.builder()
+                        .techCause(LCTechCauseEnum.DATABASE)
+                        .message("NoSQL promotion failed: All records failed for report " + ingestionReportId)
+                        .build();
+            }
+
+        } catch (Exception e) {
+            log.error("Critical failure during NoSQL promotion stream", e);
+            if (e instanceof LCIngestionException){
+                throw e;
+            }
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.DATABASE)
+                    .message("Error during NoSQL promotion for report: " + ingestionReportId)
+                    .cause(e)
+                    .build();
         }
         return promotedIds;
     }
@@ -351,9 +359,19 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
             log.info("SQL promotion completed. Processed: {}, Errors: {}, Total IDs: {}",
                     totalProcessed, totalErrors, allPromotedIds.size());
 
+            if (totalErrors > 0 && totalProcessed == 0) {
+                throw LCIngestionException.builder()
+                        .techCause(LCTechCauseEnum.DATABASE)
+                        .message("Error in promotion all offers are not processed: " + ingestionReportId)
+                        .build();
+            }
+
             return allPromotedIds;
 
         } catch (Exception e) {
+            if(e instanceof LCIngestionException){
+                throw e;
+            }
             log.error("Failed during SQL promotion", e);
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.DATABASE)
@@ -377,7 +395,15 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
             } catch (Exception e) {
                 log.error("Error processing offer {} in batch", offer.getId(), e);
                 // Re-throw to rollback entire batch
-                throw e;
+                if(e instanceof LCIngestionException){
+                    throw e;
+                }
+                log.error("Failed during SQL promotion", e);
+                throw LCIngestionException.builder()
+                        .techCause(LCTechCauseEnum.DATABASE)
+                        .message("Error processing batch")
+                        .cause(e)
+                        .build();
             }
         }
 

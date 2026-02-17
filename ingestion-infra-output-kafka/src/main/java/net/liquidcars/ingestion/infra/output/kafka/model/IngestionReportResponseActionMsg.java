@@ -9,6 +9,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class IngestionReportActionMsg {
+public class IngestionReportResponseActionMsg {
     private String ingestionReportId;
+    private String result;
+    private String techCause;
+    private String errorMsg;
 }

@@ -1,5 +1,6 @@
 package net.liquidcars.ingestion.domain.service.infra.output.kafka;
 
+import net.liquidcars.ingestion.domain.model.IngestionReportResponseActionDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.OfferSummaryDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
@@ -10,4 +11,7 @@ public interface IOfferInfraKafkaProducerService {
     void sendBatchIngestionJobReport(IngestionBatchReportDto ingestionBatchReportDto);
     void sendIngestionJobReport(IngestionReportDto ingestionReportDto);
     void sendSavedNotification(OfferSummaryDto offerSummaryDto);
+    void sendIngestionReportPromoteActionNotification(IngestionReportResponseActionDto ingestionReportResponseActionDto);
+    void sendIngestionReportDeleteActionNotification(IngestionReportResponseActionDto ingestionReportResponseActionDto);
+
 }

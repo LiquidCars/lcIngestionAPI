@@ -4,7 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
+import net.liquidcars.ingestion.domain.IngestionReportResponseActionResult;
 import net.liquidcars.ingestion.domain.model.IngestionPayloadDto;
+import net.liquidcars.ingestion.domain.model.IngestionReportResponseActionDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.*;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
@@ -398,15 +400,33 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     }
 
     @Override
-    public void promoteDraftOffersToVehicleOffers(UUID ingestionReportId) {
+    public void promoteDraftOffersToVehicleOffers(UUID ingestionReportId, boolean async) {
         log.debug("Calling for start promotion for jobIdentifier: {}", ingestionReportId);
         IngestionReportDto ingestionReportDto = findIngestionReportById(ingestionReportId);
         if (validatePromotion(ingestionReportId, ingestionReportDto)) return;
-        offerInfraNoSQLService.promoteDraftOffersToVehicleOffers(ingestionReportId, ingestionReportDto.getDumpType(), ingestionReportDto.getInventoryId(), ingestionReportDto.getIdsForDelete());
-        //Once promotion process is completed we mark job as processed and we update
-        ingestionReportDto.setProcessed(true);
-        iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
-        log.debug("Finish promotion for jobIdentifier: {}", ingestionReportId);
+        try {
+            offerInfraNoSQLService.promoteDraftOffersToVehicleOffers(ingestionReportId, ingestionReportDto.getDumpType(), ingestionReportDto.getInventoryId(), ingestionReportDto.getIdsForDelete());
+            //Once promotion process is completed we mark job as processed and we update
+            ingestionReportDto.setProcessed(true);
+            iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
+            log.debug("Finish promotion for jobIdentifier: {}", ingestionReportId);
+            offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
+                    IngestionReportResponseActionDto.builder().ingestionReportId(ingestionReportId).result(IngestionReportResponseActionResult.SUCCESS).build()
+            );
+        } catch (LCIngestionException e) {
+            log.error("Promotion failed for job: {}", ingestionReportId, e);
+            offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
+                    IngestionReportResponseActionDto.builder()
+                            .ingestionReportId(ingestionReportId)
+                            .result(IngestionReportResponseActionResult.FAILED)
+                            .techCause(e.getTechCause())
+                            .errorMsg(e.getMessage())
+                            .build()
+            );
+            if(!async) {
+                throw e;
+            }
+        }
     }
 
     private static boolean validatePromotion(UUID ingestionReportId, IngestionReportDto ingestionReportDto) {
@@ -422,9 +442,27 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     }
 
     @Override
-    public void deleteDraftOffersByIngestionReportId(UUID ingestionReportId) {
+    public void deleteDraftOffersByIngestionReportId(UUID ingestionReportId, boolean async) {
         log.debug("Calling delete draft offers with jobIdentifier: {}", ingestionReportId);
-        offerInfraNoSQLService.deleteDraftOffersByIngestionReportId(ingestionReportId);
+        try {
+            offerInfraNoSQLService.deleteDraftOffersByIngestionReportId(ingestionReportId);
+            offerInfraKafkaProducerService.sendIngestionReportDeleteActionNotification(
+                    IngestionReportResponseActionDto.builder().ingestionReportId(ingestionReportId).result(IngestionReportResponseActionResult.SUCCESS).build()
+            );
+        } catch (LCIngestionException e) {
+            log.error("Delete failed for job: {}", ingestionReportId, e);
+            offerInfraKafkaProducerService.sendIngestionReportDeleteActionNotification(
+                    IngestionReportResponseActionDto.builder()
+                            .ingestionReportId(ingestionReportId)
+                            .result(IngestionReportResponseActionResult.FAILED)
+                            .techCause(e.getTechCause())
+                            .errorMsg(e.getMessage())
+                            .build()
+            );
+            if(!async) {
+                throw e;
+            }
+        }
     }
 
     @Override

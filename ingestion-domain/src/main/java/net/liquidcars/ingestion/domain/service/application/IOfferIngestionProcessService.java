@@ -26,9 +26,9 @@ public interface IOfferIngestionProcessService {
 
     void processIngestionReport(IngestionReportDto ingestionReportDto);
 
-    void promoteDraftOffersToVehicleOffers(UUID ingestionReportId);
+    void promoteDraftOffersToVehicleOffers(UUID ingestionReportId, boolean async);
 
-    void deleteDraftOffersByIngestionReportId(UUID ingestionReportId);
+    void deleteDraftOffersByIngestionReportId(UUID ingestionReportId, boolean async);
 
     List<IngestionReportDto> findIngestionReports();
 

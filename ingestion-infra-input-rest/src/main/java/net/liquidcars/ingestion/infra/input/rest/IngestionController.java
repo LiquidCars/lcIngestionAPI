@@ -138,7 +138,7 @@ public class IngestionController implements IngestionApi {
     @Override
     public ResponseEntity<Void> promoteDraftOffers(UUID ingestionReportId) {
         log.info("REST: PromoteDraftOffers - Job: {}", ingestionReportId);
-        offerIngestionProcessService.promoteDraftOffersToVehicleOffers(ingestionReportId);
+        offerIngestionProcessService.promoteDraftOffersToVehicleOffers(ingestionReportId, false);
         return ResponseEntity.ok().build();
     }
 
@@ -146,7 +146,7 @@ public class IngestionController implements IngestionApi {
     @Override
     public ResponseEntity<Void> deleteDraftOffers(UUID ingestionReportId) {
         log.info("REST: DeleteDraftOffers - Job: {}", ingestionReportId);
-        offerIngestionProcessService.deleteDraftOffersByIngestionReportId(ingestionReportId);
+        offerIngestionProcessService.deleteDraftOffersByIngestionReportId(ingestionReportId, false);
         return ResponseEntity.noContent().build();
     }
 

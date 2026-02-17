@@ -2,12 +2,9 @@ package net.liquidcars.ingestion.infra.input.kafka.consumer;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.input.kafka.IOfferInfraKafkaConsumerService;
-import net.liquidcars.ingestion.infra.input.kafka.service.mapper.OfferInfraKafkaConsumerMapper;
-import net.liquidcars.ingestion.infra.output.kafka.model.BatchIngestionReportMsg;
 import net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportActionMsg;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
@@ -26,16 +23,16 @@ public class IngestionReportPromoteInfraKafkaConsumer {
             groupId = "liquidcars-ingestion-group"
     )
     public void consumePromoteOffers(IngestionReportActionMsg message) {
-        log.info("Received ingestion report job with id: {} for promote offers", message.getJobId());
+        log.info("Received ingestion report job with id: {} for promote offers", message.getIngestionReportId());
         try {
-            offerInfraKafkaConsumerService.processIngestionReportPromoteAction(UUID.fromString(message.getJobId()));
+            offerInfraKafkaConsumerService.processIngestionReportPromoteAction(UUID.fromString(message.getIngestionReportId()));
         } catch (Exception e) {
-            log.error("Critical error processing report with id: {}. Triggering Kafka retry...", message.getJobId(), e);
+            log.error("Critical error processing report with id: {}. Triggering Kafka retry...", message.getIngestionReportId(), e);
             // We wrap and rethrow the exception.
             // By letting it propagate, Kafka's ErrorHandler will catch it.
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.DATABASE)
-                    .message("Failed to process consumed job report with id: " + message.getJobId() + " for promote offers")
+                    .message("Failed to process consumed job report with id: " + message.getIngestionReportId() + " for promote offers")
                     .cause(e)
                     .build();
         }
