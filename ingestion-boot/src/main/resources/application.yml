@@ -155,7 +155,7 @@ management:
 # Swagger / OpenAPI
 springdoc:
   swagger-ui:
-    # Apunta a la ruta del archivo estático
+    # Root of static api resource
     url: /api/ingestion-api.yml
     path: /swagger-ui.html
     use-root-path: true
