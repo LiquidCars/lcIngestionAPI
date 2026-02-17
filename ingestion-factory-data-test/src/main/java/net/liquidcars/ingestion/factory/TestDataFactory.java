@@ -1,13 +1,16 @@
 package net.liquidcars.ingestion.factory;
 
-import net.liquidcars.ingestion.application.service.parser.model.JSON.KeyValueJSONModel;
-import net.liquidcars.ingestion.application.service.parser.model.JSON.VehicleModelJSONModel;
+import net.liquidcars.ingestion.application.service.parser.model.JSON.*;
+import net.liquidcars.ingestion.application.service.parser.model.XML.*;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.VehicleInstanceDto;
 import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 import net.liquidcars.ingestion.domain.model.batch.*;
+import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserException;
+import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import org.instancio.Instancio;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -218,12 +221,140 @@ public class TestDataFactory {
                 .create();
     }
 
+    // ==================== VehicleModelXMLModel Factory ====================
+
+    public static VehicleModelXMLModel createVehicleModelXMLModel() {
+        return Instancio.of(VehicleModelXMLModel.class)
+                .create();
+    }
+
+    public static VehicleModelXMLModel createVehicleModelXMLModelWithData(Long id, String brand, String model, Integer cv, Double acc, KeyValueXMLModel bt) {
+        return Instancio.of(VehicleModelXMLModel.class)
+                .set(field(VehicleModelXMLModel::getId), id)
+                .set(field(VehicleModelXMLModel::getBrand), brand)
+                .set(field(VehicleModelXMLModel::getModel), model)
+                .set(field(VehicleModelXMLModel::getCv), cv)
+                .set(field(VehicleModelXMLModel::getAcceleration), acc)
+                .set(field(VehicleModelXMLModel::getBodyType), bt)
+                .create();
+    }
+
+    // ==================== GPSLocationJSONModel Factory ====================
+
+    public static GPSLocationJSONModel createGPSLocationJSONModel(String name, double latitude, double longitude) {
+        return Instancio.of(GPSLocationJSONModel.class)
+                .set(field(GPSLocationJSONModel::getName), name)
+                .set(field(GPSLocationJSONModel::getLatitude), latitude)
+                .set(field(GPSLocationJSONModel::getLongitude), longitude)
+                .create();
+    }
+
+    // ==================== GPSLocationJSONModel Factory ====================
+
+    public static GPSLocationXMLModel createGPSLocationXMLModel(String name, double latitude, double longitude) {
+        return Instancio.of(GPSLocationXMLModel.class)
+                .set(field(GPSLocationXMLModel::getName), name)
+                .set(field(GPSLocationXMLModel::getLatitude), latitude)
+                .set(field(GPSLocationXMLModel::getLongitude), longitude)
+                .create();
+    }
+
+    // ==================== OfferJSONModel Factory ====================
+
+    public static OfferJSONModel createValidOfferJSONModel() {
+        return Instancio.of(OfferJSONModel.class)
+                .set(field(OfferJSONModel::getSellerType), CarOfferSellerTypeEnumJSONModel.usedCar_ProfessionalSeller)
+                .set(field(OfferJSONModel::getPrice), MoneyJSONModel.builder().amount(new BigDecimal("15000")).build())
+                .generate(field(OfferJSONModel::getResources), gen -> gen.collection().minSize(1))
+                .create();
+    }
+
+    // ==================== OfferXMLModel Factory ====================
+
+    public static OfferXMLModel createValidOfferXMLModel() {
+        return Instancio.of(OfferXMLModel.class)
+                .set(field(OfferXMLModel::getSellerType), CarOfferSellerTypeEnumXMLModel.usedCar_ProfessionalSeller)
+                .set(field(OfferXMLModel::getPrice), Instancio.of(MoneyXMLModel.class)
+                        .set(field(MoneyXMLModel::getAmount), new BigDecimal("15000"))
+                        .create())
+                .generate(field(OfferXMLModel::getResources), gen -> gen.collection().minSize(1))
+                .create();
+    }
+
+    // ==================== VehicleInstanceJSONModel Factory ====================
+
+    public static VehicleInstanceJSONModel createVehicleInstance(long id, String plate, String chassis) {
+        return Instancio.of(VehicleInstanceJSONModel.class)
+                .set(field(VehicleInstanceJSONModel::getId), id)
+                .set(field(VehicleInstanceJSONModel::getPlate), plate)
+                .set(field(VehicleInstanceJSONModel::getChassisNumber), chassis)
+                .generate(field(VehicleInstanceJSONModel::getEquipments), gen -> gen.collection().size(2))
+                .create();
+    }
+
+    // En TestDataFactory.java
+    public static VehicleInstanceJSONModel createVehicleInstanceJSONModelWithSameData(VehicleInstanceJSONModel base, long newId) {
+        return Instancio.of(VehicleInstanceJSONModel.class)
+                .set(field(VehicleInstanceJSONModel::getId), newId)
+                .set(field(VehicleInstanceJSONModel::getPlate), base.getPlate())
+                .set(field(VehicleInstanceJSONModel::getChassisNumber), base.getChassisNumber())
+                .set(field(VehicleInstanceJSONModel::getMileage), base.getMileage())
+                .set(field(VehicleInstanceJSONModel::getVehicleModel), base.getVehicleModel())
+                .set(field(VehicleInstanceJSONModel::getColor), base.getColor())
+                .set(field(VehicleInstanceJSONModel::getState), base.getState())
+                .set(field(VehicleInstanceJSONModel::getRegistrationYear), base.getRegistrationYear())
+                .set(field(VehicleInstanceJSONModel::getRegistrationMonth), base.getRegistrationMonth())
+                .set(field(VehicleInstanceJSONModel::isMetallicPaint), base.isMetallicPaint())
+                .create();
+    }
+
+
+
+    // ==================== LCIngestionParserException Factory ====================
+
+    public static LCIngestionParserException createParserException(ExternalIdInfoDto id) {
+        return new LCIngestionParserException(
+                LCTechCauseEnum.CONVERSION_ERROR,
+                "Error de parseo detectado",
+                new RuntimeException("Root cause"),
+                id
+        );
+    }
+
+    // ==================== VehicleInstanceXMLModel Factory ====================
+
+    public static VehicleInstanceXMLModel createVehicleInstanceXMLModel(long id, String plate, String chassis) {
+        return Instancio.of(VehicleInstanceXMLModel.class)
+                .set(field(VehicleInstanceXMLModel::getId), id)
+                .set(field(VehicleInstanceXMLModel::getPlate), plate)
+                .set(field(VehicleInstanceXMLModel::getChassisNumber), chassis)
+                .generate(field(VehicleInstanceXMLModel::getEquipments), gen -> gen.collection().size(2))
+                .create();
+    }
+
+    public static VehicleInstanceXMLModel createVehicleInstanceXMLModelWithSameData(VehicleInstanceXMLModel base, long newId) {
+        return Instancio.of(VehicleInstanceXMLModel.class)
+                .set(field(VehicleInstanceXMLModel::getId), newId)
+                .set(field(VehicleInstanceXMLModel::getPlate), base.getPlate())
+                .set(field(VehicleInstanceXMLModel::getChassisNumber), base.getChassisNumber())
+                .set(field(VehicleInstanceXMLModel::getMileage), base.getMileage())
+                .set(field(VehicleInstanceXMLModel::getVehicleModel), base.getVehicleModel())
+                .set(field(VehicleInstanceXMLModel::getColor), base.getColor())
+                .set(field(VehicleInstanceXMLModel::getState), base.getState())
+                .set(field(VehicleInstanceXMLModel::getRegistrationYear), base.getRegistrationYear())
+                .set(field(VehicleInstanceXMLModel::getRegistrationMonth), base.getRegistrationMonth())
+                .set(field(VehicleInstanceXMLModel::isMetallicPaint), base.isMetallicPaint())
+                .create();
+    }
+
     // ==================== ExternalIdInfoDto Factory ====================
 
-    public static ExternalIdInfoDto createExternalIdInfo(String ownerReference) {
-        return Instancio.of(ExternalIdInfoDto.class)
-                .set(field(ExternalIdInfoDto::getOwnerReference), ownerReference)
-                .create();
+    public static ExternalIdInfoDto createExternalIdInfo() {
+        return ExternalIdInfoDto.builder()
+                .ownerReference("OWN-1")
+                .dealerReference("DLR-2")
+                .channelReference("CH-3")
+                .build();
     }
 
     public static ExternalIdInfoDto createExternalIdInfoFull(

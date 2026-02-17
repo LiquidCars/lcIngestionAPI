@@ -34,9 +34,12 @@ public class KeyValueXMLModel<K extends Serializable,V extends Serializable> ext
     }
 
     @Override
-    public String toString(){
-        return "[" + this.getKey()!=null && !this.getKey().toString().isEmpty() ? this.getKey().toString() : "" + " / " +
-                this.getValue()!=null && !this.getValue().toString().isEmpty() ? this.getValue().toString() : "" + "]";
+    public String toString() {
+        String k = (this.getKey() != null && !this.getKey().toString().isEmpty())
+                ? this.getKey().toString() : "";
+        String v = (this.getValue() != null && !this.getValue().toString().isEmpty())
+                ? this.getValue().toString() : "";
+        return "[" + k + " / " + v + "]";
     }
 
     public static Map<String, String> toMap(List<KeyValueXMLModel> items) {

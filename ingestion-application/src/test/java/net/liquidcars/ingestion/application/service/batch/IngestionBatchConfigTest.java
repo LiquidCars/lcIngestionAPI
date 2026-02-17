@@ -9,6 +9,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.skip.SkipPolicy;
+import org.springframework.batch.test.JobLauncherTestUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +47,11 @@ class IngestionBatchConfigTest {
     @InjectMocks
     private IngestionBatchConfig ingestionBatchConfig;
 
+    private SkipPolicy extractedSkipPolicy;
+
+    @Autowired
+    private JobLauncherTestUtils jobLauncherTestUtils;
+
     @Test
     void shouldCreateOfferIngestionJob() {
         Step mockStep = mock(Step.class);
@@ -75,4 +83,6 @@ class IngestionBatchConfigTest {
         assertThat(step).isNotNull();
         assertThat(step.getName()).isEqualTo("ingestionStep");
     }
+
+
 }

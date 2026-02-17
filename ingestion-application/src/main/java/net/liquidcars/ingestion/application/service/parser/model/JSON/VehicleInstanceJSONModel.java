@@ -1,12 +1,10 @@
 package net.liquidcars.ingestion.application.service.parser.model.JSON;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.Data;
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Data;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
