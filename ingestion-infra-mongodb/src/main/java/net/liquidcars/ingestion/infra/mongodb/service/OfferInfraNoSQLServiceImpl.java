@@ -7,6 +7,7 @@ import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
+import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
 import net.liquidcars.ingestion.infra.mongodb.entity.DraftOfferNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.VehicleOfferNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.repository.DraftOfferNoSqlRepository;
@@ -20,6 +21,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -39,6 +41,9 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
 
     private final MongoTemplate mongoTemplate;
     private final VehicleOfferNoSqlRepository vehicleOfferNoSqlRepository;
+
+    private final IOfferInfraSQLService offerInfraSQLService;
+    private final TransactionTemplate transactionTemplate;
 
     @Override
     @Transactional
@@ -138,13 +143,17 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     @Override
     public void promoteDraftOffersToVehicleOffers(UUID ingestionReportId, IngestionDumpType dumpType, UUID inventoryId, List<String> externalIdsToDelete) {
         log.info("Starting promotion for ingestionReportId: {}", ingestionReportId);
-        // Promote logic
-        List<UUID> promotedIds = promoteDraftOffersAndGetsPromoted(ingestionReportId, inventoryId);
 
-        // REPLACEMENT logic
-        replaceOffers(dumpType, inventoryId, promotedIds);
+        // 1. Promote to NoSQL (vehicle offers collection)
+        List<UUID> promotedNoSQLIds = promoteDraftOffersAndGetsPromoted(ingestionReportId, inventoryId);
 
-        // Process explicit deletions (offersToDelete from JSON)
+        // 2. Promote to SQL (PostgreSQL) and get promoted IDs
+        List<UUID> promotedSQLIds = promoteDraftOffersToSQL(ingestionReportId);
+
+        // 3. REPLACEMENT logic for both databases
+        replaceOffers(dumpType, inventoryId, promotedNoSQLIds, promotedSQLIds);
+
+        // 4. Process explicit deletions (offersToDelete from JSON) in both databases
         deleteOffersInPromotion(inventoryId, externalIdsToDelete);
     }
 
@@ -287,34 +296,165 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         return promotedIds;
     }
 
-    private void replaceOffers(IngestionDumpType dumpType, UUID inventoryId, List<UUID> promotedIds) {
-        if (dumpType == IngestionDumpType.REPLACEMENT) {
-            log.info("Executing REPLACEMENT cleanup for inventoryId {}", inventoryId);
-            // Delete offers in production for this participant that were NOT processed in this Job
-            vehicleOfferNoSqlRepository.deleteByInventoryIdAndIdNotIn(inventoryId, promotedIds);
+
+    private List<UUID> promoteDraftOffersToSQL(UUID ingestionReportId) {
+        log.info("Starting SQL promotion for ingestionReportId: {}", ingestionReportId);
+
+        Query draftQuery = new Query(Criteria.where("ingestion_report_id").is(ingestionReportId));
+
+        int batchSize = 50; // Process 50 offers per SQL transaction
+        int totalProcessed = 0;
+        int totalErrors = 0;
+        List<UUID> allPromotedIds = new ArrayList<>();
+
+        try (Stream<DraftOfferNoSQLEntity> draftStream = mongoTemplate.stream(draftQuery, DraftOfferNoSQLEntity.class)) {
+
+            List<OfferDto> batch = new ArrayList<>();
+            var iterator = draftStream.iterator();
+
+            while (iterator.hasNext()) {
+                DraftOfferNoSQLEntity draft = iterator.next();
+                OfferDto offerDto = offerInfraNoSQLMapper.toDto(draft);
+                batch.add(offerDto);
+
+                // When batch is full or stream ends, process the entire batch
+                if (batch.size() >= batchSize || !iterator.hasNext()) {
+
+                    try {
+                        // Process entire batch in ONE SQL transaction
+                        List<UUID> batchPromotedIds = processBatchToSQL(new ArrayList<>(batch));
+                        allPromotedIds.addAll(batchPromotedIds);
+                        totalProcessed += batchPromotedIds.size();
+                        log.info("Processed SQL batch of {} offers. Total: {}", batchPromotedIds.size(), totalProcessed);
+
+                    } catch (Exception e) {
+                        log.error("Batch failed, retrying individually", e);
+
+                        // Fallback: if batch fails, try one by one
+                        for (OfferDto offer : batch) {
+                            try {
+                                offerInfraSQLService.processOffer(offer);
+                                allPromotedIds.add(offer.getId());
+                                totalProcessed++;
+                            } catch (Exception individualError) {
+                                totalErrors++;
+                                log.error("Failed individual offer: {}", offer.getId(), individualError);
+                            }
+                        }
+                    }
+
+                    batch.clear();
+                }
+            }
+
+            log.info("SQL promotion completed. Processed: {}, Errors: {}, Total IDs: {}",
+                    totalProcessed, totalErrors, allPromotedIds.size());
+
+            return allPromotedIds;
+
+        } catch (Exception e) {
+            log.error("Failed during SQL promotion", e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.DATABASE)
+                    .message("Error during SQL promotion for ingestionReportId: " + ingestionReportId)
+                    .cause(e)
+                    .build();
         }
     }
+
+    @Transactional
+    private List<UUID> processBatchToSQL(List<OfferDto> offers) {
+        // This entire method runs in ONE SQL transaction
+        // All offers in the batch are committed together
+
+        List<UUID> processedIds = new ArrayList<>();
+
+        for (OfferDto offer : offers) {
+            try {
+                offerInfraSQLService.processOfferWithinTransaction(offer);
+                processedIds.add(offer.getId());
+            } catch (Exception e) {
+                log.error("Error processing offer {} in batch", offer.getId(), e);
+                // Re-throw to rollback entire batch
+                throw e;
+            }
+        }
+
+        return processedIds;
+    }
+
+    private void replaceOffers(IngestionDumpType dumpType, UUID inventoryId,
+                               List<UUID> promotedNoSQLIds, List<UUID> promotedSQLIds) {
+        if (dumpType == IngestionDumpType.REPLACEMENT) {
+            log.info("Executing REPLACEMENT cleanup for inventoryId {}", inventoryId);
+
+            // Delete from NoSQL
+            long noSqlDeleted = vehicleOfferNoSqlRepository.deleteByInventoryIdAndIdNotIn(inventoryId, promotedNoSQLIds);
+            log.info("REPLACEMENT: Deleted {} offers from NoSQL vehicleoffers", noSqlDeleted);
+
+            // Delete from SQL
+            long sqlDeleted = replaceOffersInSQL(inventoryId, promotedSQLIds);
+            log.info("REPLACEMENT: Deleted {} offers from SQL", sqlDeleted);
+        }
+    }
+
+    @Transactional
+    private long replaceOffersInSQL(UUID inventoryId, List<UUID> promotedIds) {
+        // Delete offers in SQL for this inventory that were NOT promoted in this job
+
+        if (promotedIds.isEmpty()) {
+            // If no offers were promoted, delete all for this inventory
+            long deleted = offerInfraSQLService.deleteOffersByInventoryId(inventoryId);
+            log.info("No promoted IDs - deleted all {} offers for inventoryId {}", deleted, inventoryId);
+            return deleted;
+        }
+
+        // Delete where inventory_id matches but id is NOT in the promoted list
+        return offerInfraSQLService.deleteOffersByInventoryIdExcludingIds(inventoryId, promotedIds);
+    }
+
 
     private void deleteOffersInPromotion(UUID inventoryId, List<String> externalIdsToDelete) {
         if (externalIdsToDelete != null && !externalIdsToDelete.isEmpty()) {
             log.info("Processing {} explicit deletions for inventory {}", externalIdsToDelete.size(), inventoryId);
 
-            // Build query to match records where ANY of the three references match the deletion list
-            // This is correct with OR because we want to delete if ANY reference matches
-            Criteria orDeleteCriteria = new Criteria().orOperator(
-                    Criteria.where("owner_reference").in(externalIdsToDelete),
-                    Criteria.where("dealer_reference").in(externalIdsToDelete),
-                    Criteria.where("channel_reference").in(externalIdsToDelete)
-            );
+            // Delete from NoSQL
+            deleteOffersInPromotionNoSQL(inventoryId, externalIdsToDelete);
 
-            Query deleteQuery = new Query(new Criteria().andOperator(
-                    Criteria.where("inventory_id").is(inventoryId),
-                    orDeleteCriteria
-            ));
-
-            long deletedCount = mongoTemplate.remove(deleteQuery, VehicleOfferNoSQLEntity.class).getDeletedCount();
-            log.info("Explicitly deleted {} offers from production", deletedCount);
+            // Delete from SQL
+            deleteOffersInPromotionSQL(inventoryId, externalIdsToDelete);
         }
+    }
+
+    private void deleteOffersInPromotionNoSQL(UUID inventoryId, List<String> externalIdsToDelete) {
+        // Build query to match records where ANY of the three references match the deletion list
+        // This is correct with OR because we want to delete if ANY reference matches
+        Criteria orDeleteCriteria = new Criteria().orOperator(
+                Criteria.where("owner_reference").in(externalIdsToDelete),
+                Criteria.where("dealer_reference").in(externalIdsToDelete),
+                Criteria.where("channel_reference").in(externalIdsToDelete)
+        );
+
+        Query deleteQuery = new Query(new Criteria().andOperator(
+                Criteria.where("inventory_id").is(inventoryId),
+                orDeleteCriteria
+        ));
+
+        long deletedCount = mongoTemplate.remove(deleteQuery, VehicleOfferNoSQLEntity.class).getDeletedCount();
+        log.info("Explicitly deleted {} offers from NoSQL production", deletedCount);
+    }
+
+    @Transactional
+    private void deleteOffersInPromotionSQL(UUID inventoryId, List<String> externalIdsToDelete) {
+        // Delete from SQL where ANY of the three references match
+        // Using native query for better performance with OR conditions
+
+        long deletedCount = offerInfraSQLService.deleteOffersByInventoryIdAndReferences(
+                inventoryId,
+                externalIdsToDelete
+        );
+
+        log.info("Explicitly deleted {} offers from SQL production", deletedCount);
     }
 
     @Override

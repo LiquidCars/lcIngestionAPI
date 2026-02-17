@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * This application handles vehicle offer ingestion from multiple sources
  * using Spring Batch, Kafka, MongoDB, and PostgreSQL.
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "net.liquidcars.ingestion")
 @EnableScheduling
 public class IngestionApiApplication {
 

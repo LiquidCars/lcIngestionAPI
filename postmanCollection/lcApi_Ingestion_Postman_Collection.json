@@ -118,7 +118,7 @@
         "method": "POST",
         "header": [],
         "url": {
-          "raw": "http://localhost:8890/v1/ingestion/url?format=xml&url=http://localhost:8083/offers.xml&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=UPDATE&externalPublicationId=localPub1%23",
+          "raw": "http://localhost:8890/v1/ingestion/url?format=xml&url=http://localhost:8083/MF_856b7d9a-cabd-4e86-aaca-b7a9641a9d0b_CC_2024_09_30_A.xml&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=UPDATE&externalPublicationId=localPub1%23",
           "protocol": "http",
           "host": [
             "localhost"
@@ -136,7 +136,7 @@
             },
             {
               "key": "url",
-              "value": "http://localhost:8083/offers.xml"
+              "value": "http://localhost:8083/MF_856b7d9a-cabd-4e86-aaca-b7a9641a9d0b_CC_2024_09_30_A.xml"
             },
             {
               "key": "inventoryId",
@@ -149,8 +149,63 @@
             },
             {
               "key": "externalPublicationId",
-              "value": "localPub1#",
-              "type": "text"
+              "value": "localPub1%23"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Promote draft offers",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8890/v1/ingestion/promote/:jobIdentifier",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8890",
+          "path": [
+            "v1",
+            "ingestion",
+            "promote",
+            ":jobIdentifier"
+          ],
+          "variable": [
+            {
+              "key": "jobIdentifier",
+              "value": "45d8e60c-abde-4207-9a5b-b245f0016d07"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Delete draft offers",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8890/v1/ingestion/draft/:jobIdentifier",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8890",
+          "path": [
+            "v1",
+            "ingestion",
+            "draft",
+            ":jobIdentifier"
+          ],
+          "variable": [
+            {
+              "key": "jobIdentifier",
+              "value": "f2a8da8e-831a-41ad-bdc6-a8ca8397fe4e"
             }
           ]
         }

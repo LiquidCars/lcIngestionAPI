@@ -36,6 +36,102 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @Override
+    public void processOfferWithinTransaction(OfferDto offer) {
+        // Copy the logic from OfferInfraSQLServiceImpl.processOffer()
+        // but remove the @Transactional annotation
+
+        VehicleModelEntity vehicleModelEntity = ensureVehicleModelExists(offer.getVehicleInstance().getVehicleModel());
+        offerSqlRepository.findByHash(offer.getHash()).ifPresentOrElse(
+                existingEntity -> {
+                    OffsetDateTime incomingDate = mapper.mapEpoch(offer.getLastUpdated());
+                    OffsetDateTime existingDate = existingEntity.getLastUpdated() != null
+                            ? existingEntity.getLastUpdated()
+                            : existingEntity.getCreatedAt();
+
+                    if (incomingDate.isAfter(existingDate)) {
+                        log.debug("Updating existing offer ID: {}", offer.getId());
+                        updateFullOffer(existingEntity, offer, incomingDate);
+                    }
+                },
+                () -> {
+                    log.debug("Creating new offer ID: {}", offer.getId());
+                    createNewOffer(offer, vehicleModelEntity);
+                }
+        );
+    }
+
+    @Transactional
+    @Override
+    public long deleteOffersByInventoryId(UUID inventoryId) {
+        log.info("Starting deletion of all offers for inventoryId: {}", inventoryId);
+        try {
+            long deletedCount = offerSqlRepository.deleteByInventoryId(inventoryId);
+            log.info("Successfully deleted {} offers for inventoryId: {}", deletedCount, inventoryId);
+            return deletedCount;
+        } catch (Exception e) {
+            log.error("Failed to delete offers for inventoryId: {}", inventoryId, e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.DATABASE)
+                    .message("SQL deletion error for inventoryId: " + inventoryId)
+                    .cause(e)
+                    .build();
+        }
+    }
+
+    @Transactional
+    @Override
+    public long deleteOffersByInventoryIdExcludingIds(UUID inventoryId, List<UUID> idsToKeep) {
+        log.info("Starting deletion of offers for inventoryId: {} excluding {} IDs",
+                inventoryId, idsToKeep.size());
+        try {
+            if (idsToKeep.isEmpty()) {
+                log.warn("No IDs to keep provided - deleting all offers for inventoryId: {}", inventoryId);
+                return deleteOffersByInventoryId(inventoryId);
+            }
+
+            long deletedCount = offerSqlRepository.deleteByInventoryIdAndIdNotIn(inventoryId, idsToKeep);
+            log.info("Successfully deleted {} offers for inventoryId: {} (kept {} offers)",
+                    deletedCount, inventoryId, idsToKeep.size());
+            return deletedCount;
+        } catch (Exception e) {
+            log.error("Failed to delete offers for inventoryId: {} excluding IDs", inventoryId, e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.DATABASE)
+                    .message("SQL deletion error for inventoryId: " + inventoryId + " excluding specific IDs")
+                    .cause(e)
+                    .build();
+        }
+    }
+
+    @Transactional
+    @Override
+    public long deleteOffersByInventoryIdAndReferences(UUID inventoryId, List<String> externalReferences) {
+        log.info("Starting deletion of {} offers by references for inventoryId: {}",
+                externalReferences.size(), inventoryId);
+        try {
+            if (externalReferences.isEmpty()) {
+                log.warn("No external references provided for deletion");
+                return 0;
+            }
+
+            long deletedCount = offerSqlRepository.deleteByInventoryIdAndReferencesIn(
+                    inventoryId,
+                    externalReferences
+            );
+            log.info("Successfully deleted {} offers by references for inventoryId: {}",
+                    deletedCount, inventoryId);
+            return deletedCount;
+        } catch (Exception e) {
+            log.error("Failed to delete offers by references for inventoryId: {}", inventoryId, e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.DATABASE)
+                    .message("SQL deletion error for inventoryId: " + inventoryId + " by references")
+                    .cause(e)
+                    .build();
+        }
+    }
+
+    @Override
     @Transactional
     public void processOffer(OfferDto offer) {
         log.info("Processing SQL persistence for id: {}", offer.getId());
@@ -98,8 +194,24 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
      * Lógica de actualización
      */
     private void updateFullOffer(OfferEntity existing, OfferDto dto, OffsetDateTime updateDate) {
+        // Save the existing vehicleInstance ID before mapping overwrites it
+        Long existingVehicleInstanceId = existing.getVehicleInstance() != null
+                ? existing.getVehicleInstance().getId()
+                : null;
+
         mapper.updateEntityFromDto(dto, existing);
         existing.setLastUpdated(updateDate);
+
+        // Restore the ID on the (possibly re-mapped) vehicleInstance
+        if (existing.getVehicleInstance() != null && existingVehicleInstanceId != null) {
+            existing.getVehicleInstance().setId(existingVehicleInstanceId);
+        } else if (existing.getVehicleInstance() != null && existing.getVehicleInstance().getId() == null) {
+            // Fallback: assign a new random ID if there was no prior ID either
+            existing.getVehicleInstance().setId(
+                    ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L)
+            );
+        }
+
         if (existing.getJsonCarOffer() != null) {
             Map<String, Object> jsonMap = objectMapper.convertValue(dto.getUICarOffer(), Map.class);
             existing.getJsonCarOffer().setTexto(jsonMap);

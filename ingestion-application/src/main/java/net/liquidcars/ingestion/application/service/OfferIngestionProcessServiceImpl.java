@@ -3,9 +3,6 @@ package net.liquidcars.ingestion.application.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import net.liquidcars.ingestion.application.service.batch.IngestionSkipListener;
-import net.liquidcars.ingestion.application.service.batch.JobCompletionNotificationListener;
-import net.liquidcars.ingestion.application.service.batch.OfferItemWriter;
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
 import net.liquidcars.ingestion.domain.model.IngestionPayloadDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
@@ -16,7 +13,6 @@ import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProces
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IBatchReportInfraSQLService;
-import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IReportInfraSQLService;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
 import org.springframework.batch.core.Job;
@@ -24,10 +20,8 @@ import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
@@ -47,15 +41,9 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
 
     private final List<IOfferParserService> parsers;
     private final IOfferInfraKafkaProducerService offerInfraKafkaProducerService;
-    private final OfferItemWriter offerItemWriter;
     private final JobLauncher jobLauncher;
-    private final JobRepository jobRepository;
-    private final PlatformTransactionManager transactionManager;
-    private final IngestionSkipListener ingestionSkipListener;
-    private final JobCompletionNotificationListener jobCompletionListener;
     private final Job offerIngestionJob;
     private final OfferStreamItemReader offerReader;
-    private final IOfferInfraSQLService offerInfraSQLService;
     private final IOfferInfraNoSQLService offerInfraNoSQLService;
     private final IBatchReportInfraSQLService batchReportInfraSQLService;
     private final IReportInfraSQLService iReportInfraSQLService;

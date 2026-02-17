@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.Set;
 import java.util.UUID;
 
 @Data
@@ -102,11 +103,12 @@ public class OfferEntity {
     @Column(name = "ofr_dt_updated")
     private OffsetDateTime lastUpdated;
 
-    //TODO esto se va a eliminar en cuanto se cambie la lógica
-    //@Column(name = "jobIdentifier")
-    //private String jobIdentifier;
-
-    //@Column(name = "batchStatus")
-    //private String batchStatus;
+    @ElementCollection
+    @CollectionTable(
+            name = "inv_ninof_inventoryoffers",
+            joinColumns = @JoinColumn(name = "ofr_co_id")
+    )
+    @Column(name = "nin_co_id")
+    private Set<UUID> inventoryIds;
 
 }

@@ -6,7 +6,10 @@ import org.mapstruct.*;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE,
         imports = { java.time.OffsetDateTime.class })
@@ -73,7 +76,17 @@ public interface OfferInfraSQLMapper {
     @Mapping(target = "lastUpdated", source = "lastUpdated", qualifiedByName = "epochToOffset")
     @Mapping(target = "jsonCarOffer", ignore = true)
     @Mapping(target = "createdAt", expression = "java(OffsetDateTime.now())")
+    @Mapping(target = "inventoryIds", source = "inventoryId", qualifiedByName = "uuidToSet")
+    @Mapping(target = "ownerReference", source = "externalIdInfo.ownerReference")
+    @Mapping(target = "dealerReference", source = "externalIdInfo.dealerReference")
+    @Mapping(target = "channelReference", source = "externalIdInfo.channelReference")
     OfferEntity toEntity(OfferDto offer);
+
+    @Named("uuidToSet")
+    default Set<UUID> uuidToSet(UUID inventoryId) {
+        if (inventoryId == null) return null;
+        return Collections.singleton(inventoryId);
+    }
 
     @Mapping(target = "vehicleModel", source = "vehicleModel", qualifiedByName = "vehicleModelReference")
     @Mapping(target = "color", source = "color", qualifiedByName = "colorReference")

@@ -10,5 +10,5 @@ import java.util.UUID;
 @Repository
 public interface VehicleOfferNoSqlRepository extends MongoRepository<VehicleOfferNoSQLEntity, UUID> {
     // For REPLACEMENT: Delete offers that are NOT in the new batch
-    void deleteByInventoryIdAndIdNotIn(UUID inventoryId, List<UUID> idsToKeep);
+    long deleteByInventoryIdAndIdNotIn(UUID inventoryId, List<UUID> idsToKeep);
 }

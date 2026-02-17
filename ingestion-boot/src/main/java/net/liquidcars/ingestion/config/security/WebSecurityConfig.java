@@ -47,8 +47,22 @@ public class WebSecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/health-check", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
-                        .anyRequest().authenticated()
+                    .requestMatchers(
+                            "/health-check",
+                            "/v3/api-docs",
+                            "/v3/api-docs/**",
+                            "/v3/api-docs.yaml",
+                            "/swagger-ui.html",
+                            "/swagger-ui/**",
+                            "/swagger-ui.html/**",
+                            "/swagger-resources",
+                            "/swagger-resources/**",
+                            "/webjars/**",
+                            "/favicon.ico",
+                            "/error",
+                            "/api/ingestion-api.yml"
+                    ).permitAll()
+                    .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth -> oauth
                         .authenticationManagerResolver(authenticationManagerResolver)

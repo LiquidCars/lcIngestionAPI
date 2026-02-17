@@ -8,13 +8,13 @@ spring:
     multipart:
       max-file-size: -1
       max-request-size: -1
-  
+
   # MongoDB Configuration
   data:
     mongodb:
       uri: ${SPRING_DATA_MONGODB_URI:mongodb://ingestion_service:mongo@mongodb:27017/ingestion_service?authSource=admin}
       database: ingestion_service
-  
+
   # PostgreSQL Configuration
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/liquidcars?charSet=UTF8}
@@ -25,7 +25,7 @@ spring:
       maximum-pool-size: 10
       minimum-idle: 5
       connection-timeout: 30000
-  
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -39,7 +39,7 @@ spring:
           order_inserts: true
           order_updates: true
           batch_versioned_data: true
-  
+
   # Kafka Configuration
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -94,7 +94,7 @@ spring:
       jdbc:
         initialize-schema: never
         table-prefix: BATCH_
-  
+
   # Liquibase Migration
   liquibase:
     enabled: false
@@ -140,7 +140,7 @@ security:
     - /batch
     - /url
   max-batch-size: ${SECURITY_MAX_BATCH_SIZE:10MB}
-  
+
 # Management & Actuator
 management:
   endpoints:
@@ -151,6 +151,17 @@ management:
     export:
       prometheus:
         enabled: true
+
+# Swagger / OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+  packages-to-scan: net.liquidcars.ingestion.infra.input.rest
+  show-actuator: false
 
 # Logging Configuration
 logging:
