@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +20,7 @@ public interface OfferSQLRepository extends JpaRepository<OfferEntity, UUID> {
     // For REPLACEMENT logic
     // 1. FULL REPLACEMENT: Delete all offers linked to this inventory
     @Modifying
+    @Transactional
     @Query(value = """
         WITH deleted_rows AS (
             DELETE FROM inv_ofr_offer 
@@ -34,6 +36,7 @@ public interface OfferSQLRepository extends JpaRepository<OfferEntity, UUID> {
 
     // 2. DELTA REPLACEMENT: Delete offers NOT present in the current job
     @Modifying
+    @Transactional
     @Query(value = """
         WITH deleted_rows AS (
             DELETE FROM inv_ofr_offer 
@@ -50,6 +53,7 @@ public interface OfferSQLRepository extends JpaRepository<OfferEntity, UUID> {
 
     // 3. EXPLICIT DELETIONS: Delete specific references from JSON
     @Modifying
+    @Transactional
     @Query(value = """
         WITH deleted_rows AS (
             DELETE FROM inv_ofr_offer 

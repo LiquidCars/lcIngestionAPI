@@ -192,7 +192,7 @@ ingestion:
     days: 7
   syncScheduler:
     enabled: true
-    cron: "0 */2 * * * *" # Every 2 minutes
+    cron: "0 */1 * * * *" # Every 1 minutes
   batchSyncScheduler:
     enabled: true
-    cron: "0 */2 * * * *" # Every 2 minutes
+    cron: "0 */1 * * * *" # Every 1 minutes
