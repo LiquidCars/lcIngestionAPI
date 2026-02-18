@@ -2,13 +2,12 @@ package net.liquidcars.ingestion.factory;
 
 import net.liquidcars.ingestion.application.service.parser.model.JSON.*;
 import net.liquidcars.ingestion.application.service.parser.model.XML.*;
-import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.domain.model.VehicleInstanceDto;
-import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
+import net.liquidcars.ingestion.domain.model.*;
 import net.liquidcars.ingestion.domain.model.batch.*;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.infra.input.rest.model.IngestionReport;
+import net.liquidcars.ingestion.infra.output.kafka.model.*;
 import org.instancio.Instancio;
 
 import java.math.BigDecimal;
@@ -70,7 +69,7 @@ public class TestDataFactory {
 
     // ==================== IngestionBatchReportDto Factories ====================
 
-    public static IngestionBatchReportDto createBatchReport() {
+    public static IngestionBatchReportDto createIngestionBatchReportDto() {
         return Instancio.of(IngestionBatchReportDto.class)
                 .set(field(IngestionBatchReportDto::getJobId), UUID.randomUUID())
                 .set(field(IngestionBatchReportDto::getStatus), IngestionBatchStatus.STARTED)
@@ -195,7 +194,7 @@ public class TestDataFactory {
 
     // ==================== VehicleInstanceDto Factory ====================
 
-    public static VehicleInstanceDto createVehicleInstance() {
+    public static VehicleInstanceDto createVehicleInstanceJSON() {
         return Instancio.of(VehicleInstanceDto.class).create();
     }
 
@@ -219,6 +218,23 @@ public class TestDataFactory {
                 .set(field(VehicleModelJSONModel::getCv), cv)
                 .set(field(VehicleModelJSONModel::getAcceleration), acc)
                 .set(field(VehicleModelJSONModel::getBodyType), bt)
+                .create();
+    }
+
+    // ==================== VehicleModelMsg Factory ====================
+
+    public static VehicleModelMsg createVehicleModelMsg() {
+        return Instancio.of(VehicleModelMsg.class).create();
+    }
+
+    public static VehicleModelMsg createVehicleModelMsgWithData(Long id, String brand, String model, Integer cv, Double acc, KeyValueMsg bt) {
+        return Instancio.of(VehicleModelMsg.class)
+                .set(field(VehicleModelMsg::getId), id)
+                .set(field(VehicleModelMsg::getBrand), brand)
+                .set(field(VehicleModelMsg::getModel), model)
+                .set(field(VehicleModelMsg::getCv), cv)
+                .set(field(VehicleModelMsg::getAcceleration), acc)
+                .set(field(VehicleModelMsg::getBodyType), bt)
                 .create();
     }
 
@@ -247,6 +263,16 @@ public class TestDataFactory {
                 .set(field(GPSLocationJSONModel::getName), name)
                 .set(field(GPSLocationJSONModel::getLatitude), latitude)
                 .set(field(GPSLocationJSONModel::getLongitude), longitude)
+                .create();
+    }
+
+    // ==================== GPSLocationJSONModel Factory ====================
+
+    public static GPSLocationMsg createGPSLocationMsg(String name, double latitude, double longitude) {
+        return Instancio.of(GPSLocationMsg.class)
+                .set(field(GPSLocationMsg::getName), name)
+                .set(field(GPSLocationMsg::getLatitude), latitude)
+                .set(field(GPSLocationMsg::getLongitude), longitude)
                 .create();
     }
 
@@ -284,7 +310,7 @@ public class TestDataFactory {
 
     // ==================== VehicleInstanceJSONModel Factory ====================
 
-    public static VehicleInstanceJSONModel createVehicleInstance(long id, String plate, String chassis) {
+    public static VehicleInstanceJSONModel createVehicleInstanceJSON(long id, String plate, String chassis) {
         return Instancio.of(VehicleInstanceJSONModel.class)
                 .set(field(VehicleInstanceJSONModel::getId), id)
                 .set(field(VehicleInstanceJSONModel::getPlate), plate)
@@ -309,6 +335,32 @@ public class TestDataFactory {
                 .create();
     }
 
+// ==================== VehicleInstanceMsg Factory ====================
+
+    public static VehicleInstanceMsg createVehicleInstanceMsg(long id, String plate, String chassis) {
+        return Instancio.of(VehicleInstanceMsg.class)
+                .set(field(VehicleInstanceMsg::getId), id)
+                .set(field(VehicleInstanceMsg::getPlate), plate)
+                .set(field(VehicleInstanceMsg::getChassisNumber), chassis)
+                .generate(field(VehicleInstanceMsg::getEquipments), gen -> gen.collection().size(2))
+                .create();
+    }
+
+    // En TestDataFactory.java
+    public static VehicleInstanceMsg createVehicleInstanceMsgWithSameData(VehicleInstanceMsg base, long newId) {
+        return Instancio.of(VehicleInstanceMsg.class)
+                .set(field(VehicleInstanceMsg::getId), newId)
+                .set(field(VehicleInstanceMsg::getPlate), base.getPlate())
+                .set(field(VehicleInstanceMsg::getChassisNumber), base.getChassisNumber())
+                .set(field(VehicleInstanceMsg::getMileage), base.getMileage())
+                .set(field(VehicleInstanceMsg::getVehicleModel), base.getVehicleModel())
+                .set(field(VehicleInstanceMsg::getColor), base.getColor())
+                .set(field(VehicleInstanceMsg::getState), base.getState())
+                .set(field(VehicleInstanceMsg::getRegistrationYear), base.getRegistrationYear())
+                .set(field(VehicleInstanceMsg::getRegistrationMonth), base.getRegistrationMonth())
+                .set(field(VehicleInstanceMsg::isMetallicPaint), base.isMetallicPaint())
+                .create();
+    }
 
 
     // ==================== LCIngestionParserException Factory ====================
@@ -383,4 +435,44 @@ public class TestDataFactory {
                         gen -> gen.collection().size(deleteSize))
                 .create();
     }
+
+    // ==================== OfferSummaryMsg Factory ====================
+
+    public static OfferSummaryMsg createOfferSummaryMsg() {
+        return org.instancio.Instancio.create(OfferSummaryMsg.class);
+    }
+
+    // ==================== IngestionReportResponseActionMsg Factory ====================
+
+    public static IngestionReportResponseActionMsg createIngestionReportResponseActionMsg() {
+        return Instancio.of(IngestionReportResponseActionMsg.class)
+                .generate(field(IngestionReportResponseActionMsg::getIngestionReportId), gen -> gen.string().length(10))
+                .create();
+    }
+
+    // ==================== BatchIngestionReportMsg Factory ====================
+
+    public static BatchIngestionReportMsg createBatchIngestionReportMsg() {
+        return org.instancio.Instancio.create(BatchIngestionReportMsg.class);
+    }
+
+    // ==================== BatchIngestionReportMsg Factory ====================
+
+    public static IngestionReportMsg createIngestionReportMsg() {
+        return org.instancio.Instancio.create(IngestionReportMsg.class);
+    }
+
+
+    // ==================== OfferSummaryDto Factory ====================
+
+    public static OfferSummaryDto createOfferSummaryDto() {
+        return org.instancio.Instancio.create(OfferSummaryDto.class);
+    }
+
+    // ==================== IngestionReportResponseActionDto Factory ====================
+
+    public static IngestionReportResponseActionDto createIngestionReportResponseActionDto() {
+        return org.instancio.Instancio.create(IngestionReportResponseActionDto.class);
+    }
+
 }
