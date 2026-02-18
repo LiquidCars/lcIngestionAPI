@@ -86,14 +86,14 @@ spring:
       # Ensures the error handler defined in YAML is active
       type: single
 
-    # Spring Batch Configuration
-    batch:
-      job:
-        enabled: false # Don't auto-start jobs on application startup
-        name: "NONE"
-      jdbc:
-        initialize-schema: never
-        table-prefix: BATCH_
+  # Spring Batch Configuration
+  batch:
+    job:
+      enabled: false # Don't auto-start jobs on application startup
+      name: "NONE"
+    jdbc:
+      initialize-schema: never
+      table-prefix: BATCH_
 
   # Liquibase Migration
   liquibase:

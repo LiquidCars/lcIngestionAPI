@@ -1,216 +1,287 @@
 {
   "info": {
-    "_postman_id": "14e32597-f12a-4dc1-80e4-72ae1c7cb30b",
-    "name": "lcApi: Ingestion New",
-    "description": "API for bulk vehicle offer ingestion (LiquidCars).\nDesigned to handle 170k+ records using reactive processing and streaming.",
+    "_postman_id": "152221c1-a8cd-457c-842c-add1c7840f2a",
+    "name": "lcApi: Ingestion New v1.2",
+    "description": "API for bulk vehicle offer ingestion (LiquidCars).\nIncluye operaciones de Ingestión y Gestión de Reports con paginación.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "2813570",
-    "_collection_link": "https://go.postman.co/collection/2813570-14e32597-f12a-4dc1-80e4-72ae1c7cb30b?source=collection_link"
+    "_collection_link": "https://go.postman.co/collection/2813570-152221c1-a8cd-457c-842c-add1c7840f2a?source=collection_link"
   },
   "item": [
     {
-      "name": "Ingest JSON Batches",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"offers\": [\n    {\n      \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n      \"sellerType\": \"usedCar_ProfessionalSeller\",\n      \"privateOwnerRegisteredUserId\": null,\n      \"hash\": 123456789,\n      \"vehicleInstance\": {\n        \"id\": 12345,\n        \"vehicleModel\": {\n          \"id\": 678,\n          \"brand\": \"BMW\",\n          \"model\": \"530D\",\n          \"version\": \"F10\",\n          \"bodyType\": {\n            \"key\": \"1\",\n            \"value\": \"Compact or small\"\n          },\n          \"numDoors\": 4,\n          \"cv\": 258,\n          \"numCylinders\": 6,\n          \"displacement\": 2993,\n          \"urbanConsumption\": 7.2,\n          \"roadConsumption\": 5.1,\n          \"avgConsumption\": 5.8,\n          \"numGears\": 8,\n          \"kgWeight\": 1780,\n          \"changeType\": {\n            \"key\": \"A\",\n            \"value\": \"Automatic\"\n          },\n          \"fuelType\": {\n            \"key\": \"G\",\n            \"value\": \"Gasoline\"\n          },\n          \"numSeats\": 5,\n          \"drivetrainType\": {\n            \"key\": \"FWD\",\n            \"value\": \"Front wheel drive\"\n          },\n          \"euroTaxCode\": \"ET123456\",\n          \"environmentalBadge\": {\n            \"key\": \"0\",\n            \"value\": \"0\"\n          },\n          \"cmWidth\": 186,\n          \"cmLength\": 493,\n          \"cmHeight\": 147,\n          \"litresTrunk\": 520,\n          \"litresTank\": 70,\n          \"maxSpeed\": 250,\n          \"maxEmissions\": 149,\n          \"acceleration\": 5.7\n        },\n        \"plate\": \"1234XJV\",\n        \"color\": {\n          \"key\": \"1\",\n          \"value\": \"Yellow\"\n        },\n        \"mileage\": 85000,\n        \"registrationYear\": 2018,\n        \"registrationMonth\": 6,\n        \"isMetallicPaint\": true,\n        \"chassisNumber\": \"WBA5A51050B123456\",\n        \"equipments\": [\n          {\n            \"id\": \"1\",\n            \"description\": \"ABS\"\n          }\n        ],\n        \"state\": {\n          \"key\": \"Used\",\n          \"value\": \"Used\"\n        }\n      },\n      \"ownerReference\": \"DEALER_MAD_001\",\n      \"dealerReference\": \"BMW_MADRID_CENTRAL\",\n      \"channelReference\": \"WEB_PORTAL\",\n      \"price\": {\n        \"amount\": 32500.0,\n        \"currency\": \"EUR\"\n      },\n      \"financedPrice\": {\n        \"amount\": 34200.0,\n        \"currency\": \"EUR\"\n      },\n      \"financedInstallmentAprox\": {\n        \"amount\": 598.0,\n        \"currency\": \"EUR\"\n      },\n      \"financedText\": \"Precio financiado con entrada del 20% a 48 meses. TIN 6.5%, TAE 7.2%. Cuota mensual aproximada de 598€\",\n      \"priceNew\": {\n        \"amount\": 58000.0,\n        \"currency\": \"EUR\"\n      },\n      \"professionalPrice\": {\n        \"amount\": 30000.0,\n        \"currency\": \"EUR\"\n      },\n      \"taxDeductible\": true,\n      \"obs\": \"Vehículo en perfecto estado, único propietario, todas las revisiones en servicio oficial\",\n      \"internalNotes\": \"Cliente VIP - prioridad en entrega. Revisar presión de neumáticos antes de entrega\",\n      \"resources\": [\n        {\n          \"id\": 1,\n          \"type\": {\n            \"key\": \"IMAGE_URL\",\n            \"value\": \"Imagen URL\"\n          },\n          \"resource\": \"https://example.com/images/bmw530d_front.jpg\",\n          \"compressedResource\": null\n        }\n      ],\n      \"guarantee\": true,\n      \"guaranteeMonths\": 24,\n      \"guaranteeText\": \"Garantía BMW Premium de 24 meses sin límite de kilómetros. Incluye asistencia en carretera 24/7\",\n      \"certified\": true,\n      \"installation\": \"Concesionario BMW Madrid Centro - Instalaciones modernas con showroom climatizado y taller especializado\",\n      \"mail\": \"ventas@bmwmadrid.es\",\n      \"pickUpAddress\": {\n        \"type\": \"B_PICKUP\",\n        \"address\": {\n          \"name\": \"BMW Madrid Centro\",\n          \"gpsLocation\": {\n            \"name\": \"BMW Madrid Centro\",\n            \"longitude\": -3.6883,\n            \"latitude\": 40.4168\n          },\n          \"streetNumber\": \"45\",\n          \"streetAddress\": \"Calle de Serrano\",\n          \"extendedAddress\": null,\n          \"postalCode\": \"28001\",\n          \"city\": \"Madrid\",\n          \"region\": \"Comunidad de Madrid\",\n          \"country\": \"España\",\n          \"countryCode\": \"ES\",\n          \"poBox\": null,\n          \"type\": \"business\"\n        }\n      },\n      \"lastUpdated\": 1738713600,\n      \"jsonCarOfferId\": \"660e8400-e29b-41d4-a716-446655440001\"\n    },\n    {\n      \"id\": \"550e8400-e29b-41d4-a716-446655440001\",\n      \"sellerType\": \"usedCar_ProfessionalSeller\",\n      \"privateOwnerRegisteredUserId\": null,\n      \"hash\": 123456780,\n      \"vehicleInstance\": {\n        \"id\": 12341,\n        \"vehicleModel\": {\n          \"id\": 678,\n          \"brand\": \"BMW\",\n          \"model\": \"530D\",\n          \"version\": \"F10\",\n          \"bodyType\": {\n            \"key\": \"1\",\n            \"value\": \"Compact or small\"\n          },\n          \"numDoors\": 4,\n          \"cv\": 258,\n          \"numCylinders\": 6,\n          \"displacement\": 2993,\n          \"urbanConsumption\": 7.2,\n          \"roadConsumption\": 5.1,\n          \"avgConsumption\": 5.8,\n          \"numGears\": 8,\n          \"kgWeight\": 1780,\n          \"changeType\": {\n            \"key\": \"A\",\n            \"value\": \"Automatic\"\n          },\n          \"fuelType\": {\n            \"key\": \"G\",\n            \"value\": \"Gasoline\"\n          },\n          \"numSeats\": 5,\n          \"drivetrainType\": {\n            \"key\": \"FWD\",\n            \"value\": \"Front wheel drive\"\n          },\n          \"euroTaxCode\": \"ET123456\",\n          \"environmentalBadge\": {\n            \"key\": \"0\",\n            \"value\": \"0\"\n          },\n          \"cmWidth\": 186,\n          \"cmLength\": 493,\n          \"cmHeight\": 147,\n          \"litresTrunk\": 520,\n          \"litresTank\": 70,\n          \"maxSpeed\": 250,\n          \"maxEmissions\": 149,\n          \"acceleration\": 5.7\n        },\n        \"plate\": \"1234FJV\",\n        \"color\": {\n          \"key\": \"1\",\n          \"value\": \"Yellow\"\n        },\n        \"mileage\": 85000,\n        \"registrationYear\": 2018,\n        \"registrationMonth\": 6,\n        \"isMetallicPaint\": true,\n        \"chassisNumber\": \"WBA5A51050B123456\",\n        \"equipments\": [\n          {\n            \"id\": \"1\",\n            \"description\": \"ABS\"\n          }\n        ],\n        \"state\": {\n          \"key\": \"Used\",\n          \"value\": \"Used\"\n        }\n      },\n      \"ownerReference\": \"DEALER_MAD_001\",\n      \"dealerReference\": \"BMW_MADRID_CENTRAL\",\n      \"channelReference\": \"WEB_PORTAL\",\n      \"price\": {\n        \"amount\": 32500.0,\n        \"currency\": \"EUR\"\n      },\n      \"financedPrice\": {\n        \"amount\": 34200.0,\n        \"currency\": \"EUR\"\n      },\n      \"financedInstallmentAprox\": {\n        \"amount\": 598.0,\n        \"currency\": \"EUR\"\n      },\n      \"financedText\": \"Precio financiado con entrada del 20% a 48 meses. TIN 6.5%, TAE 7.2%. Cuota mensual aproximada de 598€\",\n      \"priceNew\": {\n        \"amount\": 58000.0,\n        \"currency\": \"EUR\"\n      },\n      \"professionalPrice\": {\n        \"amount\": 30000.0,\n        \"currency\": \"EUR\"\n      },\n      \"taxDeductible\": true,\n      \"obs\": \"Vehículo en perfecto estado, único propietario, todas las revisiones en servicio oficial\",\n      \"internalNotes\": \"Cliente VIP - prioridad en entrega. Revisar presión de neumáticos antes de entrega\",\n      \"resources\": [\n        {\n          \"id\": 1,\n          \"type\": {\n            \"key\": \"IMAGE_URL\",\n            \"value\": \"Imagen URL\"\n          },\n          \"resource\": \"https://example.com/images/bmw530d_front.jpg\",\n          \"compressedResource\": null\n        }\n      ],\n      \"guarantee\": true,\n      \"guaranteeMonths\": 24,\n      \"guaranteeText\": \"Garantía BMW Premium de 24 meses sin límite de kilómetros. Incluye asistencia en carretera 24/7\",\n      \"certified\": true,\n      \"installation\": \"Concesionario BMW Madrid Centro - Instalaciones modernas con showroom climatizado y taller especializado\",\n      \"mail\": \"ventas@bmwmadrid.es\",\n      \"pickUpAddress\": {\n        \"type\": \"B_PICKUP\",\n        \"address\": {\n          \"name\": \"BMW Madrid Centro\",\n          \"gpsLocation\": {\n            \"name\": \"BMW Madrid Centro\",\n            \"longitude\": -3.6883,\n            \"latitude\": 40.4168\n          },\n          \"streetNumber\": \"45\",\n          \"streetAddress\": \"Calle de Serrano\",\n          \"extendedAddress\": null,\n          \"postalCode\": \"28001\",\n          \"city\": \"Madrid\",\n          \"region\": \"Comunidad de Madrid\",\n          \"country\": \"España\",\n          \"countryCode\": \"ES\",\n          \"poBox\": null,\n          \"type\": \"business\"\n        }\n      },\n      \"lastUpdated\": 1738713600,\n      \"jsonCarOfferId\": \"660e8400-e29b-41d4-a716-446655440001\"\n    }\n  ],\n  \"offersToDelete\": [\n    \"550e8400-e29b-41d4-a716-446655440001\",\n    \"550e8400-e29b-41d4-a716-446655440002\"\n  ]\n}",
-          "options": {
-            "raw": {
-              "language": "json"
+      "name": "Ingestion Operations",
+      "item": [
+        {
+          "name": "Ingest JSON Batches",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offers\": [\n    {\n      \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n      \"sellerType\": \"usedCar_ProfessionalSeller\",\n      \"vehicleInstance\": {\n        \"brand\": \"BMW\",\n        \"model\": \"530D\",\n        \"plate\": \"1234XJV\"\n      },\n      \"price\": {\n        \"amount\": 32500.0,\n        \"currency\": \"EUR\"\n      }\n    }\n  ],\n  \"offersToDelete\": []\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8890/v1/ingestion/batch?inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=UPDATE",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8890",
+              "path": [
+                "v1",
+                "ingestion",
+                "batch"
+              ],
+              "query": [
+                {
+                  "key": "inventoryId",
+                  "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b"
+                },
+                {
+                  "key": "dumpType",
+                  "value": "UPDATE"
+                }
+              ]
             }
-          }
+          },
+          "response": []
         },
-        "url": {
-          "raw": "http://localhost:8890/v1/ingestion/batch?inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=UPDATE&externalPublicationId=localPub1%23",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "8890",
-          "path": [
-            "v1",
-            "ingestion",
-            "batch"
-          ],
-          "query": [
-            {
-              "key": "inventoryId",
-              "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b",
-              "description": "Canalcar estándar"
-            },
-            {
-              "key": "dumpType",
-              "value": "UPDATE",
-              "description": "(Required) UPDATE or REPLACEMENT"
-            },
-            {
-              "key": "externalPublicationId",
-              "value": "localPub1%23"
+        {
+          "name": "Ingest via Binary Stream",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/octet-stream"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8890/v1/ingestion/stream?format=json&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=UPDATE",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8890",
+              "path": [
+                "v1",
+                "ingestion",
+                "stream"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                },
+                {
+                  "key": "inventoryId",
+                  "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b"
+                },
+                {
+                  "key": "dumpType",
+                  "value": "UPDATE"
+                }
+              ]
             }
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "Ingest via Binary Stream",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/octet-stream"
-          }
-        ],
-        "body": {
-          "mode": "file",
-          "file": {
-            "src": ""
-          }
+          },
+          "response": []
         },
-        "url": {
-          "raw": "http://localhost:8890/v1/ingestion/stream?format=json&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=UPDATE&externalPublicationId=localPub1%23",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "8890",
-          "path": [
-            "v1",
-            "ingestion",
-            "stream"
-          ],
-          "query": [
-            {
-              "key": "format",
-              "value": "json",
-              "description": "(Required) xml or json"
-            },
-            {
-              "key": "inventoryId",
-              "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b",
-              "description": "Canalcar estándar"
-            },
-            {
-              "key": "dumpType",
-              "value": "UPDATE"
-            },
-            {
-              "key": "externalPublicationId",
-              "value": "localPub1#",
-              "type": "text"
+        {
+          "name": "Ingest via URL (Pull)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8890/v1/ingestion/url?format=xml&url=http://localhost:8083/MF_856b7d9a-cabd-4e86-aaca-b7a9641a9d0b_CC_2024_09_30_A.xml&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=UPDATE&externalPublicationId=localPub1%23",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8890",
+              "path": [
+                "v1",
+                "ingestion",
+                "url"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "xml"
+                },
+                {
+                  "key": "url",
+                  "value": "http://localhost:8083/MF_856b7d9a-cabd-4e86-aaca-b7a9641a9d0b_CC_2024_09_30_A.xml"
+                },
+                {
+                  "key": "inventoryId",
+                  "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b",
+                  "description": "Canalcar estándar"
+                },
+                {
+                  "key": "dumpType",
+                  "value": "UPDATE"
+                },
+                {
+                  "key": "externalPublicationId",
+                  "value": "localPub1%23"
+                }
+              ]
             }
-          ]
+          },
+          "response": []
         }
-      },
-      "response": []
+      ]
     },
     {
-      "name": "Ingest via URL (Pull)",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:8890/v1/ingestion/url?format=xml&url=http://localhost:8083/MF_856b7d9a-cabd-4e86-aaca-b7a9641a9d0b_CC_2024_09_30_A.xml&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=UPDATE&externalPublicationId=localPub1%23",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "8890",
-          "path": [
-            "v1",
-            "ingestion",
-            "url"
-          ],
-          "query": [
-            {
-              "key": "format",
-              "value": "xml"
-            },
-            {
-              "key": "url",
-              "value": "http://localhost:8083/MF_856b7d9a-cabd-4e86-aaca-b7a9641a9d0b_CC_2024_09_30_A.xml"
-            },
-            {
-              "key": "inventoryId",
-              "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b",
-              "description": "Canalcar estándar"
-            },
-            {
-              "key": "dumpType",
-              "value": "UPDATE"
-            },
-            {
-              "key": "externalPublicationId",
-              "value": "localPub1%23"
+      "name": "Management Operations",
+      "item": [
+        {
+          "name": "List Reports (Paginated & Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8890/v1/ingestion/reports?page=0&size=20&sortBy=createdAt&sortDirection=DESC&status=COMPLETED&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8890",
+              "path": [
+                "v1",
+                "ingestion",
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Número de página"
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": "Tamaño de página"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt",
+                  "description": "Campo: id, status, createdAt, etc."
+                },
+                {
+                  "key": "sortDirection",
+                  "value": "DESC",
+                  "description": "ASC o DESC"
+                },
+                {
+                  "key": "status",
+                  "value": "COMPLETED",
+                  "description": "Filtrar por estado"
+                },
+                {
+                  "key": "inventoryId",
+                  "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b"
+                },
+                {
+                  "key": "createdFrom",
+                  "value": "2024-01-01T00:00:00Z",
+                  "disabled": true
+                }
+              ]
             }
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "Promote draft offers",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:8890/v1/ingestion/promote/:jobIdentifier",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "8890",
-          "path": [
-            "v1",
-            "ingestion",
-            "promote",
-            ":jobIdentifier"
-          ],
-          "variable": [
-            {
-              "key": "jobIdentifier",
-              "value": "45d8e60c-abde-4207-9a5b-b245f0016d07"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Report By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8890/v1/ingestion/reports/:ingestionReportId",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8890",
+              "path": [
+                "v1",
+                "ingestion",
+                "reports",
+                ":ingestionReportId"
+              ],
+              "variable": [
+                {
+                  "key": "ingestionReportId",
+                  "value": "43427b33-ff59-484b-8e9b-f69cccb9342f"
+                }
+              ]
             }
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "Delete draft offers",
-      "request": {
-        "method": "DELETE",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:8890/v1/ingestion/draft/:jobIdentifier",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "8890",
-          "path": [
-            "v1",
-            "ingestion",
-            "draft",
-            ":jobIdentifier"
-          ],
-          "variable": [
-            {
-              "key": "jobIdentifier",
-              "value": "f2a8da8e-831a-41ad-bdc6-a8ca8397fe4e"
+          },
+          "response": []
+        },
+        {
+          "name": "Promote draft offers",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8890/v1/ingestion/promote/:ingestionReportId",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8890",
+              "path": [
+                "v1",
+                "ingestion",
+                "promote",
+                ":ingestionReportId"
+              ],
+              "variable": [
+                {
+                  "key": "ingestionReportId",
+                  "value": "43427b33-ff59-484b-8e9b-f69cccb9342f"
+                }
+              ]
             }
-          ]
+          },
+          "response": []
+        },
+        {
+          "name": "Delete draft offers",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8890/v1/ingestion/draft/:ingestionReportId",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8890",
+              "path": [
+                "v1",
+                "ingestion",
+                "draft",
+                ":ingestionReportId"
+              ],
+              "variable": [
+                {
+                  "key": "ingestionReportId",
+                  "value": "43427b33-ff59-484b-8e9b-f69cccb9342f"
+                }
+              ]
+            }
+          },
+          "response": []
         }
-      },
-      "response": []
+      ]
     }
   ],
   "auth": {
@@ -222,5 +293,30 @@
         "type": "string"
       }
     ]
-  }
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8890"
+    },
+    {
+      "key": "inventoryId",
+      "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b"
+    },
+    {
+      "key": "AccessToken",
+      "value": "tu-token-aqui"
+    }
+  ]
 }

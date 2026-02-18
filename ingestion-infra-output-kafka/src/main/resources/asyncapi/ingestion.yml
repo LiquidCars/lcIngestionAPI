@@ -2,32 +2,73 @@ asyncapi: 3.0.0
 
 info:
   title: LiquidCars Ingestion API
-  version: 1.0.0
+  version: 1.3.0
+  description: |
+    API para la ingestión masiva de vehículos y gestión de ciclos de vida de reportes.
+    Incluye publicadores de eventos de reporte (Batch y Detallado) y consumidores para disparar acciones de limpieza y promoción.
 
 operations:
+  # --- Operaciones de Envío (Publishers - @Service KafkaPublisher) ---
   sendOfferCreated:
     action: send
     channel:
       $ref: '#/channels/offerCreationChannel'
-    summary: Publicar una nueva oferta de vehículo.
     messages:
       - $ref: '#/channels/offerCreationChannel/messages/offerCreatedMessage'
-
-  sendIngestionReport:
-    action: send
-    channel:
-      $ref: '#/channels/ingestionReportChannel'
-    summary: Publicar el resultado de un proceso de ingestión.
-    messages:
-      - $ref: '#/channels/ingestionReportChannel/messages/ingestionReportMessage'
 
   sendOfferSummary:
     action: send
     channel:
       $ref: '#/channels/offerSummaryChannel'
-    summary: Publicar resumen de oferta guardada.
     messages:
       - $ref: '#/channels/offerSummaryChannel/messages/offerSummaryMessage'
+
+  sendBatchIngestionReport:
+    action: send
+    channel:
+      $ref: '#/channels/batchIngestionReportChannel'
+    summary: Publicar reporte de ejecución de lote (BatchIngestionReportKafkaPublisher).
+    messages:
+      - $ref: '#/channels/batchIngestionReportChannel/messages/batchReportMessage'
+
+  sendUpdatedIngestionReport:
+    action: send
+    channel:
+      $ref: '#/channels/ingestionReportUpdatedChannel'
+    summary: Publicar actualización de reporte detallado (IngestionReportKafkaPublisher).
+    messages:
+      - $ref: '#/channels/ingestionReportUpdatedChannel/messages/updatedReportMessage'
+
+  sendPromoteActionResponse:
+    action: send
+    channel:
+      $ref: '#/channels/reportPromoteActionResultChannel'
+    messages:
+      - $ref: '#/channels/reportPromoteActionResultChannel/messages/promoteResponseMessage'
+
+  sendDeleteActionResponse:
+    action: send
+    channel:
+      $ref: '#/channels/reportDeleteActionResultChannel'
+    messages:
+      - $ref: '#/channels/reportDeleteActionResultChannel/messages/deleteResponseMessage'
+
+  # --- Operaciones de Recepción (Consumers - @KafkaListener) ---
+  receiveDeleteAction:
+    action: receive
+    channel:
+      $ref: '#/channels/reportDeleteActionChannel'
+    summary: Consumir orden de borrado de ofertas (IngestionReportDeleteInfraKafkaConsumer).
+    messages:
+      - $ref: '#/channels/reportDeleteActionChannel/messages/actionMessage'
+
+  receivePromoteAction:
+    action: receive
+    channel:
+      $ref: '#/channels/reportPromoteActionChannel'
+    summary: Consumir orden de promoción de ofertas (IngestionReportPromoteInfraKafkaConsumer).
+    messages:
+      - $ref: '#/channels/reportPromoteActionChannel/messages/actionMessage'
 
 channels:
   offerCreationChannel:
@@ -36,160 +77,147 @@ channels:
       offerCreatedMessage:
         $ref: '#/components/messages/OfferCreated'
 
-  ingestionReportChannel:
-    address: liquidcars.ingestion.event.report.executed-action.0
-    messages:
-      ingestionReportMessage:
-        $ref: '#/components/messages/IngestionReport'
-
   offerSummaryChannel:
     address: liquidcars.ingestion.event.offer.saved-action.0
     messages:
       offerSummaryMessage:
         $ref: '#/components/messages/OfferSummary'
 
+  # Canales de Reportes (Publish)
+  batchIngestionReportChannel:
+    address: liquidcars.ingestion.event.batchreport.executed-action.0
+    messages:
+      batchReportMessage:
+        $ref: '#/components/messages/BatchIngestionReport'
+
+  ingestionReportUpdatedChannel:
+    address: liquidcars.ingestion.event.report.updated-action.0
+    messages:
+      updatedReportMessage:
+        $ref: '#/components/messages/IngestionReportDetailed'
+
+  # Canales de Acciones (Listen)
+  reportDeleteActionChannel:
+    address: liquidcars.ingestion.event.report.delete-action.0
+    messages:
+      actionMessage:
+        $ref: '#/components/messages/IngestionReportAction'
+
+  reportPromoteActionChannel:
+    address: liquidcars.ingestion.event.report.promote-action.0
+    messages:
+      actionMessage:
+        $ref: '#/components/messages/IngestionReportAction'
+
+  # Canales de Resultados (Publish)
+  reportPromoteActionResultChannel:
+    address: liquidcars.ingestion.event.report.promote-action-result.0
+    messages:
+      promoteResponseMessage:
+        $ref: '#/components/messages/IngestionReportResponseAction'
+
+  reportDeleteActionResultChannel:
+    address: liquidcars.ingestion.event.report.delete-action-result.0
+    messages:
+      deleteResponseMessage:
+        $ref: '#/components/messages/IngestionReportResponseAction'
+
 components:
   messages:
     OfferCreated:
-      name: OfferCreated
-      contentType: application/json
-      payload:
-        $ref: '#/components/schemas/OfferMsg'
-
-    IngestionReport:
-      name: IngestionReport
-      contentType: application/json
-      payload:
-        $ref: '#/components/schemas/IngestionReportMsg'
+      payload: { $ref: '#/components/schemas/OfferMsg' }
+    OfferSummary:
+      payload: { $ref: '#/components/schemas/OfferSummaryMsg' }
+    BatchIngestionReport:
+      payload: { $ref: '#/components/schemas/BatchIngestionReportMsg' }
+    IngestionReportDetailed:
+      payload: { $ref: '#/components/schemas/IngestionReportMsg' }
+    IngestionReportAction:
+      payload: { $ref: '#/components/schemas/IngestionReportActionMsg' }
+    IngestionReportResponseAction:
+      payload: { $ref: '#/components/schemas/IngestionReportResponseActionMsg' }
 
   schemas:
+    IngestionReportActionMsg:
+      type: object
+      properties:
+        ingestionReportId: { type: string, format: uuid }
+
+    BatchIngestionReportMsg:
+      type: object
+      properties:
+        jobId: { type: string }
+        status: { type: string }
+        readCount: { type: integer, format: int64 }
+        writeCount: { type: integer, format: int64 }
+        skipCount: { type: integer, format: int64 }
+        failedExternalIds: { type: array, items: { $ref: '#/components/schemas/ExternalIdInfoMsg' } }
+        idsForDelete: { type: array, items: { type: string } }
+        startTime: { type: string }
+        endTime: { type: string }
+        processed: { type: boolean }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+
+    IngestionReportMsg:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        processType: { type: string }
+        batchJobId: { type: string }
+        requesterParticipantId: { type: string, format: uuid }
+        inventoryId: { type: string, format: uuid }
+        externalRequestId: { type: string }
+        publicationDate: { type: string, format: date-time }
+        status: { type: string }
+        dumpType: { type: string, enum: [UPDATE, REPLACEMENT] }
+        readCount: { type: integer }
+        writeCount: { type: integer }
+        skipCount: { type: integer }
+        failedExternalIds: { type: array, items: { $ref: '#/components/schemas/ExternalIdInfoMsg' } }
+        idsForDelete: { type: array, items: { type: string } }
+        processed: { type: boolean }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+
+    IngestionReportResponseActionMsg:
+      type: object
+      required: [ ingestionReportId, result ]
+      properties:
+        ingestionReportId: { type: string, format: uuid }
+        result: { type: string }
+        techCause: { type: string }
+        errorMsg: { type: string }
+
     OfferSummaryMsg:
       type: object
       required: [ id ]
-      description: This object represents a summary of an offer. Used to send saved notifications
       properties:
-        id:
-          type: string
-          format: uuid
-          description: Offer unique identifier
-        hash:
-          type: integer
-          format: int32
-          description: A versioning hash code used to detect potential changes of the offer
-        externalIdInfo:
-          $ref: '#/components/schemas/ExternalIdInfoMsg'
-        lastUpdated:
-          type: integer
-          format: int64
-          description: Update date (timestamp)
-        participantId:
-          type: string
-          format: uuid
-          description: Participant id
-        jobIdentifier:
-          type: string
-          format: uuid
-          description: Batch job identifier
-        ingestionReportId:
-          type: string
-          format: uuid
-          description: Ingestion report job identifier
-        inventoryId:
-          type: string
-          format: uuid
-          description: Inventory of offers
+        id: { type: string, format: uuid }
+        hash: { type: integer, format: int32 }
+        externalIdInfo: { $ref: '#/components/schemas/ExternalIdInfoMsg' }
+        lastUpdated: { type: integer, format: int64 }
+        participantId: { type: string, format: uuid }
+        jobIdentifier: { type: string, format: uuid }
+        ingestionReportId: { type: string, format: uuid }
+        inventoryId: { type: string, format: uuid }
 
     ExternalIdInfoMsg:
       type: object
-      description: Information about external identifier
       properties:
-        ownerReference:
-          type: string
-          description: The car owner reference
-        dealerReference:
-          type: string
-          description: The dealer reference
-        channelReference:
-          type: string
-          description: The dealer channel reference
+        ownerReference: { type: string }
+        dealerReference: { type: string }
+        channelReference: { type: string }
 
     OfferMsg:
       type: object
       required: [externalId, brand, model, year, price]
       properties:
-        id:
-          type: string
-          format: uuid
-        externalId:
-          type: string
-        vehicleType:
-          $ref: '#/components/schemas/VehicleTypeMsg'
-        brand:
-          type: string
-        model:
-          type: string
-        year:
-          type: integer
-          minimum: 1900
-        price:
-          type: number
-          format: decimal
-        status:
-          $ref: '#/components/schemas/OfferStatusMsg'
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        source:
-          type: string
-        jobIdentifier:
-          type: string
-        batchStatus:
-          type: string
-
-
-    IngestionReportMsg:
-      type: object
-      required:
-        - jobId
-        - status
-        - readCount
-        - writeCount
-        - skipCount
-        - startTime
-        - endTime
-      properties:
-        jobId:
-          type: string
-        status:
-          type: string
-          description: Estado final del job de ingestión
-        readCount:
-          type: integer
-          format: int64
-        writeCount:
-          type: integer
-          format: int64
-        skipCount:
-          type: integer
-          format: int64
-        failedExternalIds:
-          type: array
-          items:
-            type: string
-        startTime:
-          type: string
-          format: date-time
-        endTime:
-          type: string
-          format: date-time
-
-    VehicleTypeMsg:
-      type: string
-      enum: [CAR, TRUCK, MOTORCYCLE, VAN, SUV]
-
-    OfferStatusMsg:
-      type: string
-      enum: [ACTIVE, SOLD, RESERVED, INACTIVE]
+        id: { type: string, format: uuid }
+        externalId: { type: string }
+        brand: { type: string }
+        model: { type: string }
+        year: { type: integer }
+        price: { type: number }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }

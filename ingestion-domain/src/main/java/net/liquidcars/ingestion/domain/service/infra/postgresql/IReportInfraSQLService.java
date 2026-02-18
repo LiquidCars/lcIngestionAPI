@@ -2,6 +2,8 @@ package net.liquidcars.ingestion.domain.service.infra.postgresql;
 
 import net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus;
 import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionReportFilterDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionReportPageDto;
 
 import java.util.List;
 import java.util.UUID;
@@ -11,7 +13,7 @@ public interface IReportInfraSQLService {
 
     IngestionReportDto findIngestionReportById(UUID id);
 
-    List<IngestionReportDto> findIngestionReports();
+    IngestionReportPageDto findIngestionReports(IngestionReportFilterDto filter);
 
     IngestionReportDto findIngestionReportByBatchJobId(UUID batchJobId);
 

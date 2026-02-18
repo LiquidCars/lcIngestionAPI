@@ -1,10 +1,7 @@
 package net.liquidcars.ingestion.domain.service.application;
 
 import net.liquidcars.ingestion.domain.model.IngestionPayloadDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionBatchReportDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
-import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
-import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
+import net.liquidcars.ingestion.domain.model.batch.*;
 
 import java.io.InputStream;
 import java.net.URI;
@@ -30,7 +27,7 @@ public interface IOfferIngestionProcessService {
 
     void deleteDraftOffersByIngestionReportId(UUID ingestionReportId, boolean async);
 
-    List<IngestionReportDto> findIngestionReports();
+    IngestionReportPageDto findIngestionReports(IngestionReportFilterDto filter);
 
     IngestionReportDto findIngestionReportById(UUID ingestionReportId);
 }
