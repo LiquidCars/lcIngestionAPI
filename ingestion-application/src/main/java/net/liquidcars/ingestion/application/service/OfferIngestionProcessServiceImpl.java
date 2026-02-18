@@ -409,6 +409,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
             //Once promotion process is completed we mark job as processed and we update
             ingestionReportDto.setProcessed(true);
             iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
+            offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
             log.debug("Finish promotion for jobIdentifier: {}", ingestionReportId);
             offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
                     IngestionReportResponseActionDto.builder().ingestionReportId(ingestionReportId).result(IngestionReportResponseActionResult.SUCCESS).build()

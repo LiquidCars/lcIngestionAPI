@@ -37,6 +37,7 @@ services:
             - zookeeper
         ports:
             - "${KAFKA_EXTERNAL_PORT}:${KAFKA_EXTERNAL_PORT}"
+            - "${KAFKA_EXTERNAL_PORT2}:${KAFKA_EXTERNAL_PORT2}"
         environment:
             KAFKA_BROKER_ID: ${KAFKA_BROKER_ID}
             KAFKA_ZOOKEEPER_CONNECT: ${KAFKA_ZOOKEEPER_CONNECT}
