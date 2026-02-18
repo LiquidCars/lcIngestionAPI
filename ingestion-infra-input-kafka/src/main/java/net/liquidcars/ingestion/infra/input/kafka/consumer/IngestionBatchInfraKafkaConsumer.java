@@ -23,7 +23,7 @@ public class IngestionBatchInfraKafkaConsumer {
             topics = "liquidcars.ingestion.event.batchreport.executed-action.0",
             groupId = "liquidcars-ingestion-group"
     )
-    public void consumeOffer(BatchIngestionReportMsg message) {
+    public void consumeBatchReportMsg(BatchIngestionReportMsg message) {
         log.info("Received ingestion report job with id: {}", message.getJobId());
         try {
             IngestionBatchReportDto reportDto = offerInfraKafkaConsumerMapper.toIngestionReportDto(message);

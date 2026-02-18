@@ -22,7 +22,7 @@ public class IngestionReportPromoteInfraKafkaConsumer {
             topics = "liquidcars.ingestion.event.report.promote-action.0",
             groupId = "liquidcars-ingestion-group"
     )
-    public void consumePromoteOffers(IngestionReportActionMsg message) {
+    public void consumeIngestionReportActionPromote(IngestionReportActionMsg message) {
         log.info("Received ingestion report job with id: {} for promote offers", message.getIngestionReportId());
         try {
             offerInfraKafkaConsumerService.processIngestionReportPromoteAction(UUID.fromString(message.getIngestionReportId()));

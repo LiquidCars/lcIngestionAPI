@@ -22,7 +22,7 @@ public class IngestionReportDeleteInfraKafkaConsumer {
             topics = "liquidcars.ingestion.event.report.delete-action.0",
             groupId = "liquidcars-ingestion-group"
     )
-    public void consumeOffer(IngestionReportActionMsg message) {
+    public void consumeIngestionReportActionDelete(IngestionReportActionMsg message) {
         log.info("Received ingestion report job with id: {} for delete offers", message.getIngestionReportId());
         try {
             offerInfraKafkaConsumerService.processIngestionReportDeleteAction(UUID.fromString(message.getIngestionReportId()));
