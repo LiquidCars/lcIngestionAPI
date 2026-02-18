@@ -1,6 +1,7 @@
 package net.liquidcars.ingestion.infra.input.rest;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -9,13 +10,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-class IngestionApiTest {
+public class IngestionApiTest {
 
     private MockMvc mockMvc;
     private static final String TEST_INVENTORY_ID = UUID.randomUUID().toString();
+    private final UUID reportId = UUID.randomUUID();
 
     @RestController
     static class TestIngestionController implements IngestionApi {}
@@ -82,5 +86,35 @@ class IngestionApiTest {
         java.util.Optional<org.springframework.web.context.request.NativeWebRequest> result = api.getRequest();
 
         org.junit.jupiter.api.Assertions.assertTrue(result.isEmpty(), "The default request should be Optional.empty()");
+    }
+
+    @Test
+    @DisplayName("GET /reports - Should return Not Implemented")
+    void findIngestionReports_ShouldReturnNotImplemented() throws Exception {
+        mockMvc.perform(get("/v1/ingestion/reports")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotImplemented());
+    }
+
+    @Test
+    @DisplayName("GET /reports/{id} - Should return Not Implemented")
+    void findIngestionReportById_ShouldReturnNotImplemented() throws Exception {
+        mockMvc.perform(get("/v1/ingestion/reports/{ingestionReportId}", reportId)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotImplemented());
+    }
+
+    @Test
+    @DisplayName("DELETE /draft/{id} - Should return Not Implemented")
+    void deleteDraftOffers_ShouldReturnNotImplemented() throws Exception {
+        mockMvc.perform(delete("/v1/ingestion/draft/{ingestionReportId}", reportId))
+                .andExpect(status().isNotImplemented());
+    }
+
+    @Test
+    @DisplayName("POST /promote/{id} - Should return Not Implemented")
+    void promoteDraftOffers_ShouldReturnNotImplemented() throws Exception {
+        mockMvc.perform(post("/v1/ingestion/promote/{ingestionReportId}", reportId))
+                .andExpect(status().isNotImplemented());
     }
 }

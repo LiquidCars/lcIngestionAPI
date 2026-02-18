@@ -8,6 +8,7 @@ import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 import net.liquidcars.ingestion.domain.model.batch.*;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
+import net.liquidcars.ingestion.infra.input.rest.model.IngestionReport;
 import org.instancio.Instancio;
 
 import java.math.BigDecimal;
@@ -365,6 +366,21 @@ public class TestDataFactory {
                 .set(field(ExternalIdInfoDto::getOwnerReference), ownerReference)
                 .set(field(ExternalIdInfoDto::getDealerReference), dealerReference)
                 .set(field(ExternalIdInfoDto::getChannelReference), channelReference)
+                .create();
+    }
+
+    // ==================== IngestionReport Factory ====================
+
+    public static IngestionReport createRandomIngestionReport() {
+        return org.instancio.Instancio.create(IngestionReport.class);
+    }
+
+    public static IngestionReport createIngestionReportWithLists(int failedSize, int deleteSize) {
+        return org.instancio.Instancio.of(IngestionReport.class)
+                .generate(org.instancio.Select.field(IngestionReport::getFailedExternalIds),
+                        gen -> gen.collection().size(failedSize))
+                .generate(org.instancio.Select.field(IngestionReport::getIdsForDelete),
+                        gen -> gen.collection().size(deleteSize))
                 .create();
     }
 }
