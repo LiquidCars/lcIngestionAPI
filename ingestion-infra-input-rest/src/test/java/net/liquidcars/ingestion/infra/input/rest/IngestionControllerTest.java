@@ -4,6 +4,7 @@ import net.liquidcars.ingestion.config.security.model.SecurityProperties;
 import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
 import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
 import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionReportPageDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.model.security.LCContext;
@@ -176,18 +177,29 @@ public class IngestionControllerTest {
     }
 
     @Test
-    @DisplayName("GET /reports - Should return 200 and list")
+    @DisplayName("GET /reports - Should return 200 and list from page")
     void findIngestionReports_Success() throws Exception {
         // GIVEN
-        List<IngestionReportDto> dtos = Collections.emptyList();
-        when(ingestionService.findIngestionReports()).thenReturn(dtos);
-        when(mapper.toIngestionReportList(dtos)).thenReturn(Collections.emptyList());
+        // Construimos el PageDto usando el builder de Lombok
+        IngestionReportPageDto pageDto = IngestionReportPageDto.builder()
+                .content(Collections.emptyList())
+                .totalElements(0L)
+                .totalPages(0)
+                .build();
+
+        // El controlador llama al servicio. Usamos any() para el filtro IngestionReportFilterDto
+        when(ingestionService.findIngestionReports(any())).thenReturn(pageDto);
+
+        // El controlador extrae la lista del PageDto para pasarla al mapper
+        // (Asegúrate de que en tu controlador hagas: pageDto.getContent())
+        when(mapper.toIngestionReportList(any())).thenReturn(Collections.emptyList());
 
         // WHEN & THEN
-        mockMvc.perform(get("/v1/ingestion/reports"))
+        mockMvc.perform(get("/v1/ingestion/reports")
+                        .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
 
-        verify(ingestionService).findIngestionReports();
+        verify(ingestionService).findIngestionReports(any());
     }
 
     @Test

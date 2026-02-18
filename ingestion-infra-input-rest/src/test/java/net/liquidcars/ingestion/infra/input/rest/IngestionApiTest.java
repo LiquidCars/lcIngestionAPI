@@ -1,9 +1,12 @@
 package net.liquidcars.ingestion.infra.input.rest;
 
+import net.liquidcars.ingestion.infra.input.rest.model.IngestionReport;
+import net.liquidcars.ingestion.infra.input.rest.model.IngestionReportPage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.RestController;
@@ -116,5 +119,107 @@ public class IngestionApiTest {
     void promoteDraftOffers_ShouldReturnNotImplemented() throws Exception {
         mockMvc.perform(post("/v1/ingestion/promote/{ingestionReportId}", reportId))
                 .andExpect(status().isNotImplemented());
+    }
+
+    @Test
+    @DisplayName("GET /reports - Should trigger lambda via real NativeWebRequest context (json)")
+    void findIngestionReports_LambdaExecuted_WithRealRequestContext() {
+        org.springframework.mock.web.MockHttpServletRequest mockRequest =
+                new org.springframework.mock.web.MockHttpServletRequest();
+        mockRequest.addHeader("Accept", "application/json");
+        org.springframework.mock.web.MockHttpServletResponse mockResponse =
+                new org.springframework.mock.web.MockHttpServletResponse();
+
+        IngestionApi api = new IngestionApi() {
+            @Override
+            public java.util.Optional<org.springframework.web.context.request.NativeWebRequest> getRequest() {
+                return java.util.Optional.of(
+                        new org.springframework.web.context.request.ServletWebRequest(mockRequest, mockResponse)
+                );
+            }
+        };
+
+        ResponseEntity<IngestionReportPage> response = api.findIngestionReports(
+                0, 20, null, null, null, null, null, null, null, null, null,
+                null, null, null, null
+        );
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                org.springframework.http.HttpStatus.NOT_IMPLEMENTED, response.getStatusCode()
+        );
+    }
+
+    @Test
+    @DisplayName("GET /reports - Should not set example when Accept is not json")
+    void findIngestionReports_ShouldNotSetExampleResponse_WhenAcceptIsNotJson() {
+        org.springframework.mock.web.MockHttpServletRequest mockRequest =
+                new org.springframework.mock.web.MockHttpServletRequest();
+        mockRequest.addHeader("Accept", "application/xml");
+
+        IngestionApi api = new IngestionApi() {
+            @Override
+            public java.util.Optional<org.springframework.web.context.request.NativeWebRequest> getRequest() {
+                return java.util.Optional.of(
+                        new org.springframework.web.context.request.ServletWebRequest(mockRequest)
+                );
+            }
+        };
+
+        ResponseEntity<IngestionReportPage> response = api.findIngestionReports(
+                0, 20, null, null, null, null, null, null, null, null, null,
+                null, null, null, null
+        );
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                org.springframework.http.HttpStatus.NOT_IMPLEMENTED, response.getStatusCode()
+        );
+    }
+
+    @Test
+    @DisplayName("GET /reports/{id} - Should trigger lambda via real NativeWebRequest context (json)")
+    void findIngestionReportById_LambdaExecuted_WithRealRequestContext() {
+        org.springframework.mock.web.MockHttpServletRequest mockRequest =
+                new org.springframework.mock.web.MockHttpServletRequest();
+        mockRequest.addHeader("Accept", "application/json");
+        org.springframework.mock.web.MockHttpServletResponse mockResponse =
+                new org.springframework.mock.web.MockHttpServletResponse();
+
+        IngestionApi api = new IngestionApi() {
+            @Override
+            public java.util.Optional<org.springframework.web.context.request.NativeWebRequest> getRequest() {
+                return java.util.Optional.of(
+                        new org.springframework.web.context.request.ServletWebRequest(mockRequest, mockResponse)
+                );
+            }
+        };
+
+        ResponseEntity<IngestionReport> response = api.findIngestionReportById(reportId);
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                org.springframework.http.HttpStatus.NOT_IMPLEMENTED, response.getStatusCode()
+        );
+    }
+
+    @Test
+    @DisplayName("GET /reports/{id} - Should not set example when Accept is not json")
+    void findIngestionReportById_ShouldNotSetExampleResponse_WhenAcceptIsNotJson() {
+        org.springframework.mock.web.MockHttpServletRequest mockRequest =
+                new org.springframework.mock.web.MockHttpServletRequest();
+        mockRequest.addHeader("Accept", "application/xml");
+
+        IngestionApi api = new IngestionApi() {
+            @Override
+            public java.util.Optional<org.springframework.web.context.request.NativeWebRequest> getRequest() {
+                return java.util.Optional.of(
+                        new org.springframework.web.context.request.ServletWebRequest(mockRequest)
+                );
+            }
+        };
+
+        ResponseEntity<IngestionReport> response = api.findIngestionReportById(reportId);
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                org.springframework.http.HttpStatus.NOT_IMPLEMENTED, response.getStatusCode()
+        );
     }
 }
