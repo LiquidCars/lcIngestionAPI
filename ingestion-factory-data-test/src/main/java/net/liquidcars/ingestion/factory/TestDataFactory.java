@@ -475,4 +475,33 @@ public class TestDataFactory {
         return org.instancio.Instancio.create(IngestionReportResponseActionDto.class);
     }
 
+    // ==================== IngestionReportResponseActionDto Factory ====================
+
+    public static CarInstanceEquipmentDto createCarInstanceEquipmentDto() {
+        return org.instancio.Instancio.create(CarInstanceEquipmentDto.class);
+    }
+
+    // ==================== VehicleInstanceDto Factory ====================
+
+    public static VehicleInstanceDto createVehicleInstanceDto() {
+        return org.instancio.Instancio.create(VehicleInstanceDto.class);
+    }
+
+    // ==================== VehicleModelDto Factory ====================
+
+    public static VehicleModelDto createVehicleModelDto() {
+        return org.instancio.Instancio.create(VehicleModelDto.class);
+    }
+
+    // ==================== VehicleModelDto Factory ====================
+
+    public static PostalAddressDto createPostalAddressDto() {
+        return org.instancio.Instancio.create(PostalAddressDto.class);
+    }
+
+    // ==================== VehicleModelDto Factory ====================
+
+    public static ParticipantAddressDto createParticipantAddressDto() {
+        return org.instancio.Instancio.create(ParticipantAddressDto.class);
+    }
 }
