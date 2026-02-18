@@ -18,7 +18,6 @@ import java.util.Locale;
 
 @Data
 @Schema(title="The Money Message object", description="A representation of money")
-@Value
 @JsonPropertyOrder({"amount", "currency"})
 public class MoneyMsg implements Serializable, Comparable<MoneyMsg>{
     @Schema(description = "The money amount")
