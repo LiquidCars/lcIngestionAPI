@@ -79,13 +79,9 @@ tasks.register('openApiIngestion', GenerateTask) {
             IngestionFormat: "net.liquidcars.ingestion.domain.model.batch.IngestionFormat",
             IngestionDumpType: "net.liquidcars.ingestion.domain.model.batch.IngestionDumpType",
             IngestionProcessType: "net.liquidcars.ingestion.domain.model.batch.IngestionProcessType",
-            IngestionBatchStatus: "net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus"
-    ]
-    importMappings = [
-            IngestionFormat     : "net.liquidcars.ingestion.domain.model.batch.IngestionFormat",
-            IngestionDumpType   : "net.liquidcars.ingestion.domain.model.batch.IngestionDumpType",
-            IngestionProcessType: "net.liquidcars.ingestion.domain.model.batch.IngestionProcessType",
-            IngestionBatchStatus: "net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus"
+            IngestionBatchStatus: "net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus",
+            IngestionReportSortField: "net.liquidcars.ingestion.domain.model.batch.IngestionReportSortField",
+            SortDirection: "net.liquidcars.ingestion.domain.model.SortDirection"
     ]
 }
 

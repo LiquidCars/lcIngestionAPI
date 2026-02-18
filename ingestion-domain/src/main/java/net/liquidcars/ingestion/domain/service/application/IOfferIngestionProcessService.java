@@ -27,7 +27,7 @@ public interface IOfferIngestionProcessService {
 
     void deleteDraftOffersByIngestionReportId(UUID ingestionReportId, boolean async);
 
-    List<IngestionReportDto> findIngestionReports(IngestionReportFilterDto filter);
+    IngestionReportPageDto findIngestionReports(IngestionReportFilterDto filter);
 
     IngestionReportDto findIngestionReportById(UUID ingestionReportId);
 }

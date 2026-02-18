@@ -3,6 +3,7 @@ package net.liquidcars.ingestion.application.service;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.IngestionPayloadDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.SortDirection;
 import net.liquidcars.ingestion.domain.model.batch.*;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
@@ -430,13 +431,37 @@ class OfferIngestionProcessServiceImplTest {
     }
 
     @Test
-    @DisplayName("Debe encontrar todos los reportes")
+    @DisplayName("Debe encontrar reportes paginados aplicando el filtro")
     void shouldFindAllIngestionReports() {
+        IngestionReportFilterDto filter = IngestionReportFilterDto.builder()
+                .page(0)
+                .size(20)
+                .sortBy(IngestionReportSortField.createdAt)
+                .sortDirection(SortDirection.DESC)
+                .build();
+
         IngestionReportDto reportDto = IngestionReportDtoFactory.getIngestionReportDto();
-        when(reportSqlService.findIngestionReports()).thenReturn(List.of(reportDto));
-        List<IngestionReportDto> result = service.findIngestionReports();
-        assertThat(result).isNotEmpty();
-        verify(reportSqlService).findIngestionReports();
+
+        IngestionReportPageDto expectedPage = IngestionReportPageDto.builder()
+                .content(List.of(reportDto))
+                .totalElements(1L)
+                .totalPages(1)
+                .size(20)
+                .number(0)
+                .last(true)
+                .build();
+
+        when(reportSqlService.findIngestionReports(any(IngestionReportFilterDto.class)))
+                .thenReturn(expectedPage);
+
+        IngestionReportPageDto result = service.findIngestionReports(filter);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getTotalElements()).isEqualTo(1L);
+        assertThat(result.getContent().getFirst().getId()).isEqualTo(reportDto.getId());
+
+        verify(reportSqlService).findIngestionReports(filter);
     }
 
     @Test

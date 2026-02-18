@@ -4,10 +4,8 @@ import net.liquidcars.ingestion.domain.model.CarOfferSellerTypeEnumDto;
 import net.liquidcars.ingestion.domain.model.IngestionPayloadDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
-import net.liquidcars.ingestion.infra.input.rest.model.CarOfferSellerTypeEnum;
-import net.liquidcars.ingestion.infra.input.rest.model.IngestionPayload;
-import net.liquidcars.ingestion.infra.input.rest.model.IngestionReport;
-import net.liquidcars.ingestion.infra.input.rest.model.OfferRequest;
+import net.liquidcars.ingestion.domain.model.batch.IngestionReportPageDto;
+import net.liquidcars.ingestion.infra.input.rest.model.*;
 import org.mapstruct.*;
 
 import java.util.List;
@@ -46,4 +44,6 @@ public interface IngestionControllerMapper {
     IngestionReport toIngestionReport(IngestionReportDto ingestionReportDto);
 
     List<IngestionReport> toIngestionReportList(List<IngestionReportDto> ingestionReportDtoList);
+
+    IngestionReportPage toIngestionReportPage(IngestionReportPageDto ingestionReportPageDto);
 }

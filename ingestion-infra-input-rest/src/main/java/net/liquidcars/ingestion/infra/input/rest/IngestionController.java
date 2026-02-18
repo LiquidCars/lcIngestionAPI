@@ -1,8 +1,12 @@
 package net.liquidcars.ingestion.infra.input.rest;
 
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.liquidcars.ingestion.domain.model.SortDirection;
 import net.liquidcars.ingestion.domain.model.batch.*;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
@@ -13,8 +17,10 @@ import net.liquidcars.ingestion.domain.service.context.IContextService;
 import net.liquidcars.ingestion.infra.input.rest.mapper.IngestionControllerMapper;
 import net.liquidcars.ingestion.infra.input.rest.model.IngestionPayload;
 import net.liquidcars.ingestion.infra.input.rest.model.IngestionReport;
+import net.liquidcars.ingestion.infra.input.rest.model.IngestionReportPage;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
@@ -118,7 +124,11 @@ public class IngestionController implements IngestionApi {
     // --- Management Endpoints ---
     @RolesAllowed({AccessRoleEnum.LCSupport_role, AccessRoleEnum.M2M_role})
     @Override
-    public ResponseEntity<List<IngestionReport>> findIngestionReports(
+    public ResponseEntity<IngestionReportPage> findIngestionReports(
+            Integer page,
+            Integer size,
+            IngestionReportSortField sortBy,
+            SortDirection sortDirection,
             IngestionProcessType processType,
             UUID requesterParticipantId,
             UUID inventoryId,
@@ -133,21 +143,25 @@ public class IngestionController implements IngestionApi {
     ){
 
         IngestionReportFilterDto filter = IngestionReportFilterDto.builder()
+                .page(page)
+                .size(size)
+                .sortBy(sortBy)
+                .sortDirection(sortDirection)
                 .processType(processType)
                 .requesterParticipantId(requesterParticipantId)
                 .inventoryId(inventoryId)
                 .externalRequestId(externalRequestId)
                 .status(status)
                 .dumpType(dumpType)
-                .processed(processed != null ? processed : false)
+                .processed(processed)
                 .createdFrom(createdFrom)
                 .createdTo(createdTo)
                 .updatedFrom(updatedFrom)
                 .updatedTo(updatedTo)
                 .build();
         log.info("REST: FindIngestionReports - Filtering request for filter {}", filter);
-        List<IngestionReportDto> ingestionReports = offerIngestionProcessService.findIngestionReports(filter);
-        return ResponseEntity.ok(ingestionControllerMapper.toIngestionReportList(ingestionReports));
+        IngestionReportPageDto ingestionReportPageDto = offerIngestionProcessService.findIngestionReports(filter);
+        return ResponseEntity.ok(ingestionControllerMapper.toIngestionReportPage(ingestionReportPageDto));
     }
 
     @RolesAllowed({AccessRoleEnum.LCSupport_role, AccessRoleEnum.M2M_role})
