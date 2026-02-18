@@ -7,8 +7,6 @@ import java.util.List;
 import java.util.UUID;
 
 public interface IOfferInfraSQLService {
-    void processOfferWithinTransaction(OfferDto offer);
-
     @Transactional
     long deleteOffersByInventoryId(UUID inventoryId);
 

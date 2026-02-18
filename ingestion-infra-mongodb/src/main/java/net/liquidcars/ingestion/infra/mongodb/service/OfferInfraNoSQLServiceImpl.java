@@ -328,7 +328,6 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
 
                 // When batch is full or stream ends, process the entire batch
                 if (batch.size() >= batchSize || !iterator.hasNext()) {
-
                     try {
                         // Process entire batch in ONE SQL transaction
                         List<UUID> batchPromotedIds = processBatchToSQL(new ArrayList<>(batch));
@@ -337,19 +336,8 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                         log.info("Processed SQL batch of {} offers. Total: {}", batchPromotedIds.size(), totalProcessed);
 
                     } catch (Exception e) {
-                        log.error("Batch failed, retrying individually", e);
-
-                        // Fallback: if batch fails, try one by one
-                        for (OfferDto offer : batch) {
-                            try {
-                                offerInfraSQLService.processOffer(offer);
-                                allPromotedIds.add(offer.getId());
-                                totalProcessed++;
-                            } catch (Exception individualError) {
-                                totalErrors++;
-                                log.error("Failed individual offer: {}", offer.getId(), individualError);
-                            }
-                        }
+                        log.error("Batch offer failed", e);
+                        totalErrors++;
                     }
 
                     batch.clear();
@@ -390,7 +378,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
 
         for (OfferDto offer : offers) {
             try {
-                offerInfraSQLService.processOfferWithinTransaction(offer);
+                offerInfraSQLService.processOffer(offer);
                 processedIds.add(offer.getId());
             } catch (Exception e) {
                 log.error("Error processing offer {} in batch", offer.getId(), e);

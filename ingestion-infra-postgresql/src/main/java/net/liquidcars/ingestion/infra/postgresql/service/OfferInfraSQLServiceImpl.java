@@ -14,6 +14,7 @@ import net.liquidcars.ingestion.infra.postgresql.entity.*;
 import net.liquidcars.ingestion.infra.postgresql.repository.*;
 import net.liquidcars.ingestion.infra.postgresql.service.mapper.OfferInfraSQLMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
@@ -34,31 +35,6 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     private final CarInstanceEquipmentEntityRepository carInstanceEquipmentEntityRepository;
     private final OfferInfraSQLMapper mapper;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
-
-    @Override
-    public void processOfferWithinTransaction(OfferDto offer) {
-        // Copy the logic from OfferInfraSQLServiceImpl.processOffer()
-        // but remove the @Transactional annotation
-
-        VehicleModelEntity vehicleModelEntity = ensureVehicleModelExists(offer.getVehicleInstance().getVehicleModel());
-        offerSqlRepository.findByHash(offer.getHash()).ifPresentOrElse(
-                existingEntity -> {
-                    OffsetDateTime incomingDate = mapper.mapEpoch(offer.getLastUpdated());
-                    OffsetDateTime existingDate = existingEntity.getLastUpdated() != null
-                            ? existingEntity.getLastUpdated()
-                            : existingEntity.getCreatedAt();
-
-                    if (incomingDate.isAfter(existingDate)) {
-                        log.debug("Updating existing offer ID: {}", offer.getId());
-                        updateFullOffer(existingEntity, offer, incomingDate, vehicleModelEntity);
-                    }
-                },
-                () -> {
-                    log.debug("Creating new offer ID: {}", offer.getId());
-                    createNewOffer(offer, vehicleModelEntity);
-                }
-        );
-    }
 
     @Transactional
     @Override
@@ -132,7 +108,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processOffer(OfferDto offer) {
         log.info("Processing SQL persistence for id: {}", offer.getId());
         try {
