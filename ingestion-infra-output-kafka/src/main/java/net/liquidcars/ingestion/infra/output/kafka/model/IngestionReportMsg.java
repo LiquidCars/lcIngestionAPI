@@ -21,7 +21,7 @@ public class IngestionReportMsg {
     private UUID requesterParticipantId;
     private UUID inventoryId;
     private String externalRequestId;
-    private OffsetDateTime publicationDate;
+    private String publicationDate;
     private String status;
     private IngestionDumpType dumpType;
     private Integer readCount;

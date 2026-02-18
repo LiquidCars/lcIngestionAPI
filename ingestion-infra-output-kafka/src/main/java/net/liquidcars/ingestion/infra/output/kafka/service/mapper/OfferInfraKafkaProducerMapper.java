@@ -29,6 +29,7 @@ public interface OfferInfraKafkaProducerMapper {
 
     @Mapping(target = "createdAt", source = "createdAt")
     @Mapping(target = "updatedAt", source = "updatedAt")
+    @Mapping(target = "publicationDate", source = "publicationDate")
     IngestionReportMsg toIngestionReportMsg(IngestionReportDto ingestionReportDto);
 
     default String map(OffsetDateTime value) {
