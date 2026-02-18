@@ -67,7 +67,8 @@ spring:
       enable-auto-commit: false
       properties:
         spring.json.trusted.packages: "*"
-
+        spring.json.type.mapping: >-
+          net.liquidcars.lcAPI.entities.ingestion.IngestionReportActionMsg:net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportActionMsg
       # --- NON-BLOCKING RETRY CONFIGURATION ---
       # This section manages how the consumer behaves when your Service
       # throws the LCIngestionException during the cleanup process.
@@ -106,7 +107,19 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: ${security.security-profile-issuer}
-
+net:
+  liquidcars:
+    ingestion:
+      infra:
+        output:
+          kafka:
+            model:
+              IngestionReportActionMsg:net:
+                liquidcars:
+                  lcAPI:
+                    entities:
+                      ingestion:
+                        IngestionReportActionMsg:
 #Liquibase Mongo config
 liquibase:
   mongodb:
