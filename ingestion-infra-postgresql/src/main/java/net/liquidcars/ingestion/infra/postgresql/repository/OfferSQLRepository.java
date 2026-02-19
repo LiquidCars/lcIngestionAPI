@@ -36,7 +36,7 @@ public interface OfferSQLRepository extends JpaRepository<OfferEntity, UUID> {
         DELETE FROM inv_ninof_inventoryoffers WHERE ofr_co_id IN (SELECT ofr_co_id FROM deleted_rows);
         SELECT count(*) FROM deleted_rows;
     """, nativeQuery = true)
-    long deleteByInventoryId(@Param("inventoryId") UUID inventoryId);
+    int deleteByInventoryId(@Param("inventoryId") UUID inventoryId);
 
     // 2. DELTA REPLACEMENT: Delete offers NOT present in the current job
     @Modifying
@@ -53,7 +53,7 @@ public interface OfferSQLRepository extends JpaRepository<OfferEntity, UUID> {
         DELETE FROM inv_ninof_inventoryoffers WHERE ofr_co_id IN (SELECT ofr_co_id FROM deleted_rows);
         SELECT count(*) FROM deleted_rows;
     """, nativeQuery = true)
-    long deleteByInventoryIdAndIdNotIn(@Param("inventoryId") UUID inventoryId, @Param("ids") List<UUID> ids);
+    int deleteByInventoryIdAndIdNotIn(@Param("inventoryId") UUID inventoryId, @Param("ids") List<UUID> ids);
 
     // 3. EXPLICIT DELETIONS: Delete specific references from JSON
     @Modifying
@@ -74,7 +74,7 @@ public interface OfferSQLRepository extends JpaRepository<OfferEntity, UUID> {
         DELETE FROM inv_ninof_inventoryoffers WHERE ofr_co_id IN (SELECT ofr_co_id FROM deleted_rows);
         SELECT count(*) FROM deleted_rows;
     """, nativeQuery = true)
-    long deleteByInventoryIdAndReferencesIn(
+    int deleteByInventoryIdAndReferencesIn(
             @Param("inventoryId") UUID inventoryId,
             @Param("references") List<String> references
     );

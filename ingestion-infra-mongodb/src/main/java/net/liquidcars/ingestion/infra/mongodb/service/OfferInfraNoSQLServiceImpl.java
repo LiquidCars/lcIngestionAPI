@@ -360,7 +360,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
 
     private void replaceOffers(IngestionDumpType dumpType, UUID inventoryId,
                                List<UUID> promotedNoSQLIds, List<UUID> promotedSQLIds) {
-        if (dumpType == IngestionDumpType.REPLACEMENT) {
+        if (dumpType == IngestionDumpType.REPLACEMENT && !promotedNoSQLIds.isEmpty() && !promotedSQLIds.isEmpty()) {
             log.info("Executing REPLACEMENT cleanup for inventoryId {}", inventoryId);
 
             // Delete from NoSQL
