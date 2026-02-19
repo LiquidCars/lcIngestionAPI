@@ -151,7 +151,7 @@ class OfferXmlProcessorTest {
     @Test
     void parseAndProcess_ShouldAddErrorToQueue_WhenMapperFails() throws Exception {
 
-        File file = new File("../testFiles/offers.xml");
+        File file = new File("../offersGenerators/motorflash_export.xml");
         InputStream inputStream = new FileInputStream(file);
 
         when(offerParserMapper.toOfferDto(any(OfferXMLModel.class)))

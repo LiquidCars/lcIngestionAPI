@@ -6,4 +6,5 @@ dependencies {
     implementation project(':ingestion-infra-input-rest')
     implementation project(':ingestion-infra-output-kafka')
     implementation('org.instancio:instancio-junit:4.0.0')
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 }

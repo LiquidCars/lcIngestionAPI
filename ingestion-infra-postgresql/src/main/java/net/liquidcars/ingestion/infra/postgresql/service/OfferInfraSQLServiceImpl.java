@@ -219,7 +219,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
      */
 
     private void saveOrUpdateEquipments(List<CarInstanceEquipmentDto> equipments, VehicleInstanceEntity vehicleInstance) {
-        if (equipments == null || equipments.isEmpty()) return;
+        if (equipments == null || equipments.isEmpty() || vehicleInstance == null) return;
         carInstanceEquipmentEntityRepository.deleteByVehicleInstanceId(vehicleInstance.getId());
         List<CarInstanceEquipmentEntity> entities = mapper.toCarInstanceEquipmentEntityList(equipments);
         entities.forEach(entity -> {

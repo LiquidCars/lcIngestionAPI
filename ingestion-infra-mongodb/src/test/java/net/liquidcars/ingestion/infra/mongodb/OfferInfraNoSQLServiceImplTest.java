@@ -3,6 +3,7 @@ package net.liquidcars.ingestion.infra.mongodb;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
+import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
 import net.liquidcars.ingestion.factory.DraftOfferNoSQLEntityFactory;
 import net.liquidcars.ingestion.factory.OfferDtoFactory;
@@ -20,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -32,7 +34,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-
 @ExtendWith(MockitoExtension.class)
 public class OfferInfraNoSQLServiceImplTest {
 
@@ -255,7 +256,6 @@ public class OfferInfraNoSQLServiceImplTest {
     void promoteDraftOffers_TotalFailure_Exception() {
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
         when(mongoTemplate.stream(any(), eq(DraftOfferNoSQLEntity.class))).thenReturn(Stream.of(draft));
-        // Forzamos un error en el mapeo para que totalErrors aumente y totalPromoted sea 0
         when(mapper.toVehicleOfferNoSQLEntity(any())).thenThrow(new RuntimeException("Mapping error"));
 
         assertThatThrownBy(() -> service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.UPDATE, UUID.randomUUID(), null))
@@ -263,24 +263,34 @@ public class OfferInfraNoSQLServiceImplTest {
     }
 
     @Test
-    @DisplayName("processBatchToSQL: Error en batch debe lanzar LCIngestionException")
-    void processBatchToSQL_Error_Coverage() {
+    @DisplayName("promoteDraftOffersToVehicleOffers: Failure in SQL promotion should throw LCIngestionException")
+    void promoteDraftOffersToVehicleOffers_SQL_Failure_Coverage() {
+        UUID reportId = UUID.randomUUID();
+        UUID inventoryId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
+        draft.setId(UUID.randomUUID());
+
         OfferDto dto = new OfferDto();
-        dto.setId(UUID.randomUUID());
+        dto.setId(draft.getId());
 
-        when(mongoTemplate.stream(any(), eq(DraftOfferNoSQLEntity.class)))
-                .thenReturn(Stream.empty()) // Parte NoSQL
-                .thenReturn(Stream.of(draft)); // Parte SQL
+        when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
+                .thenReturn(Stream.empty())
+                .thenReturn(Stream.of(draft));
 
-        when(mapper.toDto(any())).thenReturn(dto);
-        // Forzamos error dentro de processBatchToSQL (que es llamado por promoteDraftOffersToSQL)
-        doThrow(new RuntimeException("SQL Failure")).when(offerInfraSQLService).processOffer(any());
+        when(mapper.toDto(draft)).thenReturn(dto);
 
-        // El código atrapará el error del batch e intentará el fallback (individual)
-        service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.UPDATE, UUID.randomUUID(), null);
+        doThrow(new RuntimeException("SQL Connection Error"))
+                .when(offerInfraSQLService).processOffer(any(OfferDto.class));
 
-        verify(offerInfraSQLService).processOffer(any()); // Verifica que entró en el fallback
+        assertThatThrownBy(() ->
+                service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, inventoryId, null)
+        )
+                .isInstanceOf(LCIngestionException.class)
+                .hasMessageContaining("Error in promotion all offers are not processed: " + reportId)
+                .extracting("techCause")
+                .isEqualTo(LCTechCauseEnum.DATABASE);
+
+        verify(offerInfraSQLService).processOffer(dto);
     }
 
     @Test
@@ -303,25 +313,27 @@ public class OfferInfraNoSQLServiceImplTest {
     }
 
     @Test
-    @DisplayName("processBatchToSQL: Cobertura de excepción en batch")
+    @DisplayName("processBatchToSQL: Cobertura de excepción técnica genérica")
     void processBatchToSQL_TechnicalException_ShouldThrowLCIngestionException() {
+        UUID reportId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
         OfferDto dto = new OfferDto();
         dto.setId(UUID.randomUUID());
 
-        // Parte NoSQL vacía, Parte SQL con 1 elemento
-        when(mongoTemplate.stream(any(), eq(DraftOfferNoSQLEntity.class)))
+        when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
                 .thenReturn(Stream.empty())
                 .thenReturn(Stream.of(draft));
 
-        when(mapper.toDto(any())).thenReturn(dto);
+        when(mapper.toDto(draft)).thenReturn(dto);
 
-        // Forzamos una excepción genérica (no LCIngestionException) para cubrir el bloque else del catch
         doThrow(new RuntimeException("Generic SQL Error"))
-                .when(offerInfraSQLService).processOffer(any());
+                .when(offerInfraSQLService).processOffer(any(OfferDto.class));
 
-        // El código atrapará el error del batch y entrará en el fallback individual
-        service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.UPDATE, UUID.randomUUID(), null);
+        assertThatThrownBy(() ->
+                service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, UUID.randomUUID(), null)
+        )
+                .isInstanceOf(LCIngestionException.class)
+                .hasMessageContaining("Error in promotion all offers are not processed: " + reportId);
 
         verify(offerInfraSQLService).processOffer(dto);
     }
@@ -403,16 +415,35 @@ public class OfferInfraNoSQLServiceImplTest {
     }
 
     @Test
+    @DisplayName("processBatchToSQL: Cobertura de LCIngestionException (Rama if)")
     void processBatchToSQL_LCIngestionException_Coverage() {
+        // Arrange
+        UUID reportId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
-        when(mongoTemplate.stream(any(), any())).thenReturn(Stream.empty()).thenReturn(Stream.of(draft));
+
+        when(mongoTemplate.stream(any(), any()))
+                .thenReturn(Stream.empty())    // NoSQL
+                .thenReturn(Stream.of(draft)); // SQL
+
         when(mapper.toDto(any())).thenReturn(new OfferDto());
 
         // Lanzamos la excepción de dominio específicamente
-        doThrow(LCIngestionException.builder().message("Domain Error").build())
+        LCIngestionException domainError = LCIngestionException.builder()
+                .message("Domain Error")
+                .build();
+
+        doThrow(domainError)
                 .when(offerInfraSQLService).processOffer(any());
 
-        service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.UPDATE, UUID.randomUUID(), null);
+        // Act & Assert
+        assertThatThrownBy(() ->
+                service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, UUID.randomUUID(), null)
+        )
+                .isInstanceOf(LCIngestionException.class)
+                // El batch atrapa el error individual, pero al ser el único,
+                // acaba lanzando el mensaje de "Error in promotion..."
+                .hasMessageContaining("Error in promotion all offers are not processed: " + reportId);
+
         verify(offerInfraSQLService).processOffer(any());
     }
 
@@ -430,29 +461,29 @@ public class OfferInfraNoSQLServiceImplTest {
     }
 
     @Test
-    @DisplayName("promoteDraftOffersToSQL: Debe lanzar LCIngestionException genérica cuando el fallback también falla")
+    @DisplayName("promoteDraftOffersToSQL: Debe lanzar LCIngestionException genérica cuando el proceso SQL falla")
     void promoteDraftOffersToSQL_TotalFailure_Coverage() {
-        // GIVEN
         UUID reportId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
         OfferDto dto = new OfferDto();
         dto.setId(UUID.randomUUID());
 
-        when(mongoTemplate.stream(any(), any()))
-                .thenReturn(Stream.empty()) // Parte NoSQL OK
-                .thenReturn(Stream.of(draft)); // Parte SQL con 1 registro
+        when(mongoTemplate.stream(any(), eq(DraftOfferNoSQLEntity.class)))
+                .thenReturn(Stream.empty())
+                .thenReturn(Stream.of(draft));
+
         when(mapper.toDto(any())).thenReturn(dto);
 
-        // Forzamos fallo en el Batch
-        doThrow(new RuntimeException("Batch failure")).when(offerInfraSQLService).processOffer(any());
+        doThrow(new RuntimeException("SQL Critical Failure"))
+                .when(offerInfraSQLService).processOffer(any());
 
-        // Forzamos fallo en el Fallback individual
-        doThrow(new RuntimeException("Individual failure")).when(offerInfraSQLService).processOffer(any());
-
-        // WHEN & THEN
-        assertThatThrownBy(() -> service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, UUID.randomUUID(), null))
+        assertThatThrownBy(() ->
+                service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, UUID.randomUUID(), null)
+        )
                 .isInstanceOf(LCIngestionException.class)
                 .hasMessageContaining("Error in promotion all offers are not processed: " + reportId);
+
+        verify(offerInfraSQLService, atLeastOnce()).processOffer(any());
     }
 
     @Test
@@ -503,23 +534,37 @@ public class OfferInfraNoSQLServiceImplTest {
     }
 
     @Test
-    @DisplayName("processBatchToSQL: Debe propagar LCIngestionException para forzar rollback del batch")
+    @DisplayName("processBatchToSQL: Debe propagar LCIngestionException y capturar el fallo global")
     void processBatchToSQL_PropagateDomainException_Coverage() {
+        // GIVEN
+        UUID reportId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
         OfferDto dto = new OfferDto();
         dto.setId(UUID.randomUUID());
 
-        when(mongoTemplate.stream(any(), any())).thenReturn(Stream.empty()).thenReturn(Stream.of(draft));
+        when(mongoTemplate.stream(any(), any()))
+                .thenReturn(Stream.empty())    // NoSQL parte
+                .thenReturn(Stream.of(draft)); // SQL parte
+
         when(mapper.toDto(any())).thenReturn(dto);
 
         // Lanzamos la excepción de dominio
-        LCIngestionException domainEx = LCIngestionException.builder().message("Batch domain error").build();
+        LCIngestionException domainEx = LCIngestionException.builder()
+                .message("Batch domain error")
+                .build();
+
         doThrow(domainEx).when(offerInfraSQLService).processOffer(any());
 
-        // No validamos el throw final porque promoteDraftOffersToSQL capturará esto e intentará el fallback
-        service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.UPDATE, UUID.randomUUID(), null);
+        // WHEN & THEN
+        // Capturamos la excepción que lanza promoteDraftOffersToSQL cuando totalProcessed == 0
+        assertThatThrownBy(() ->
+                service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, UUID.randomUUID(), null)
+        )
+                .isInstanceOf(LCIngestionException.class)
+                .hasMessageContaining("Error in promotion all offers are not processed");
 
-        verify(offerInfraSQLService).processOffer(any()); // Verifica que tras fallar el batch, fue al fallback
+        // Verificamos que se intentó la llamada que disparó el error
+        verify(offerInfraSQLService).processOffer(any());
     }
 
     @Test
