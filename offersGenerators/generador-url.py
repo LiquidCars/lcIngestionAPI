@@ -638,7 +638,7 @@ print(f"—" * 40)
 
 if offers_to_delete:
     print(f"🗑️  Ofertas marcadas para eliminar: {len(offers_to_delete)}")
-
+"""
 # --- PREGUNTA PARA EJECUTAR INGESTIÓN ---
 ejecutar_ingestion = input("\n🚀 ¿Deseas ejecutar la URL de ingesta ahora? (s/n) [n]: ").strip().lower()
 
@@ -728,3 +728,4 @@ if borrar == 's':
         print(f"✅ Archivo {filename} eliminado correctamente")
     except Exception as e:
         print(f"⚠️ Error al eliminar: {e}")
+"""

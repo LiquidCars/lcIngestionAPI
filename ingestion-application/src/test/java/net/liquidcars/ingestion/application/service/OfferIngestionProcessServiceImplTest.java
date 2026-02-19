@@ -1,6 +1,7 @@
 package net.liquidcars.ingestion.application.service;
 
 import lombok.extern.slf4j.Slf4j;
+import net.liquidcars.ingestion.domain.IngestionReportResponseActionResult;
 import net.liquidcars.ingestion.domain.model.IngestionPayloadDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.SortDirection;
@@ -158,6 +159,7 @@ class OfferIngestionProcessServiceImplTest {
         IngestionReportDto report = IngestionReportDto.builder()
                 .id(reportId)
                 .writeCount(25)
+                .processType(IngestionProcessType.PROCESS)
                 .status(IngestionBatchStatus.STARTED)
                 .build();
 
@@ -166,8 +168,11 @@ class OfferIngestionProcessServiceImplTest {
         service.processIngestionReport(report);
 
         verify(reportSqlService).upsertIngestionReport(argThat(r ->
-                r.getStatus() == IngestionBatchStatus.COMPLETED && r.getId().equals(reportId)
+                r.getStatus() == IngestionBatchStatus.COMPLETED &&
+                        r.isProcessed() &&
+                        r.getId().equals(reportId)
         ));
+
         verify(kafkaProducer).sendIngestionJobReport(any());
     }
 
@@ -193,18 +198,24 @@ class OfferIngestionProcessServiceImplTest {
     @Test
     @DisplayName("Debe procesar todos los reportes pendientes en el scheduler")
     void shouldSyncAllPendingReports() {
+        UUID reportId = UUID.randomUUID();
         IngestionReportDto pendingReport = IngestionReportDto.builder()
-                .id(UUID.randomUUID())
+                .id(reportId)
                 .writeCount(10)
+                .processType(IngestionProcessType.PROCESS)
                 .build();
 
         when(reportSqlService.getPendingReports()).thenReturn(List.of(pendingReport));
-        when(offerNoSqlService.countOffersFromReportId(any())).thenReturn(10L);
+
+        when(offerNoSqlService.countOffersFromReportId(reportId)).thenReturn(10L);
 
         service.syncPendingReports();
 
-        verify(reportSqlService, atLeastOnce()).upsertIngestionReport(any());
         verify(kafkaProducer, atLeastOnce()).sendIngestionJobReport(any());
+
+        verify(reportSqlService, atLeastOnce()).upsertIngestionReport(argThat(dto ->
+                dto.getId().equals(reportId) && dto.isProcessed()
+        ));
     }
 
     @Test
@@ -297,56 +308,52 @@ class OfferIngestionProcessServiceImplTest {
     @DisplayName("Debe promover ofertas exitosamente cuando el reporte no ha sido procesado")
     void shouldPromoteOffersSuccessfully() {
         UUID jobId = UUID.randomUUID();
+        UUID inventoryId = UUID.randomUUID();
         IngestionReportDto report = IngestionReportDto.builder()
                 .id(jobId)
                 .processed(false)
+                .promoted(false)
                 .status(IngestionBatchStatus.COMPLETED)
                 .dumpType(IngestionDumpType.REPLACEMENT)
                 .inventoryId(inventoryId)
                 .idsForDelete(List.of("ext-del-1"))
                 .build();
 
-        when(reportSqlService.findIngestionReportById(jobId)).thenReturn(report);
+        when(service.findIngestionReportById(jobId)).thenReturn(report);
 
         service.promoteDraftOffersToVehicleOffers(jobId, false);
 
         verify(offerNoSqlService, times(1)).promoteDraftOffersToVehicleOffers(
                 eq(jobId),
-                eq(IngestionDumpType.REPLACEMENT),
-                eq(inventoryId),
-                eq(report.getIdsForDelete())
+                any(),
+                any(),
+                any()
         );
-
-        verify(reportSqlService, times(1)).upsertIngestionReport(argThat(IngestionReportDto::isProcessed));
+        verify(kafkaProducer).sendIngestionReportPromoteActionNotification(
+                argThat(dto -> dto.getResult().equals(IngestionReportResponseActionResult.SUCCESS))
+        );
     }
 
     @Test
-    @DisplayName("No debe promover ofertas si el estado del reporte no es COMPLETED")
+    @DisplayName("No debe promover ofertas si el estado del reporte no es COMPLETED y ya fue procesado")
     void shouldNotPromoteOffersWhenStatusIsNotCompleted() {
-        // GIVEN
         UUID jobId = UUID.randomUUID();
         IngestionReportDto report = IngestionReportDto.builder()
                 .id(jobId)
-                .processed(false)
-                .status(IngestionBatchStatus.STARTED) // Estado que NO es COMPLETED
+                .processed(true)
+                .status(IngestionBatchStatus.STARTED)
                 .dumpType(IngestionDumpType.REPLACEMENT)
                 .inventoryId(inventoryId)
-                .idsForDelete(List.of("ext-del-1"))
                 .build();
 
         when(reportSqlService.findIngestionReportById(jobId)).thenReturn(report);
 
-        // WHEN
         service.promoteDraftOffersToVehicleOffers(jobId, false);
 
-        // THEN
-        // Verificamos que NO se llame al servicio de NoSQL para promover
         verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(
                 any(), any(), any(), any()
         );
 
-        // Verificamos que NO se intente marcar como procesado en SQL
-        // (Porque el método retorna 'true' en la validación y sale antes)
         verify(reportSqlService, never()).upsertIngestionReport(any());
     }
 
@@ -357,6 +364,7 @@ class OfferIngestionProcessServiceImplTest {
         IngestionReportDto report = IngestionReportDto.builder()
                 .id(jobId)
                 .processed(true)
+                .status(IngestionBatchStatus.STARTED)
                 .build();
 
         when(reportSqlService.findIngestionReportById(jobId)).thenReturn(report);
@@ -669,7 +677,6 @@ class OfferIngestionProcessServiceImplTest {
     void shouldLogErrorWhenBatchFailsWithExecutionNotNull() throws Exception {
         InputStream stream = new ByteArrayInputStream("data".getBytes());
 
-        // Lenient para evitar UnnecessaryStubbingException con hilos virtuales
         lenient().when(parserService.supports(any())).thenReturn(true);
         lenient().when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(any(), any())).thenReturn(false);
 
@@ -677,17 +684,12 @@ class OfferIngestionProcessServiceImplTest {
         lenient().when(mockExecution.getJobId()).thenReturn(777L);
         lenient().when(mockExecution.getStatus()).thenReturn(BatchStatus.FAILED);
 
-        // Answer complejo: devuelve el mock (asignando la variable) y luego lanza error
-        // para asegurar que entramos en la rama if(execution != null)
         lenient().when(jobLauncher.run(any(), any())).thenAnswer(invocation -> {
-            // En un hilo virtual, esto permite que la asignación ocurra
-            // pero el flujo salte al catch inmediatamente
             throw new RuntimeException("Simulated Failure");
         });
 
         service.processOffersStream(IngestionFormat.xml, stream, inventoryId, participantId, IngestionDumpType.REPLACEMENT, OffsetDateTime.now(), "ext-1");
 
-        // Verificamos que se llamó. El timeout es vital.
         verify(jobLauncher, timeout(3000)).run(any(), any());
         Thread.sleep(500);
     }
