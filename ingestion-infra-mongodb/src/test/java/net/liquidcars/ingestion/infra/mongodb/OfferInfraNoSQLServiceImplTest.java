@@ -66,6 +66,7 @@ public class OfferInfraNoSQLServiceImplTest {
     }
 
     @Test
+    @DisplayName("processOffer: Debe actualizar el ID y guardar si la oferta entrante es más reciente")
     void processOffer_WhenOfferExistsAndIsNewer_ShouldUpdate() {
         OfferDto dto = OfferDtoFactory.getOfferDto();
         DraftOfferNoSQLEntity newEntity = DraftOfferNoSQLEntityFactory.getDraftOfferNoSQLEntity();
@@ -77,13 +78,14 @@ public class OfferInfraNoSQLServiceImplTest {
         existingEntity.setId(existingId);
 
         when(mapper.toEntity(dto)).thenReturn(newEntity);
-        when(repository.findById(dto.getId()))
-                .thenReturn(Optional.of(existingEntity));
+
+        when(repository.findByHash(dto.hashCode())).thenReturn(Optional.of(existingEntity));
 
         service.processOffer(dto);
 
         verify(repository, times(1)).save(newEntity);
-        assert(newEntity.getId().equals(existingId));
+
+        org.assertj.core.api.Assertions.assertThat(newEntity.getId()).isEqualTo(existingId);
     }
 
     @Test
@@ -92,11 +94,12 @@ public class OfferInfraNoSQLServiceImplTest {
         DraftOfferNoSQLEntity newEntity = DraftOfferNoSQLEntityFactory.getDraftOfferNoSQLEntity();
         DraftOfferNoSQLEntity existingEntity = DraftOfferNoSQLEntityFactory.getDraftOfferNoSQLEntity();
 
-        // existing is artificially in the future → guarantees it is newer
         existingEntity.setCreatedAt(Instant.now().plus(1, ChronoUnit.DAYS));
+        newEntity.setCreatedAt(Instant.now());
 
         when(mapper.toEntity(dto)).thenReturn(newEntity);
-        when(repository.findById(dto.getId()))
+
+        when(repository.findByHash(anyInt()))
                 .thenReturn(Optional.of(existingEntity));
 
         service.processOffer(dto);
@@ -107,7 +110,6 @@ public class OfferInfraNoSQLServiceImplTest {
     @Test
     @DisplayName("promoteDraftOffersToVehicleOffers: Debe procesar el flujo NoSQL correctamente")
     void promoteDraftOffers_NoSQLFlow_ShouldExecuteBulkOps() {
-        // GIVEN
         UUID reportId = UUID.randomUUID();
         UUID inventoryId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = DraftOfferNoSQLEntityFactory.getDraftOfferNoSQLEntity();
@@ -115,24 +117,20 @@ public class OfferInfraNoSQLServiceImplTest {
         vehicleEntity.setId(draft.getId());
         OfferDto offerDto = OfferDto.builder().id(draft.getId()).build();
 
-        // IMPORTANTE: Usamos .thenReturn(...) múltiple para que cada llamada reciba un Stream nuevo
         when(mongoTemplate.stream(any(), eq(DraftOfferNoSQLEntity.class)))
-                .thenReturn(Stream.of(draft))  // Primera llamada (NoSQL)
-                .thenReturn(Stream.of(draft)); // Segunda llamada (SQL)
+                .thenReturn(Stream.of(draft))
+                .thenReturn(Stream.of(draft));
 
         BulkOperations bulkOps = mock(BulkOperations.class);
         when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(VehicleOfferNoSQLEntity.class))).thenReturn(bulkOps);
         when(mongoTemplate.getConverter()).thenReturn(mock(org.springframework.data.mongodb.core.convert.MongoConverter.class));
         when(bulkOps.execute()).thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
 
-        // Configuramos los mappers para evitar el NullPointerException
         when(mapper.toVehicleOfferNoSQLEntity(draft)).thenReturn(vehicleEntity);
         when(mapper.toDto(draft)).thenReturn(offerDto);
 
-        // WHEN
         service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, inventoryId, null);
 
-        // THEN
         verify(bulkOps, atLeastOnce()).execute();
         verify(offerInfraSQLService, atLeastOnce()).processOffer(any());
     }
@@ -140,11 +138,9 @@ public class OfferInfraNoSQLServiceImplTest {
     @Test
     @DisplayName("promoteDraftOffers: En modo REPLACEMENT debe ejecutar borrados en SQL y NoSQL")
     void promoteDraftOffers_ReplacementMode_ShouldDeleteObsolete() {
-        // GIVEN
         UUID reportId = UUID.randomUUID();
         UUID inventoryId = UUID.randomUUID();
 
-        // Importante: Devolvemos streams vacíos para simular que no hay nada que promocionar
         when(mongoTemplate.stream(any(), eq(DraftOfferNoSQLEntity.class)))
                 .thenReturn(Stream.empty())
                 .thenReturn(Stream.empty());
@@ -152,25 +148,19 @@ public class OfferInfraNoSQLServiceImplTest {
         when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(VehicleOfferNoSQLEntity.class)))
                 .thenReturn(mock(BulkOperations.class));
 
-        // WHEN
         service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.REPLACEMENT, inventoryId, null);
 
-        // THEN
-        // Verificamos que en NoSQL se intenta borrar todo lo que NO esté en la lista vacía
         verify(vehicleOfferNoSqlRepository).deleteByInventoryIdAndIdNotIn(eq(inventoryId), anyList());
 
-        // CORRECCIÓN: Como la lista está vacía, el código llama a deleteOffersByInventoryId, no al ExcludingIds
         verify(offerInfraSQLService).deleteOffersByInventoryId(inventoryId);
     }
 
     @Test
     @DisplayName("countOffersFromJobId: Debería relanzar error de DB como LCIngestionException")
     void countOffers_WhenDatabaseFails_ShouldThrowLCIngestionException() {
-        // GIVEN
         UUID jobId = UUID.randomUUID();
         when(repository.countByJobIdentifier(jobId)).thenThrow(new RuntimeException("Mongo Down"));
 
-        // WHEN & THEN
         assertThatThrownBy(() -> service.countOffersFromJobId(jobId))
                 .isInstanceOf(LCIngestionException.class)
                 .hasMessageContaining("Failed to get offers from NoSQL by jobId");
@@ -186,29 +176,24 @@ public class OfferInfraNoSQLServiceImplTest {
     @Test
     @DisplayName("deleteOffersInPromotion: Debe cubrir NoSQL y SQL con referencias explícitas")
     void deleteOffersInPromotion_FullCoverage() {
-        // GIVEN
         UUID invId = UUID.randomUUID();
         List<String> toDelete = List.of("REF1");
 
-        // Configuración necesaria para que el flujo principal no explote antes de llegar al borrado
         when(mongoTemplate.stream(any(), eq(DraftOfferNoSQLEntity.class)))
-                .thenReturn(Stream.empty())  // Para NoSQL
-                .thenReturn(Stream.empty()); // Para SQL
+                .thenReturn(Stream.empty())
+                .thenReturn(Stream.empty());
 
         when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(VehicleOfferNoSQLEntity.class)))
                 .thenReturn(mock(BulkOperations.class));
 
-        // Mock para NoSQL (mongoTemplate.remove devuelve DeleteResult)
         com.mongodb.client.result.DeleteResult deleteResult = mock(com.mongodb.client.result.DeleteResult.class);
         when(deleteResult.getDeletedCount()).thenReturn(1L);
 
         when(mongoTemplate.remove(any(org.springframework.data.mongodb.core.query.Query.class), eq(VehicleOfferNoSQLEntity.class)))
                 .thenReturn(deleteResult);
 
-        // WHEN
         service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.UPDATE, invId, toDelete);
 
-        // THEN
         verify(offerInfraSQLService).deleteOffersByInventoryIdAndReferences(eq(invId), eq(toDelete));
         verify(mongoTemplate).remove(any(org.springframework.data.mongodb.core.query.Query.class), eq(VehicleOfferNoSQLEntity.class));
     }
@@ -216,11 +201,9 @@ public class OfferInfraNoSQLServiceImplTest {
     @Test
     @DisplayName("promoteDraftOffers: Cobertura de referencias nulas para entrar en los else")
     void promoteDraftOffers_NullReferences_Coverage() {
-        // GIVEN
         UUID reportId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
         draft.setId(UUID.randomUUID());
-        // Referencias nulas explícitamente
         draft.setOwnerReference(null);
         draft.setDealerReference(null);
         draft.setChannelReference(null);
@@ -228,7 +211,6 @@ public class OfferInfraNoSQLServiceImplTest {
         VehicleOfferNoSQLEntity vehicleEntity = new VehicleOfferNoSQLEntity();
         vehicleEntity.setId(draft.getId());
 
-        // Resolvemos la ambigüedad de bulkOps con el cast y any(Class.class)
         BulkOperations bulkOpsMock = mock(BulkOperations.class);
         when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(VehicleOfferNoSQLEntity.class)))
                 .thenReturn(bulkOpsMock);
@@ -236,17 +218,14 @@ public class OfferInfraNoSQLServiceImplTest {
         when(mongoTemplate.getConverter()).thenReturn(mock(org.springframework.data.mongodb.core.convert.MongoConverter.class));
         when(bulkOpsMock.execute()).thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
 
-        // Simulamos streams para NoSQL y SQL
         when(mongoTemplate.stream(any(), eq(DraftOfferNoSQLEntity.class)))
                 .thenReturn(Stream.of(draft))
                 .thenReturn(Stream.empty());
 
         when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(vehicleEntity);
 
-        // WHEN
         service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, UUID.randomUUID(), null);
 
-        // THEN
         verify(bulkOpsMock).upsert(any(), any());
         verify(mapper).toVehicleOfferNoSQLEntity(draft);
     }
@@ -365,10 +344,13 @@ public class OfferInfraNoSQLServiceImplTest {
     void processOffer_Exception_Coverage() {
         OfferDto dto = OfferDtoFactory.getOfferDto();
         when(mapper.toEntity(dto)).thenReturn(new DraftOfferNoSQLEntity());
-        when(repository.findById(any())).thenThrow(new RuntimeException("DB Error"));
+
+        when(repository.findByHash(anyInt())).thenThrow(new RuntimeException("DB Error"));
 
         assertThatThrownBy(() -> service.processOffer(dto))
                 .isInstanceOf(LCIngestionException.class);
+
+        verify(repository).findByHash(anyInt());
     }
 
     @Test
@@ -382,22 +364,19 @@ public class OfferInfraNoSQLServiceImplTest {
     @Test
     @DisplayName("promoteDraftOffers: Cobertura de referencias parciales (mix de null y empty)")
     void promoteDraftOffers_PartialReferences_Coverage() {
-        // GIVEN
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
         draft.setId(UUID.randomUUID());
-        draft.setOwnerReference("OWNER"); // Entra en el if
-        draft.setDealerReference("");    // Entra en el else (empty)
-        draft.setChannelReference(null); // Entra en el else (null)
+        draft.setOwnerReference("OWNER");
+        draft.setDealerReference("");
+        draft.setChannelReference(null);
 
         VehicleOfferNoSQLEntity vehicle = new VehicleOfferNoSQLEntity();
         vehicle.setId(draft.getId());
 
-        // Mock del Stream (doble retorno para NoSQL y SQL)
         when(mongoTemplate.stream(any(), eq(DraftOfferNoSQLEntity.class)))
                 .thenReturn(Stream.of(draft))
                 .thenReturn(Stream.empty());
 
-        // SOLUCIÓN AMBIGÜEDAD: Usar eq() con la clase específica
         BulkOperations bulkOpsMock = mock(BulkOperations.class);
         when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(VehicleOfferNoSQLEntity.class)))
                 .thenReturn(bulkOpsMock);
@@ -406,10 +385,8 @@ public class OfferInfraNoSQLServiceImplTest {
         when(bulkOpsMock.execute()).thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
         when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(vehicle);
 
-        // WHEN
         service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.UPDATE, UUID.randomUUID(), null);
 
-        // THEN
         verify(bulkOpsMock).upsert(any(), any());
         verify(bulkOpsMock).execute();
     }
@@ -417,17 +394,15 @@ public class OfferInfraNoSQLServiceImplTest {
     @Test
     @DisplayName("processBatchToSQL: Cobertura de LCIngestionException (Rama if)")
     void processBatchToSQL_LCIngestionException_Coverage() {
-        // Arrange
         UUID reportId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
 
         when(mongoTemplate.stream(any(), any()))
-                .thenReturn(Stream.empty())    // NoSQL
-                .thenReturn(Stream.of(draft)); // SQL
+                .thenReturn(Stream.empty())
+                .thenReturn(Stream.of(draft));
 
         when(mapper.toDto(any())).thenReturn(new OfferDto());
 
-        // Lanzamos la excepción de dominio específicamente
         LCIngestionException domainError = LCIngestionException.builder()
                 .message("Domain Error")
                 .build();
@@ -435,13 +410,10 @@ public class OfferInfraNoSQLServiceImplTest {
         doThrow(domainError)
                 .when(offerInfraSQLService).processOffer(any());
 
-        // Act & Assert
         assertThatThrownBy(() ->
                 service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, UUID.randomUUID(), null)
         )
                 .isInstanceOf(LCIngestionException.class)
-                // El batch atrapa el error individual, pero al ser el único,
-                // acaba lanzando el mensaje de "Error in promotion..."
                 .hasMessageContaining("Error in promotion all offers are not processed: " + reportId);
 
         verify(offerInfraSQLService).processOffer(any());
@@ -452,12 +424,12 @@ public class OfferInfraNoSQLServiceImplTest {
     void processOffer_DatabaseException_Coverage() {
         OfferDto dto = OfferDtoFactory.getOfferDto();
         when(mapper.toEntity(dto)).thenReturn(new DraftOfferNoSQLEntity());
-        // Forzamos error en el findById para entrar al catch
-        when(repository.findById(any())).thenThrow(new RuntimeException("Error Mongo"));
+
+        when(repository.findByHash(anyInt())).thenThrow(new RuntimeException("Error Mongo"));
 
         assertThatThrownBy(() -> service.processOffer(dto))
                 .isInstanceOf(LCIngestionException.class)
-                .hasMessageContaining("NoSQL persistence error");
+                .hasMessageContaining("NoSQL persistence error for id: " + dto.getId());
     }
 
     @Test
@@ -494,10 +466,12 @@ public class OfferInfraNoSQLServiceImplTest {
         incoming.setCreatedAt(Instant.now());
 
         DraftOfferNoSQLEntity existing = new DraftOfferNoSQLEntity();
-        existing.setCreatedAt(null); // Esto forzará shouldUpdate = true
+        existing.setId(UUID.randomUUID());
+        existing.setCreatedAt(null);
 
         when(mapper.toEntity(dto)).thenReturn(incoming);
-        when(repository.findById(any())).thenReturn(Optional.of(existing));
+
+        when(repository.findByHash(anyInt())).thenReturn(Optional.of(existing));
 
         service.processOffer(dto);
 
@@ -523,10 +497,12 @@ public class OfferInfraNoSQLServiceImplTest {
         incoming.setCreatedAt(Instant.now());
 
         DraftOfferNoSQLEntity existing = new DraftOfferNoSQLEntity();
-        existing.setCreatedAt(null); // Esto fuerza shouldUpdate = true
+        existing.setId(UUID.randomUUID());
+        existing.setCreatedAt(null);
 
         when(mapper.toEntity(dto)).thenReturn(incoming);
-        when(repository.findById(any())).thenReturn(Optional.of(existing));
+
+        when(repository.findByHash(anyInt())).thenReturn(Optional.of(existing));
 
         service.processOffer(dto);
 
@@ -536,34 +512,29 @@ public class OfferInfraNoSQLServiceImplTest {
     @Test
     @DisplayName("processBatchToSQL: Debe propagar LCIngestionException y capturar el fallo global")
     void processBatchToSQL_PropagateDomainException_Coverage() {
-        // GIVEN
         UUID reportId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
         OfferDto dto = new OfferDto();
         dto.setId(UUID.randomUUID());
 
         when(mongoTemplate.stream(any(), any()))
-                .thenReturn(Stream.empty())    // NoSQL parte
-                .thenReturn(Stream.of(draft)); // SQL parte
+                .thenReturn(Stream.empty())
+                .thenReturn(Stream.of(draft));
 
         when(mapper.toDto(any())).thenReturn(dto);
 
-        // Lanzamos la excepción de dominio
         LCIngestionException domainEx = LCIngestionException.builder()
                 .message("Batch domain error")
                 .build();
 
         doThrow(domainEx).when(offerInfraSQLService).processOffer(any());
 
-        // WHEN & THEN
-        // Capturamos la excepción que lanza promoteDraftOffersToSQL cuando totalProcessed == 0
         assertThatThrownBy(() ->
                 service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, UUID.randomUUID(), null)
         )
                 .isInstanceOf(LCIngestionException.class)
                 .hasMessageContaining("Error in promotion all offers are not processed");
 
-        // Verificamos que se intentó la llamada que disparó el error
         verify(offerInfraSQLService).processOffer(any());
     }
 
@@ -581,19 +552,14 @@ public class OfferInfraNoSQLServiceImplTest {
     @Test
     @DisplayName("purgeObsoleteOffers: Debe ejecutar el borrado y loguear el número de ofertas eliminadas")
     void purgeObsoleteOffers_Success_Coverage() {
-        // GIVEN
         int daysOld = 30;
         long expectedDeletedCount = 50L;
 
-        // Simulamos que el repositorio devuelve 50 registros borrados
         when(repository.deleteByBatchStatusNotCompletedAndUpdatedAtBefore(any(Instant.class)))
                 .thenReturn(expectedDeletedCount);
 
-        // WHEN
         service.purgeObsoleteOffers(daysOld);
 
-        // THEN
-        // Verificamos que se llamó al repositorio con una instancia de tiempo
         verify(repository, times(1)).deleteByBatchStatusNotCompletedAndUpdatedAtBefore(any(Instant.class));
     }
 
@@ -603,10 +569,10 @@ public class OfferInfraNoSQLServiceImplTest {
         DraftOfferNoSQLEntity incoming = new DraftOfferNoSQLEntity();
         incoming.setCreatedAt(Instant.now().plusSeconds(100));
         DraftOfferNoSQLEntity existing = new DraftOfferNoSQLEntity();
-        existing.setCreatedAt(Instant.now()); // Fecha presente para cubrir el 'if'
-
+        existing.setId(UUID.randomUUID());
+        existing.setCreatedAt(Instant.now());
         when(mapper.toEntity(dto)).thenReturn(incoming);
-        when(repository.findById(any())).thenReturn(Optional.of(existing));
+        when(repository.findByHash(anyInt())).thenReturn(Optional.of(existing));
         service.processOffer(dto);
         verify(repository).save(incoming);
     }
