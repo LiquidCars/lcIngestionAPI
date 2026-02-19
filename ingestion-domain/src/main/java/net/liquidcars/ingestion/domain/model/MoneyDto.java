@@ -18,7 +18,6 @@ import java.util.Locale;
 
 @Data
 @Schema(title="The Money DTO object", description="A representation of money")
-@Value
 @JsonPropertyOrder({"amount", "currency"})
 public class MoneyDto implements Serializable, Comparable<MoneyDto> {
 

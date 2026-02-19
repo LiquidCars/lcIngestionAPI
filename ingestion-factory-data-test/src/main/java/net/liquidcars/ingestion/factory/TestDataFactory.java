@@ -8,7 +8,13 @@ import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserExceptio
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.infra.input.rest.model.IngestionReport;
 import net.liquidcars.ingestion.infra.output.kafka.model.*;
+import net.liquidcars.ingestion.infra.postgresql.entity.report.IngestionBatchReportEntity;
+import net.liquidcars.ingestion.infra.postgresql.entity.report.IngestionReportEntity;
 import org.instancio.Instancio;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -64,6 +70,21 @@ public class TestDataFactory {
                 .set(field(OfferDto::getIngestionReportId), (UUID) null)
                 .set(field(OfferDto::getJobIdentifier), (UUID) null)
                 .ignore(field(OfferDto::getHash))
+                .create();
+    }
+
+    public static OfferDto createOfferDtoWithNullPrices() {
+        return Instancio.of(OfferDto.class)
+                .set(field(OfferDto::getPriceNew), null)
+                .set(field(OfferDto::getFinancedPrice), null)
+                .set(field(OfferDto::getSellerType), null)
+                .create();
+    }
+
+    public static OfferDto createOfferDtoWithSellerType(CarOfferSellerTypeEnumDto sellerType) {
+        return Instancio.of(OfferDto.class)
+                // Seteamos el valor exacto que queremos probar (puede ser null)
+                .set(field(OfferDto::getSellerType), sellerType)
                 .create();
     }
 
@@ -190,6 +211,31 @@ public class TestDataFactory {
                 .set(field(IngestionReportDto::getCreatedAt), OffsetDateTime.now())
                 .set(field(IngestionReportDto::getUpdatedAt), OffsetDateTime.now())
                 .create();
+    }
+
+    // ==================== IngestionReportEntity Factory ====================
+
+    public static IngestionReportEntity createIngestionReportEntity() {
+        return Instancio.of(IngestionReportEntity.class)
+                .set(field(IngestionReportEntity::getId), UUID.randomUUID())
+                .set(field(IngestionReportEntity::getStatus), IngestionBatchStatus.STARTED)
+                .set(field(IngestionReportEntity::isProcessed), false)
+                .set(field(IngestionReportEntity::getProcessType), IngestionProcessType.PROCESS)
+                .set(field(IngestionReportEntity::getDumpType), IngestionDumpType.REPLACEMENT)
+                .set(field(IngestionReportEntity::getReadCount), 0)
+                .set(field(IngestionReportEntity::getWriteCount), 0)
+                .set(field(IngestionReportEntity::getSkipCount), 0)
+                .set(field(IngestionReportEntity::getCreatedAt), OffsetDateTime.now())
+                .set(field(IngestionReportEntity::getUpdatedAt), OffsetDateTime.now())
+                .create();
+    }
+
+    public static Page<IngestionReportEntity> createIngestionReportPage(int count) {
+        List<IngestionReportEntity> content = Instancio.ofList(IngestionReportEntity.class)
+                .size(count)
+                .create();
+        // Creamos una página: contenido, configuración de página (página 0, tamaño 10), y total
+        return new PageImpl<>(content, PageRequest.of(0, 10), count);
     }
 
     // ==================== VehicleInstanceDto Factory ====================
@@ -481,6 +527,13 @@ public class TestDataFactory {
         return org.instancio.Instancio.create(CarInstanceEquipmentDto.class);
     }
 
+    public static CarInstanceEquipmentDto createCarInstanceEquipmentDtoWithData(String code, MoneyDto price) {
+        return Instancio.of(CarInstanceEquipmentDto.class)
+                .set(field(CarInstanceEquipmentDto::getCode), code)
+                .set(field(CarInstanceEquipmentDto::getPrice), price)
+                .create();
+    }
+
     // ==================== VehicleInstanceDto Factory ====================
 
     public static VehicleInstanceDto createVehicleInstanceDto() {
@@ -493,15 +546,74 @@ public class TestDataFactory {
         return org.instancio.Instancio.create(VehicleModelDto.class);
     }
 
-    // ==================== VehicleModelDto Factory ====================
+    // ==================== PostalAddressDto Factory ====================
 
     public static PostalAddressDto createPostalAddressDto() {
         return org.instancio.Instancio.create(PostalAddressDto.class);
     }
 
-    // ==================== VehicleModelDto Factory ====================
+    public static PostalAddressDto createPostalAddressDtoWithData(String code, String city) {
+        return Instancio.of(PostalAddressDto.class)
+                .set(field(PostalAddressDto::getPostalCode), code)
+                .set(field(PostalAddressDto::getCity), city)
+                .create();
+    }
+
+    // ==================== ParticipantAddressDto Factory ====================
 
     public static ParticipantAddressDto createParticipantAddressDto() {
         return org.instancio.Instancio.create(ParticipantAddressDto.class);
+    }
+
+    public static ParticipantAddressDto createParticipantAddressDtoWithData(PostalAddressDto ad, AddressTypeDto t) {
+        return Instancio.of(ParticipantAddressDto.class)
+                .set(field(ParticipantAddressDto::getAddress), ad)
+                .set(field(ParticipantAddressDto::getType), t)
+                .create();
+    }
+
+    public static ParticipantAddressDto createParticipantAddressDtoWithNullGps() {
+        return Instancio.of(ParticipantAddressDto.class)
+                .supply(field(ParticipantAddressDto::getAddress), () ->
+                        Instancio.of(PostalAddressDto.class)
+                                .set(field(PostalAddressDto::getGpsLocation), null)
+                                .create()
+                )
+                .create();
+    }
+
+    // ==================== CarOfferResourceDto Factory ====================
+
+    public static CarOfferResourceDto createCarOfferResourceDto() {
+        return org.instancio.Instancio.create(CarOfferResourceDto.class);
+    }
+
+    // ==================== MoneyDto Factory ====================
+
+    public static MoneyDto createMoneyDtoFull(BigDecimal amount, String currency) {
+        return Instancio.of(MoneyDto.class)
+                .set(field(MoneyDto::getAmount), amount)
+                .set(field(MoneyDto::getCurrency), currency)
+                .create();
+    }
+
+    // ==================== KeyValueDto Factory ====================
+
+    public static KeyValueDto createKeyValueDtoWithNullKey() {
+        return new KeyValueDto<>(null, "someValue");
+    }
+
+    // ==================== IngestionBatchReportEntity Factory ====================
+
+    public static List<IngestionBatchReportEntity> createIngestionBatchReportEntityList(int size) {
+        return Instancio.ofList(IngestionBatchReportEntity.class)
+                .size(size)
+                .create();
+    }
+
+    // ==================== IngestionReportFilterDto Factory ====================
+
+    public static IngestionReportFilterDto createFullIngestionReportFilter() {
+        return org.instancio.Instancio.create(IngestionReportFilterDto.class);
     }
 }
