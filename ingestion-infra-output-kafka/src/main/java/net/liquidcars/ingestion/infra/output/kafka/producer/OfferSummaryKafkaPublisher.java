@@ -18,7 +18,7 @@ public class OfferSummaryKafkaPublisher {
 
     public void sendSummaryOffer(OfferSummaryMsg offerSummary) {
         try {
-            log.info("Enviando a Kafka Tópico {}: {}", CREATE_OFFER_TOPIC, offerSummary);
+            log.info("Sending kafka topic {}: {}", CREATE_OFFER_TOPIC, offerSummary);
             kafkaTemplate.send(CREATE_OFFER_TOPIC, offerSummary.getId().toString(), offerSummary).get();
         } catch (Exception e) {
             throw LCIngestionException.builder()

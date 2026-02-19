@@ -19,7 +19,7 @@ public class IngestionReportPromoteActionKafkaPublisher {
 
     public void sendIngestionReportResponseAction(IngestionReportResponseActionMsg ingestionReportResponseActionMsg) {
         try {
-            log.info("Enviando a Kafka Tópico {}: {}", REPORT_PROMOTE_ACTION_RESULT_TOPIC, ingestionReportResponseActionMsg);
+            log.info("Sending kafka topic{}: {}", REPORT_PROMOTE_ACTION_RESULT_TOPIC, ingestionReportResponseActionMsg);
             kafkaTemplate.send(REPORT_PROMOTE_ACTION_RESULT_TOPIC, ingestionReportResponseActionMsg.getIngestionReportId(), ingestionReportResponseActionMsg).get();
         } catch (Exception e) {
             throw LCIngestionException.builder()

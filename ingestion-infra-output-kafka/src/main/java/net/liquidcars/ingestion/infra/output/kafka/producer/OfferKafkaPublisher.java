@@ -1,12 +1,14 @@
 package net.liquidcars.ingestion.infra.output.kafka.producer;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.infra.output.kafka.model.OfferMsg;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OfferKafkaPublisher {
@@ -16,6 +18,7 @@ public class OfferKafkaPublisher {
 
     public void sendOffer(OfferMsg offer) {
         try {
+            log.info("Sending kafka topic {}: {}", CREATE_OFFER_TOPIC, offer);
             kafkaTemplate.send(CREATE_OFFER_TOPIC, offer.getId().toString(), offer).get();
         } catch (Exception e) {
             throw LCIngestionException.builder()
