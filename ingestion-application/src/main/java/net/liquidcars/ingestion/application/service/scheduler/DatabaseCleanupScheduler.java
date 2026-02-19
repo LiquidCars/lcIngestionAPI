@@ -16,7 +16,6 @@ import org.springframework.stereotype.Component;
 public class DatabaseCleanupScheduler {
 
     private final IOfferInfraNoSQLService noSQLService;
-    private final IOfferInfraSQLService sqlService;
 
     @Value("${ingestion.purgeScheduler.days:7}")
     private int daysToKeep;
