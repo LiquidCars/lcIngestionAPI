@@ -9,12 +9,17 @@ import net.liquidcars.ingestion.infra.mongodb.entity.OfferNoSQLEntity;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface DraftOfferNoSqlRepository extends MongoRepository<DraftOfferNoSQLEntity, UUID> {
 
-
+    /**
+     * Find offer by hash
+     * @param hash hash offer generated and unique
+     */
+    Optional<DraftOfferNoSQLEntity> findByHash(int hash);
     /**
      * Deletes offers of a job report.
      * Changed return type to long to detect if deletion was effective.

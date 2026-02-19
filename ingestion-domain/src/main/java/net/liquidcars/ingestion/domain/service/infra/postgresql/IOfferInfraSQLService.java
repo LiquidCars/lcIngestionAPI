@@ -16,5 +16,6 @@ public interface IOfferInfraSQLService {
     @Transactional
     long deleteOffersByInventoryIdAndReferences(UUID inventoryId, List<String> externalReferences);
 
+    @Transactional
     void processOffer(OfferDto offer);
 }

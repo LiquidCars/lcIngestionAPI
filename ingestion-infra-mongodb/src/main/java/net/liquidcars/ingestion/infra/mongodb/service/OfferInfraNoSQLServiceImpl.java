@@ -54,7 +54,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         try {
             DraftOfferNoSQLEntity entity = offerInfraNoSQLMapper.toEntity(offer);
             entity.setCreatedAt(Instant.now());
-            draftOfferNoSqlRepository.findById(offer.getId())
+            draftOfferNoSqlRepository.findByHash(offer.hashCode())
                     .ifPresentOrElse(
                             existingOffer -> updateIfNewer(existingOffer, entity),
                             () -> draftOfferNoSqlRepository.save(entity)
@@ -181,9 +181,10 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
             while (iterator.hasNext()) {
                 try {
                     DraftOfferNoSQLEntity draft = iterator.next();
+                    int draftOfferHash = draft.hashCode();
 
-                    log.info("Processing draft offer - ID: {}, ownerRef: {}, dealerRef: {}, channelRef: {}",
-                            draft.getId(), draft.getOwnerReference(), draft.getDealerReference(), draft.getChannelReference());
+                    log.info("Processing draft offer - ID: {}, ownerRef: {}, dealerRef: {}, channelRef: {}, hash: {} ",
+                            draft.getId(), draft.getOwnerReference(), draft.getDealerReference(), draft.getChannelReference(), draftOfferHash);
 
                     VehicleOfferNoSQLEntity productionEntity = offerInfraNoSQLMapper.toVehicleOfferNoSQLEntity(draft);
                     promotedIds.add(productionEntity.getId());
@@ -192,50 +193,9 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                     // Match by inventory_id AND all present business references (AND logic)
                     List<Criteria> andCriteria = new ArrayList<>();
                     andCriteria.add(Criteria.where("inventory_id").is(inventoryId));
+                    andCriteria.add(Criteria.where("hash").is(draftOfferHash));
 
-                    boolean hasAnyReference = false;
-
-                    // Handle Owner Reference: match exact value or ensure it's null/doesn't exist
-                    if (draft.getOwnerReference() != null && !draft.getOwnerReference().isEmpty()) {
-                        andCriteria.add(Criteria.where("owner_reference").is(draft.getOwnerReference()));
-                        hasAnyReference = true;
-                    } else {
-                        andCriteria.add(new Criteria().orOperator(
-                                Criteria.where("owner_reference").is(null),
-                                Criteria.where("owner_reference").exists(false)
-                        ));
-                    }
-
-                    // Handle Dealer Reference: match exact value or ensure it's null/doesn't exist
-                    if (draft.getDealerReference() != null && !draft.getDealerReference().isEmpty()) {
-                        andCriteria.add(Criteria.where("dealer_reference").is(draft.getDealerReference()));
-                        hasAnyReference = true;
-                    } else {
-                        andCriteria.add(new Criteria().orOperator(
-                                Criteria.where("dealer_reference").is(null),
-                                Criteria.where("dealer_reference").exists(false)
-                        ));
-                    }
-
-                    // Handle Channel Reference: match exact value or ensure it's null/doesn't exist
-                    if (draft.getChannelReference() != null && !draft.getChannelReference().isEmpty()) {
-                        andCriteria.add(Criteria.where("channel_reference").is(draft.getChannelReference()));
-                        hasAnyReference = true;
-                    } else {
-                        andCriteria.add(new Criteria().orOperator(
-                                Criteria.where("channel_reference").is(null),
-                                Criteria.where("channel_reference").exists(false)
-                        ));
-                    }
-
-                    Query upsertQuery;
-
-                    // If business references exist, use composite AND criteria. Else, fallback to ID.
-                    if (hasAnyReference) {
-                        upsertQuery = new Query(new Criteria().andOperator(andCriteria.toArray(new Criteria[0])));
-                    } else {
-                        upsertQuery = new Query(Criteria.where("_id").is(productionEntity.getId()));
-                    }
+                    Query upsertQuery = new Query(new Criteria().andOperator(andCriteria.toArray(new Criteria[0])));
 
                     // 4. Prepare the Update object using $set for all fields
                     Document doc = new Document();

@@ -80,6 +80,7 @@ public interface OfferInfraSQLMapper {
     @Mapping(target = "ownerReference", source = "externalIdInfo.ownerReference")
     @Mapping(target = "dealerReference", source = "externalIdInfo.dealerReference")
     @Mapping(target = "channelReference", source = "externalIdInfo.channelReference")
+    @Mapping(target = "hash", expression = "java(offer.hashCode())")
     OfferEntity toEntity(OfferDto offer);
 
     @Named("uuidToSet")
@@ -156,8 +157,10 @@ public interface OfferInfraSQLMapper {
 
     @Named("epochToOffset")
     default OffsetDateTime mapEpoch(long epoch) {
+        if (epoch <= 0) return OffsetDateTime.now(ZoneOffset.UTC);
+
         return OffsetDateTime.ofInstant(
-                java.time.Instant.ofEpochSecond(epoch),
+                java.time.Instant.ofEpochMilli(epoch),
                 ZoneOffset.UTC
         );
     }

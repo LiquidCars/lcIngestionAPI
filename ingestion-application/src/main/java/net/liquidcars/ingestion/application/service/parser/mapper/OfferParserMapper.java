@@ -14,9 +14,11 @@ import org.mapstruct.ReportingPolicy;
 public interface OfferParserMapper {
 
     @Mapping(target = "id", expression = "java(java.util.UUID.randomUUID())")
+    @Mapping(target = "lastUpdated", expression = "java(System.currentTimeMillis())")
     OfferDto toOfferDto(OfferJSONModel offerJSONModel);
 
     @Mapping(target = "id", expression = "java(java.util.UUID.randomUUID())")
+    @Mapping(target = "lastUpdated", expression = "java(System.currentTimeMillis())")
     OfferDto toOfferDto(OfferXMLModel offerXMLModel);
 
     ExternalIdInfoDto toExternalIdInfoDto(ExternalIdInfoXMLModel externalIdInfoXMLModel);

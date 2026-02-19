@@ -21,7 +21,7 @@ public interface IngestionControllerMapper {
 
     @Named("toOfferDtoWithParticipant")
     @Mapping(target = "id", expression = "java(java.util.UUID.randomUUID())")
-    @Mapping(target = "lastUpdated", expression = "java(java.time.Instant.now().getEpochSecond())")
+    @Mapping(target = "lastUpdated", expression = "java(System.currentTimeMillis())")
     @Mapping(target = "participantId", source = "participantId")
     @Mapping(target = "inventoryId", source = "inventoryId")
     OfferDto toOfferDto(OfferRequest offerRequest, UUID participantId, UUID inventoryId);

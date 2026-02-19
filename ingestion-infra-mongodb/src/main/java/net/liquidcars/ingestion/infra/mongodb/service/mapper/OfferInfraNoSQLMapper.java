@@ -19,6 +19,7 @@ public interface OfferInfraNoSQLMapper {
     @Mapping(target = "ownerReference", source = "externalIdInfo.ownerReference")
     @Mapping(target = "dealerReference", source = "externalIdInfo.dealerReference")
     @Mapping(target = "channelReference", source = "externalIdInfo.channelReference")
+    @Mapping(target = "hash", expression = "java(offerDto.hashCode())")
     @Mapping(target = "lastUpdated", expression = "java(System.currentTimeMillis())")
     DraftOfferNoSQLEntity toEntity(OfferDto offerDto);
 

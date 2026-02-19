@@ -122,6 +122,7 @@ public class OfferDto implements Serializable {
         }
         //Init numbers should be primes, and different for each HashCodeBuilder in different classes
         return Math.abs(new HashCodeBuilder(61,73)
+                .append(externalIdInfo !=null ? externalIdInfo.hashCode() : 0).append(externalIdInfo)
                 .append(vehicleInstance !=null ? vehicleInstance.hashCode() : 0).append(ownerReference)
                 .append(dealerReference).append(channelReference).append(price).append(financedPrice).append(financedInstallmentAprox)
                 .append(financedText).append(priceNew).append(professionalPrice).append(taxDeductible).append(obs).append(internalNotes)

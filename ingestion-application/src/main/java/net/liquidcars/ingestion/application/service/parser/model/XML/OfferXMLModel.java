@@ -64,7 +64,7 @@ public class OfferXMLModel implements Serializable {
     private int hash; //Do not add to hashCode implementation
     @Schema(description = "Update date")
     private long lastUpdated; //default, now. Do not add to hashCode implementation
-    @Schema(description = "Update date")
+    @Schema(description = "json car offer id")
     private UUID jsonCarOfferId;
 
     public boolean isValid() {

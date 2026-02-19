@@ -15,6 +15,10 @@ import java.util.UUID;
 @Repository
 public interface OfferSQLRepository extends JpaRepository<OfferEntity, UUID> {
 
+    /**
+     * Find offer by hash
+     * @param hash hash offer generated and unique
+     */
     Optional<OfferEntity> findByHash(Integer hash);
 
     // For REPLACEMENT logic
