@@ -61,7 +61,11 @@ public class WebSecurityConfig {
                             "/favicon.ico",
                             "/error",
                             "/api/**",
-                            "/api/ingestion-api.yml"
+                            "/api/ingestion-api.yml",
+                            "/testFiles/**",
+                            "/static/**",
+                            "/resources/**",
+                            "/actuator/**"
                     ).permitAll()
                     .anyRequest().authenticated()
                 )

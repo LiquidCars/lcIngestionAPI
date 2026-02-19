@@ -160,6 +160,13 @@ management:
     web:
       exposure:
         include: health,info,metrics,prometheus
+    health:
+      show-details: always  # Esto permite ver qué falla exactamente (db, kafka, mongo)
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
   metrics:
     export:
       prometheus:
