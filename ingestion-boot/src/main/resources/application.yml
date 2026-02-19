@@ -203,16 +203,15 @@ ingestion:
   batch:
     chunk-size: 10
     skip-limit: 2
-  kafka:
-    topics:
-      offers: vehicle-offers
   purgeScheduler:
     enabled: true
     cron: "0 0 3 * * SUN" # Every Sunday at 3 AM
     days: 7
   syncScheduler:
     enabled: true
-    cron: "0 */1 * * * *" # Every 1 minutes
+    cron: "*/30 * * * * *" # Every 30 seconds
   batchSyncScheduler:
     enabled: true
-    cron: "0 */1 * * * *" # Every 1 minutes
+    cron: "*/30 * * * * *" # Every 30 seconds
+  startUpRunner:
+    enabled: true

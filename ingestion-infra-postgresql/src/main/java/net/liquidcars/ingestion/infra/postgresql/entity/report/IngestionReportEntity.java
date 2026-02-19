@@ -79,6 +79,10 @@ public class IngestionReportEntity {
     @Column(name = "processed", nullable = false)
     private boolean processed = false;
 
+    @Builder.Default
+    @Column(name = "promoted", nullable = false)
+    private boolean promoted = false;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;

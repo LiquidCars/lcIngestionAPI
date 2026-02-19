@@ -76,12 +76,20 @@ public class ReportInfraSQLServiceImpl implements IReportInfraSQLService {
     @Override
     public IngestionReportPageDto findIngestionReports(IngestionReportFilterDto filter) {
         try {
-            Sort sort = Sort.by(
-                    filter.getSortDirection() == SortDirection.ASC ? Sort.Direction.ASC : Sort.Direction.DESC,
-                    filter.getSortBy().name()
-            );
+            Sort.Direction direction = (filter.getSortDirection() == null || filter.getSortDirection() == SortDirection.DESC)
+                    ? Sort.Direction.DESC
+                    : Sort.Direction.ASC;
 
-            Pageable pageable = PageRequest.of(filter.getPage(), filter.getSize(), sort);
+            String sortByField = (filter.getSortBy() == null)
+                    ? IngestionReportSortField.updatedAt.name()
+                    : filter.getSortBy().name();
+
+            Sort sort = Sort.by(direction, sortByField);
+
+            int page = (filter.getPage() == null || filter.getPage() < 0) ? 0 : filter.getPage();
+            int size = (filter.getSize() == null || filter.getSize() <= 0) ? 10 : filter.getSize();
+
+            Pageable pageable = PageRequest.of(page, size, sort);
 
             Specification<IngestionReportEntity> spec = IngestionReportSpecification.filterBy(filter);
 

@@ -348,6 +348,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         ingestionReportDto.setSkipCount((int) ingestionBatchReportDto.getSkipCount());
         ingestionReportDto.setFailedExternalIds(ingestionBatchReportDto.getFailedExternalIds());
         ingestionReportDto.setIdsForDelete(ingestionBatchReportDto.getIdsForDelete());
+        ingestionReportDto.setStatus(ingestionBatchReportDto.getStatus());
         ingestionReportDto.setUpdatedAt(OffsetDateTime.now());
     }
 
@@ -393,7 +394,10 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
             );
         }
         if (shouldMarkAsProcessed) {
-            ingestionReportDto.setStatus(IngestionBatchStatus.COMPLETED);
+            if (ingestionReportDto.getProcessType().equals(IngestionProcessType.PROCESS)) { //This case is from json api processing not from a batch file
+                ingestionReportDto.setStatus(IngestionBatchStatus.COMPLETED);
+            }
+            ingestionReportDto.setProcessed(true);
             iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
             offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
         }
@@ -407,7 +411,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         try {
             offerInfraNoSQLService.promoteDraftOffersToVehicleOffers(ingestionReportId, ingestionReportDto.getDumpType(), ingestionReportDto.getInventoryId(), ingestionReportDto.getIdsForDelete());
             //Once promotion process is completed we mark job as processed and we update
-            ingestionReportDto.setProcessed(true);
+            ingestionReportDto.setPromoted(true);
             iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
             offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
             log.debug("Finish promotion for jobIdentifier: {}", ingestionReportId);
@@ -431,11 +435,11 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     }
 
     private static boolean validatePromotion(UUID ingestionReportId, IngestionReportDto ingestionReportDto) {
-        if(ingestionReportDto.isProcessed()){
-            log.warn("Cannot promote offers with jobIdentifier: {}. The job was processed yet.", ingestionReportId);
+        if(ingestionReportDto.isPromoted()){
+            log.warn("Cannot promote offers with jobIdentifier: {}. The job was promoted yet.", ingestionReportId);
             return true;
         }
-        if(!ingestionReportDto.getStatus().equals(IngestionBatchStatus.COMPLETED)){
+        if(!ingestionReportDto.getStatus().equals(IngestionBatchStatus.COMPLETED) && ingestionReportDto.isProcessed()){
             log.warn("Cannot promote offers with jobIdentifier: {}. The job is not completed.", ingestionReportId);
             return true;
         }

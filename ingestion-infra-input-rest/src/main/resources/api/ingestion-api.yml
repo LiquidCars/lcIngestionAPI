@@ -156,6 +156,11 @@ paths:
           required: false
           schema:
             type: boolean
+        - name: promoted
+          in: query
+          required: false
+          schema:
+            type: boolean
         - name: createdFrom
           in: query
           required: false
@@ -637,6 +642,8 @@ components:
           items:
             type: string
         processed:
+          type: boolean
+        promoted:
           type: boolean
         createdAt:
           type: string

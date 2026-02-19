@@ -35,6 +35,9 @@ public class IngestionReportSpecification {
             if (filter.getProcessed() != null)
                 predicates.add(cb.equal(root.get("processed"), filter.getProcessed()));
 
+            if (filter.getPromoted() != null)
+                predicates.add(cb.equal(root.get("promoted"), filter.getPromoted()));
+
             if (filter.getCreatedFrom() != null)
                 predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), filter.getCreatedFrom()));
             if (filter.getCreatedTo() != null)

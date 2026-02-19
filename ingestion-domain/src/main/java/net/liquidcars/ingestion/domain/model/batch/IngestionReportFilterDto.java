@@ -23,6 +23,7 @@ public class IngestionReportFilterDto {
     private IngestionBatchStatus status;
     private IngestionDumpType dumpType;
     private Boolean processed;
+    private Boolean promoted;
     private OffsetDateTime createdFrom;
     private OffsetDateTime createdTo;
     private OffsetDateTime updatedFrom;

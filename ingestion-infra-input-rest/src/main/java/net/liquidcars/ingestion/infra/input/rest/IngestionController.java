@@ -1,9 +1,6 @@
 package net.liquidcars.ingestion.infra.input.rest;
 
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import jakarta.annotation.security.RolesAllowed;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.SortDirection;
@@ -20,14 +17,12 @@ import net.liquidcars.ingestion.infra.input.rest.model.IngestionReport;
 import net.liquidcars.ingestion.infra.input.rest.model.IngestionReportPage;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -136,6 +131,7 @@ public class IngestionController implements IngestionApi {
             IngestionBatchStatus status,
             IngestionDumpType dumpType,
             Boolean processed,
+            Boolean promoted,
             OffsetDateTime createdFrom,
             OffsetDateTime createdTo,
             OffsetDateTime updatedFrom,
@@ -154,6 +150,7 @@ public class IngestionController implements IngestionApi {
                 .status(status)
                 .dumpType(dumpType)
                 .processed(processed)
+                .promoted(promoted)
                 .createdFrom(createdFrom)
                 .createdTo(createdTo)
                 .updatedFrom(updatedFrom)

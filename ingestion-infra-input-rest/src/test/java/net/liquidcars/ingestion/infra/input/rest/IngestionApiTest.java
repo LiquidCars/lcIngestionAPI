@@ -141,7 +141,7 @@ public class IngestionApiTest {
 
         ResponseEntity<IngestionReportPage> response = api.findIngestionReports(
                 0, 20, null, null, null, null, null, null, null, null, null,
-                null, null, null, null
+                null, null,null, null, null
         );
 
         org.junit.jupiter.api.Assertions.assertEquals(
@@ -167,7 +167,7 @@ public class IngestionApiTest {
 
         ResponseEntity<IngestionReportPage> response = api.findIngestionReports(
                 0, 20, null, null, null, null, null, null, null, null, null,
-                null, null, null, null
+                null, null,null, null, null
         );
 
         org.junit.jupiter.api.Assertions.assertEquals(

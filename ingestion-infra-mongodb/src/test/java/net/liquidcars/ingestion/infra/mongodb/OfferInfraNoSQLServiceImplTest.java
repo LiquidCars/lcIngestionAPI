@@ -133,7 +133,7 @@ public class OfferInfraNoSQLServiceImplTest {
 
         // THEN
         verify(bulkOps, atLeastOnce()).execute();
-        verify(offerInfraSQLService, atLeastOnce()).processOfferWithinTransaction(any());
+        verify(offerInfraSQLService, atLeastOnce()).processOffer(any());
     }
 
     @Test
@@ -275,7 +275,7 @@ public class OfferInfraNoSQLServiceImplTest {
 
         when(mapper.toDto(any())).thenReturn(dto);
         // Forzamos error dentro de processBatchToSQL (que es llamado por promoteDraftOffersToSQL)
-        doThrow(new RuntimeException("SQL Failure")).when(offerInfraSQLService).processOfferWithinTransaction(any());
+        doThrow(new RuntimeException("SQL Failure")).when(offerInfraSQLService).processOffer(any());
 
         // El código atrapará el error del batch e intentará el fallback (individual)
         service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.UPDATE, UUID.randomUUID(), null);
@@ -318,7 +318,7 @@ public class OfferInfraNoSQLServiceImplTest {
 
         // Forzamos una excepción genérica (no LCIngestionException) para cubrir el bloque else del catch
         doThrow(new RuntimeException("Generic SQL Error"))
-                .when(offerInfraSQLService).processOfferWithinTransaction(any());
+                .when(offerInfraSQLService).processOffer(any());
 
         // El código atrapará el error del batch y entrará en el fallback individual
         service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.UPDATE, UUID.randomUUID(), null);
@@ -410,7 +410,7 @@ public class OfferInfraNoSQLServiceImplTest {
 
         // Lanzamos la excepción de dominio específicamente
         doThrow(LCIngestionException.builder().message("Domain Error").build())
-                .when(offerInfraSQLService).processOfferWithinTransaction(any());
+                .when(offerInfraSQLService).processOffer(any());
 
         service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.UPDATE, UUID.randomUUID(), null);
         verify(offerInfraSQLService).processOffer(any());
@@ -444,7 +444,7 @@ public class OfferInfraNoSQLServiceImplTest {
         when(mapper.toDto(any())).thenReturn(dto);
 
         // Forzamos fallo en el Batch
-        doThrow(new RuntimeException("Batch failure")).when(offerInfraSQLService).processOfferWithinTransaction(any());
+        doThrow(new RuntimeException("Batch failure")).when(offerInfraSQLService).processOffer(any());
 
         // Forzamos fallo en el Fallback individual
         doThrow(new RuntimeException("Individual failure")).when(offerInfraSQLService).processOffer(any());
@@ -514,7 +514,7 @@ public class OfferInfraNoSQLServiceImplTest {
 
         // Lanzamos la excepción de dominio
         LCIngestionException domainEx = LCIngestionException.builder().message("Batch domain error").build();
-        doThrow(domainEx).when(offerInfraSQLService).processOfferWithinTransaction(any());
+        doThrow(domainEx).when(offerInfraSQLService).processOffer(any());
 
         // No validamos el throw final porque promoteDraftOffersToSQL capturará esto e intentará el fallback
         service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.UPDATE, UUID.randomUUID(), null);
