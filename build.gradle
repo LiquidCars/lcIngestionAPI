@@ -6,7 +6,7 @@ plugins {
     id 'jacoco-report-aggregation'
     id 'test-report-aggregation'
     id 'org.sonarqube' version '4.4.1.3373'
-}
+    id 'com.google.cloud.tools.jib' version '3.5.3'}
 
 group = 'net.liquidcars'
 version = '1.0.0-SNAPSHOT'
@@ -141,5 +141,70 @@ sonar {
         property 'sonar.coverage.jacoco.xmlReportPaths', 
             'build/reports/jacoco/testCodeCoverageReport/testCodeCoverageReport.xml'
         property 'sonar.java.source', '21'
+    }
+}
+
+// Read and increment version from file
+def getVersionFromFile() {
+    def versionFile = file('version.txt')
+    if (versionFile.exists()) {
+        return versionFile.text.trim()
+    } else {
+        return '0.0.1'
+    }
+
+        def currentVersion = versionFile.text.trim()
+        def versionParts = currentVersion.split('\\.')
+        def major = versionParts[0] as Integer
+        def minor = versionParts[1] as Integer
+        def patch = versionParts[2] as Integer + 1
+
+        def newVersion = "${major}.${minor}.${patch}"
+        versionFile.text = newVersion
+
+        println "Version incremented from ${currentVersion} to ${newVersion}"
+
+        // For test and prod, we should commit and tag the release.
+        def ENV_VAR = System.getenv('ENV')
+        if (ENV_VAR != "dev") {
+            exec { commandLine 'git', 'add', 'version.txt' }
+            exec { commandLine 'git', 'commit', '-m', "Release version ${currentVersion}" }
+            exec { commandLine 'git', 'tag', "v${currentVersion}" }
+        }
+}
+
+
+jib {
+
+    //dependsOn 'updateVersion', 'build'
+    // updated by incrementVersion
+    def imageVersion = getVersionFromFile()
+
+    //println "Version for image ${imageVersion}"
+
+    // This is usually set in the deploy.sh script.
+    def ENV_VAR = System.getenv('ENV')
+
+    from {
+        // See https://mcr.microsoft.com/en-us/artifact/mar/openjdk/jdk/tags
+        image = 'mcr.microsoft.com/openjdk/jdk:21-distroless@sha256:ed2544cbbf0fd6476c1c4d158c570f1a0606a67f85a439ffddfad6d6b3f72084'
+    }
+    to {
+        image = 'liquidcars.azurecr.io/liquidcars/' + ENV_VAR + '/ingestion'
+        // tags = ['latest', imageVersion]
+        project.gradle.projectsEvaluated {
+            tags = [imageVersion]
+            }
+        auth {
+            // from .env or from CI/CD pipeline
+            username = "liquidcars"
+            password = "wpXdKUJPs5HCbYe0NaZPUxrKSgIT0ZGlEIru4FzSUB+ACRAQBSFR"
+            //username = "$System.env.ACR_CREDENTIALS_USR"
+            //password = "$System.env.ACR_CREDENTIALS_PWD"
+        }
+    }
+    container {
+        //jvmFlags = ['-Xms512m', '-Xmx512m']
+        mainClass = 'net.liquidcars.ingestion.IngestionApiApplication'
     }
 }
