@@ -197,10 +197,8 @@ jib {
             }
         auth {
             // from .env or from CI/CD pipeline
-            username = "liquidcars"
-            password = "wpXdKUJPs5HCbYe0NaZPUxrKSgIT0ZGlEIru4FzSUB+ACRAQBSFR"
-            //username = "$System.env.ACR_CREDENTIALS_USR"
-            //password = "$System.env.ACR_CREDENTIALS_PWD"
+            username = "$System.env.ACR_CREDENTIALS_USR"
+            password = "$System.env.ACR_CREDENTIALS_PWD"
         }
     }
     container {
