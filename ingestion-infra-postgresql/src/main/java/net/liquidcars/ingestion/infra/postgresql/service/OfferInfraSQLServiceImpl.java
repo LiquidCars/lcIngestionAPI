@@ -3,10 +3,7 @@ package net.liquidcars.ingestion.infra.postgresql.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.liquidcars.ingestion.domain.model.CarInstanceEquipmentDto;
-import net.liquidcars.ingestion.domain.model.CarOfferResourceDto;
-import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.domain.model.VehicleModelDto;
+import net.liquidcars.ingestion.domain.model.*;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
@@ -20,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -39,72 +37,59 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     @Transactional
     @Override
     public long deleteOffersByInventoryId(UUID inventoryId) {
-        log.info("Starting deletion of all offers for inventoryId: {}", inventoryId);
+        log.info("Starting full deletion for inventoryId: {}", inventoryId);
         try {
-            long deletedCount = offerSqlRepository.deleteByInventoryId(inventoryId);
-            log.info("Successfully deleted {} offers for inventoryId: {}", deletedCount, inventoryId);
-            return deletedCount;
+            offerSqlRepository.deleteCarloanPreviewByInventoryId(inventoryId);
+            offerSqlRepository.deletePreordersCartByInventoryId(inventoryId);
+            offerSqlRepository.deleteTinyLocatorsByInventoryId(inventoryId);
+            offerSqlRepository.deleteResourcesByInventoryId(inventoryId);
+            return offerSqlRepository.deleteMainOfferData(inventoryId);
         } catch (Exception e) {
-            log.error("Failed to delete offers for inventoryId: {}", inventoryId, e);
-            throw LCIngestionException.builder()
-                    .techCause(LCTechCauseEnum.DATABASE)
-                    .message("SQL deletion error for inventoryId: " + inventoryId)
-                    .cause(e)
-                    .build();
+            throw handleDeletionError(inventoryId, e);
         }
     }
 
     @Transactional
     @Override
     public long deleteOffersByInventoryIdExcludingIds(UUID inventoryId, List<UUID> idsToKeep) {
-        log.info("Starting deletion of offers for inventoryId: {} excluding {} IDs",
-                inventoryId, idsToKeep.size());
+        log.info("Starting delta deletion for inventoryId: {} (keeping {} offers)", inventoryId, idsToKeep.size());
         try {
-            if (idsToKeep.isEmpty()) {
-                log.warn("No IDs to keep provided - deleting all offers for inventoryId: {}", inventoryId);
-                return deleteOffersByInventoryId(inventoryId);
-            }
+            if (idsToKeep.isEmpty()) return deleteOffersByInventoryId(inventoryId);
 
-            long deletedCount = offerSqlRepository.deleteByInventoryIdAndIdNotIn(inventoryId, idsToKeep);
-            log.info("Successfully deleted {} offers for inventoryId: {} (kept {} offers)",
-                    deletedCount, inventoryId, idsToKeep.size());
-            return deletedCount;
+            offerSqlRepository.deleteCarloanPreviewByInventoryExcluding(inventoryId, idsToKeep);
+            offerSqlRepository.deletePreordersCartByInventoryExcluding(inventoryId, idsToKeep);
+            offerSqlRepository.deleteTinyLocatorsByInventoryExcluding(inventoryId, idsToKeep);
+            offerSqlRepository.deleteResourcesByInventoryExcluding(inventoryId, idsToKeep);
+            return offerSqlRepository.deleteMainOfferDataExcluding(inventoryId, idsToKeep);
         } catch (Exception e) {
-            log.error("Failed to delete offers for inventoryId: {} excluding IDs", inventoryId, e);
-            throw LCIngestionException.builder()
-                    .techCause(LCTechCauseEnum.DATABASE)
-                    .message("SQL deletion error for inventoryId: " + inventoryId + " excluding specific IDs")
-                    .cause(e)
-                    .build();
+            throw handleDeletionError(inventoryId, e);
         }
     }
 
     @Transactional
     @Override
     public long deleteOffersByInventoryIdAndReferences(UUID inventoryId, List<String> externalReferences) {
-        log.info("Starting deletion of {} offers by references for inventoryId: {}",
-                externalReferences.size(), inventoryId);
+        log.info("Starting explicit reference deletion for inventoryId: {}", inventoryId);
         try {
-            if (externalReferences.isEmpty()) {
-                log.warn("No external references provided for deletion");
-                return 0;
-            }
+            if (externalReferences.isEmpty()) return 0;
 
-            long deletedCount = offerSqlRepository.deleteByInventoryIdAndReferencesIn(
-                    inventoryId,
-                    externalReferences
-            );
-            log.info("Successfully deleted {} offers by references for inventoryId: {}",
-                    deletedCount, inventoryId);
-            return deletedCount;
+            offerSqlRepository.deleteCarloanPreviewByReferences(inventoryId, externalReferences);
+            offerSqlRepository.deletePreordersCartByReferences(inventoryId, externalReferences);
+            offerSqlRepository.deleteTinyLocatorsByReferences(inventoryId, externalReferences);
+            offerSqlRepository.deleteResourcesByReferences(inventoryId, externalReferences);
+            return offerSqlRepository.deleteMainOfferDataByRefs(inventoryId, externalReferences);
         } catch (Exception e) {
-            log.error("Failed to delete offers by references for inventoryId: {}", inventoryId, e);
-            throw LCIngestionException.builder()
-                    .techCause(LCTechCauseEnum.DATABASE)
-                    .message("SQL deletion error for inventoryId: " + inventoryId + " by references")
-                    .cause(e)
-                    .build();
+            throw handleDeletionError(inventoryId, e);
         }
+    }
+
+    private RuntimeException handleDeletionError(UUID inventoryId, Exception e) {
+        log.error("SQL deletion error for inventoryId: {}", inventoryId, e);
+        return LCIngestionException.builder()
+                .techCause(LCTechCauseEnum.DATABASE)
+                .message("Database error during offer deletion")
+                .cause(e)
+                .build();
     }
 
     @Override
@@ -114,7 +99,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         try {
             // Creates model if it doesn't exist on bd
             VehicleModelEntity vehicleModelEntity = ensureVehicleModelExists(offer.getVehicleInstance().getVehicleModel());
-            offerSqlRepository.findByHash(offer.getHash()).ifPresentOrElse(
+            findByExternalIdentities(offer.getInventoryId(), offer.getExternalIdInfo()).ifPresentOrElse(
                     existingEntity -> {
                         // Update logic
                         OffsetDateTime incomingDate = mapper.mapEpoch(offer.getLastUpdated());
@@ -141,6 +126,21 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                     .cause(e)
                     .build();
         }
+    }
+
+    private Optional<OfferEntity> findByExternalIdentities(UUID inventoryId, ExternalIdInfoDto externalIdInfo) {
+        if (externalIdInfo == null) {
+            log.warn("No externalIdInfo provided for inventoryId: {}", inventoryId);
+            return Optional.empty();
+        }
+
+        String ownerRef = externalIdInfo.getOwnerReference();
+        String dealerRef = externalIdInfo.getDealerReference();
+        String channelRef = externalIdInfo.getChannelReference();
+
+        return offerSqlRepository.findByInventoryIdAndReferences(
+                inventoryId, ownerRef, dealerRef, channelRef
+        );
     }
 
     /**

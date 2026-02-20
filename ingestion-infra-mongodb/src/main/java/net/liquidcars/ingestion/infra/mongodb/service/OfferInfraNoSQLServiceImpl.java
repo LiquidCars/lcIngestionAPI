@@ -2,6 +2,7 @@ package net.liquidcars.ingestion.infra.mongodb.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
@@ -28,6 +29,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
@@ -54,7 +56,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         try {
             DraftOfferNoSQLEntity entity = offerInfraNoSQLMapper.toEntity(offer);
             entity.setCreatedAt(Instant.now());
-            draftOfferNoSqlRepository.findByHash(offer.hashCode())
+            findByExternalIdentities(offer.getInventoryId(), offer.getExternalIdInfo())
                     .ifPresentOrElse(
                             existingOffer -> updateIfNewer(existingOffer, entity),
                             () -> draftOfferNoSqlRepository.save(entity)
@@ -68,6 +70,22 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                     .cause(e)
                     .build();
         }
+    }
+
+    private Optional<DraftOfferNoSQLEntity> findByExternalIdentities(
+            UUID inventoryId, ExternalIdInfoDto externalIdInfoDto) {
+
+        List<Criteria> andCriteria = new ArrayList<>();
+        andCriteria.add(Criteria.where("inventory_id").is(inventoryId));
+        if(externalIdInfoDto!=null) {
+            if (externalIdInfoDto.getOwnerReference() != null) andCriteria.add(Criteria.where("owner_reference").is(externalIdInfoDto.getOwnerReference()));
+            if (externalIdInfoDto.getDealerReference() != null) andCriteria.add(Criteria.where("dealer_reference").is(externalIdInfoDto.getDealerReference()));
+            if (externalIdInfoDto.getChannelReference() != null) andCriteria.add(Criteria.where("channel_reference").is(externalIdInfoDto.getChannelReference()));
+        }
+
+        Query query = new Query(new Criteria().andOperator(andCriteria.toArray(new Criteria[0])));
+
+        return Optional.ofNullable(mongoTemplate.findOne(query, DraftOfferNoSQLEntity.class));
     }
 
     private void updateIfNewer(DraftOfferNoSQLEntity existing, DraftOfferNoSQLEntity incoming) {
@@ -181,10 +199,9 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
             while (iterator.hasNext()) {
                 try {
                     DraftOfferNoSQLEntity draft = iterator.next();
-                    int draftOfferHash = draft.hashCode();
 
-                    log.info("Processing draft offer - ID: {}, ownerRef: {}, dealerRef: {}, channelRef: {}, hash: {} ",
-                            draft.getId(), draft.getOwnerReference(), draft.getDealerReference(), draft.getChannelReference(), draftOfferHash);
+                    log.info("Processing draft offer - ID: {}, ownerRef: {}, dealerRef: {}, channelRef: {}",
+                            draft.getId(), draft.getOwnerReference(), draft.getDealerReference(), draft.getChannelReference());
 
                     VehicleOfferNoSQLEntity productionEntity = offerInfraNoSQLMapper.toVehicleOfferNoSQLEntity(draft);
                     promotedIds.add(productionEntity.getId());
@@ -193,7 +210,15 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                     // Match by inventory_id AND all present business references (AND logic)
                     List<Criteria> andCriteria = new ArrayList<>();
                     andCriteria.add(Criteria.where("inventory_id").is(inventoryId));
-                    andCriteria.add(Criteria.where("hash").is(draftOfferHash));
+                    if (draft.getOwnerReference() != null) {
+                        andCriteria.add(Criteria.where("owner_reference").is(draft.getOwnerReference()));
+                    }
+                    if (draft.getDealerReference() != null) {
+                        andCriteria.add(Criteria.where("dealer_reference").is(draft.getDealerReference()));
+                    }
+                    if (draft.getChannelReference() != null) {
+                        andCriteria.add(Criteria.where("channel_reference").is(draft.getChannelReference()));
+                    }
 
                     Query upsertQuery = new Query(new Criteria().andOperator(andCriteria.toArray(new Criteria[0])));
 

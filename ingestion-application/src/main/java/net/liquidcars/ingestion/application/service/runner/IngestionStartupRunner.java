@@ -53,7 +53,7 @@ public class IngestionStartupRunner {
                     inputStream,
                     TEST_INVENTORY_ID,
                     TEST_PARTICIPANT_ID,
-                    IngestionDumpType.UPDATE,
+                    IngestionDumpType.REPLACEMENT,
                     OffsetDateTime.now(),
                     EXTERNAL_PUBLICATION_ID
             );
