@@ -15,11 +15,9 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -296,5 +294,216 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                     model.setEnabled(true); // Asegúrate de habilitarlo
                     return vehicleModelRepository.save(model);
                 });
+    }
+
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Override
+    public List<UUID> processBatch(List<OfferDto> offers) {
+        if (offers.isEmpty()) return List.of();
+
+        UUID inventoryId = offers.get(0).getInventoryId();
+        log.info("Processing SQL batch of {} offers for inventoryId: {}", offers.size(), inventoryId);
+
+        try {
+            // 1. Cargar modelos de vehículo en cache (evita N queries a vehicle_model)
+            Map<String, VehicleModelEntity> modelCache = buildModelCache(offers);
+
+            // 2. Cargar todas las ofertas existentes en UNA query
+            List<String> allRefs = extractAllRefs(offers);
+            Map<String, OfferEntity> existingByRef = loadExistingOffers(inventoryId, allRefs);
+
+            // 3. Clasificar en inserts y updates
+            List<OfferEntity> toInsert = new ArrayList<>();
+            List<OfferEntity> toUpdate = new ArrayList<>();
+            List<OfferDto> insertDtos = new ArrayList<>();  // para recursos/equipos post-save
+            List<OfferDto> updateDtos = new ArrayList<>();
+            List<UUID> processedIds = new ArrayList<>();
+
+            for (OfferDto offer : offers) {
+                try {
+                    VehicleModelEntity model = modelCache.get(modelKey(offer.getVehicleInstance().getVehicleModel()));
+                    String ref = extractRef(offer.getExternalIdInfo());
+                    OfferEntity existing = existingByRef.get(ref);
+
+                    if (existing != null) {
+                        OffsetDateTime incomingDate = mapper.mapEpoch(offer.getLastUpdated());
+                        OffsetDateTime existingDate = existing.getLastUpdated() != null
+                                ? existing.getLastUpdated() : existing.getCreatedAt();
+
+                        if (incomingDate.isAfter(existingDate)) {
+                            Long existingVehicleInstanceId = existing.getVehicleInstance() != null
+                                    ? existing.getVehicleInstance().getId() : null;
+
+                            mapper.updateEntityFromDto(offer, existing);
+                            existing.setLastUpdated(incomingDate);
+
+                            if (existing.getVehicleInstance() != null) {
+                                existing.getVehicleInstance().setVehicleModel(model);
+                                if (existingVehicleInstanceId != null) {
+                                    existing.getVehicleInstance().setId(existingVehicleInstanceId);
+                                }
+                            }
+                            if (existing.getJsonCarOffer() != null) {
+                                existing.getJsonCarOffer().setTexto(
+                                        objectMapper.convertValue(offer.getUICarOffer(), Map.class)
+                                );
+                                existing.getJsonCarOffer().setCreatedAt(OffsetDateTime.now());
+                            }
+                            toUpdate.add(existing);
+                            updateDtos.add(offer);
+                        }
+                    } else {
+                        OfferEntity newEntity = mapper.toEntity(offer);
+                        newEntity.getVehicleInstance().setVehicleModel(model);
+                        newEntity.getVehicleInstance().setId(
+                                ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L)
+                        );
+                        newEntity.setJsonCarOffer(buildJsonEntity(offer));
+                        toInsert.add(newEntity);
+                        insertDtos.add(offer);
+                    }
+                    processedIds.add(offer.getId());
+                } catch (Exception e) {
+                    log.error("Error preparing offer {} in batch", offer.getId(), e);
+                }
+            }
+
+            // 4. Persistir ofertas en batch
+            List<OfferEntity> savedInserts = offerSqlRepository.saveAll(toInsert);
+            offerSqlRepository.saveAll(toUpdate);
+
+            // 5. Recursos y equipos en batch (agrupados por oferta)
+            saveResourcesBatch(savedInserts, insertDtos);
+            saveResourcesBatch(toUpdate, updateDtos);
+
+            saveEquipmentsBatch(savedInserts, insertDtos);
+            saveEquipmentsBatch(toUpdate, updateDtos);
+
+            // 6. Direcciones en batch
+            saveAddressesBatch(offers);
+
+            return processedIds;
+
+        } catch (Exception e) {
+            log.error("Batch processing failed for inventoryId: {}", inventoryId, e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.DATABASE)
+                    .message("Error processing SQL batch for inventoryId: " + inventoryId)
+                    .cause(e)
+                    .build();
+        }
+    }
+
+// --- Métodos de soporte batch ---
+
+    private Map<String, VehicleModelEntity> buildModelCache(List<OfferDto> offers) {
+        Map<String, VehicleModelEntity> cache = new HashMap<>();
+        for (OfferDto offer : offers) {
+            VehicleModelDto dto = offer.getVehicleInstance().getVehicleModel();
+            String key = modelKey(dto);
+            cache.computeIfAbsent(key, k -> ensureVehicleModelExists(dto));
+        }
+        return cache;
+    }
+
+    private String modelKey(VehicleModelDto dto) {
+        return (dto.getBrand() + "|" + dto.getModel() + "|" + dto.getVersion()).toLowerCase();
+    }
+
+    private List<String> extractAllRefs(List<OfferDto> offers) {
+        return offers.stream()
+                .filter(o -> o.getExternalIdInfo() != null)
+                .map(o -> extractRef(o.getExternalIdInfo()))
+                .filter(r -> r != null && !r.isEmpty())
+                .distinct()
+                .toList();
+    }
+
+    private String extractRef(ExternalIdInfoDto info) {
+        if (info == null) return null;
+        if (info.getOwnerReference() != null) return info.getOwnerReference();
+        if (info.getDealerReference() != null) return info.getDealerReference();
+        return info.getChannelReference();
+    }
+
+    private Map<String, OfferEntity> loadExistingOffers(UUID inventoryId, List<String> refs) {
+        if (refs.isEmpty()) return Map.of();
+        return offerSqlRepository.findByInventoryIdAndOwnerRefs(inventoryId, refs)
+                .stream()
+                .collect(Collectors.toMap(
+                        e -> e.getOwnerReference() != null ? e.getOwnerReference()
+                                : e.getDealerReference() != null ? e.getDealerReference()
+                                : e.getChannelReference(),
+                        e -> e
+                ));
+    }
+
+    private void saveResourcesBatch(List<OfferEntity> offers, List<OfferDto> dtos) {
+        if (offers.isEmpty()) return;
+
+        // Borrar todos los recursos de estas ofertas en UNA query
+        List<UUID> offerIds = offers.stream().map(OfferEntity::getId).toList();
+        offerSqlRepository.deleteByOfferIdIn(offerIds);
+
+        // Construir todos los recursos de golpe
+        List<CarOfferResourceEntity> allResources = new ArrayList<>();
+        for (int i = 0; i < offers.size(); i++) {
+            OfferDto dto = dtos.get(i);
+            OfferEntity entity = offers.get(i);
+            if (dto.getResources() != null) {
+                dto.getResources().forEach(r -> allResources.add(buildCarOfferResourceEntity(r, entity)));
+            }
+        }
+        if (!allResources.isEmpty()) {
+            carOfferResourceRepository.saveAll(allResources);
+        }
+    }
+
+    private void saveEquipmentsBatch(List<OfferEntity> offers, List<OfferDto> dtos) {
+        if (offers.isEmpty()) return;
+
+        List<Long> vehicleInstanceIds = offers.stream()
+                .filter(o -> o.getVehicleInstance() != null)
+                .map(o -> o.getVehicleInstance().getId())
+                .toList();
+
+        offerSqlRepository.deleteByVehicleInstanceIdIn(vehicleInstanceIds);
+
+        List<CarInstanceEquipmentEntity> allEquipments = new ArrayList<>();
+        for (int i = 0; i < offers.size(); i++) {
+            OfferDto dto = dtos.get(i);
+            OfferEntity entity = offers.get(i);
+            if (dto.getVehicleInstance().getEquipments() != null && entity.getVehicleInstance() != null) {
+                List<CarInstanceEquipmentEntity> entities = mapper.toCarInstanceEquipmentEntityList(
+                        dto.getVehicleInstance().getEquipments()
+                );
+                entities.forEach(eq -> {
+                    eq.setId(ThreadLocalRandom.current().nextInt(1000, 10000));
+                    eq.setVehicleInstance(entity.getVehicleInstance());
+                    if (eq.getType() == null) {
+                        eq.setType(EquipmentTypeEntity.builder().id("Other").build());
+                    }
+                });
+                allEquipments.addAll(entities);
+            }
+        }
+        if (!allEquipments.isEmpty()) {
+            carInstanceEquipmentEntityRepository.saveAll(allEquipments);
+        }
+    }
+
+    private void saveAddressesBatch(List<OfferDto> offers) {
+        List<ParticipantAddressEntity> toSave = new ArrayList<>();
+        for (OfferDto offer : offers) {
+            if (offer.getPickUpAddress() != null && offer.getParticipantId() != null) {
+                ParticipantAddressEntity addr = mapper.toParticipantAddressEntity(offer.getPickUpAddress());
+                addr.setId(offer.getParticipantId());
+                toSave.add(addr);
+            }
+        }
+        if (!toSave.isEmpty()) {
+            participantAddressEntityRepository.saveAll(toSave);
+        }
     }
 }

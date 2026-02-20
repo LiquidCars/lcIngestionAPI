@@ -299,7 +299,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
 
         Query draftQuery = new Query(Criteria.where("ingestion_report_id").is(ingestionReportId));
 
-        int batchSize = 50; // Process 50 offers per SQL transaction
+        int batchSize = 100; // Process 100 offers per SQL transaction
         int totalProcessed = 0;
         int totalErrors = 0;
         List<UUID> allPromotedIds = new ArrayList<>();
@@ -357,7 +357,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         }
     }
 
-    @Transactional(propagation = Propagation.REQUIRED)
+    /*@Transactional(propagation = Propagation.REQUIRED)
     private List<UUID> processBatchToSQL(List<OfferDto> offers) {
         // This entire method runs in ONE SQL transaction
         // All offers in the batch are committed together
@@ -384,6 +384,15 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         }
 
         return processedIds;
+    }*/
+
+    private List<UUID> processBatchToSQL(List<OfferDto> offers) {
+        try {
+            return offerInfraSQLService.processBatch(offers);
+        } catch (Exception e) {
+            log.error("Batch failed", e);
+            throw e;
+        }
     }
 
     private void replaceOffers(IngestionDumpType dumpType, UUID inventoryId,

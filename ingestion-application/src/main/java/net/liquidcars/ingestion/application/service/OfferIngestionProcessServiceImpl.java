@@ -60,13 +60,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                               UUID requesterParticipantId,
                               IngestionDumpType dumpType,
                               String externalPublicationId) {
-
-        if (ingestionPayloadDto == null || ingestionPayloadDto.getOffers() == null || ingestionPayloadDto.getOffers().isEmpty()) {
-            throw LCIngestionException.builder()
-                    .techCause(LCTechCauseEnum.INVALID_REQUEST)
-                    .message("The offers list is empty or null")
-                    .build();
-        }
+        validateIngestionPayload(ingestionPayloadDto);
         validateRequesterParticipantHasNotProcessStarted(requesterParticipantId);
         IngestionReportDto ingestionReportDto = createIngestionReportDto(ingestionPayloadDto, inventoryId, requesterParticipantId, dumpType, externalPublicationId);
         ingestionPayloadDto.getOffers().forEach(offerDto -> {
@@ -134,6 +128,23 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                     .techCause(LCTechCauseEnum.INVALID_REQUEST)
                     .message("Invalid URL or protocol for ingestion: " + url)
                     .cause(e)
+                    .build();
+        }
+    }
+
+    private void validateIngestionPayload(IngestionPayloadDto ingestionPayloadDto) {
+        boolean isPayloadEmpty = ingestionPayloadDto == null;
+
+        boolean noOffersToProcess = isPayloadEmpty ||
+                (ingestionPayloadDto.getOffers() == null || ingestionPayloadDto.getOffers().isEmpty());
+
+        boolean noOffersToDelete = isPayloadEmpty ||
+                (ingestionPayloadDto.getOffersToDelete() == null || ingestionPayloadDto.getOffersToDelete().isEmpty());
+
+        if (noOffersToProcess && noOffersToDelete) {
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.INVALID_REQUEST)
+                    .message("The payload is empty: No offers to process and no offers to delete")
                     .build();
         }
     }

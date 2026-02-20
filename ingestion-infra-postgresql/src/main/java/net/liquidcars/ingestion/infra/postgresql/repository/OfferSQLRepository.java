@@ -146,4 +146,25 @@ public interface OfferSQLRepository extends JpaRepository<OfferEntity, UUID> {
         WHERE obj_co_id IN (SELECT obj_co_jsoncaroffer_id FROM target_offers WHERE obj_co_jsoncaroffer_id IS NOT NULL)
         """, nativeQuery = true)
     int deleteMainOfferDataByRefs(@Param("invId") UUID invId, @Param("refs") List<String> refs);
+
+    // CarOfferResourceRepository
+    @Modifying
+    @Query("DELETE FROM CarOfferResourceEntity r WHERE r.offer.id IN :offerIds")
+    void deleteByOfferIdIn(@Param("offerIds") List<UUID> offerIds);
+
+    // CarInstanceEquipmentEntityRepository
+    @Modifying
+    @Query("DELETE FROM CarInstanceEquipmentEntity e WHERE e.vehicleInstance.id IN :vehicleInstanceIds")
+    void deleteByVehicleInstanceIdIn(@Param("vehicleInstanceIds") List<Long> vehicleInstanceIds);
+
+    @Query(value = """
+    SELECT o.* FROM inv_ofr_offer o
+    JOIN inv_ninof_inventoryoffers ni ON ni.ofr_co_id = o.ofr_co_id
+    WHERE ni.nin_co_id = :inventoryId
+    AND o.ofr_ownerref IN (:ownerRefs)
+    """, nativeQuery = true)
+    List<OfferEntity> findByInventoryIdAndOwnerRefs(
+            @Param("inventoryId") UUID inventoryId,
+            @Param("ownerRefs") List<String> ownerRefs
+    );
 }

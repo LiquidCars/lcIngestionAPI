@@ -1,6 +1,7 @@
 package net.liquidcars.ingestion.domain.service.infra.postgresql;
 
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -18,4 +19,7 @@ public interface IOfferInfraSQLService {
 
     @Transactional
     void processOffer(OfferDto offer);
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    List<UUID> processBatch(List<OfferDto> offers);
 }
