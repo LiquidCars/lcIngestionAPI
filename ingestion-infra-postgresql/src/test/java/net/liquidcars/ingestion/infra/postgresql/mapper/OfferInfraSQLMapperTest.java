@@ -206,20 +206,15 @@ public class OfferInfraSQLMapperTest {
     @Test
     @DisplayName("Full coverage for KeyValue reference methods")
     void testKeyValueReferencesCoverage() {
-        // 1. Cubrir "if (dto == null)" -> Resultado: 50%
         assertThat(mapper.colorReference(null)).isNull();
         assertThat(mapper.fuelTypeReference(null)).isNull();
 
-        // 2. Cubrir "if (dto.getKey() == null)" -> Resultado: 100%
-        // Usamos la nueva función de la factoría
         KeyValueDto<String, String> dtoWithNullKey = TestDataFactory.createKeyValueDtoWithNullKey();
 
         assertThat(mapper.colorReference(dtoWithNullKey)).isNull();
         assertThat(mapper.fuelTypeReference(dtoWithNullKey)).isNull();
         assertThat(mapper.bodyTypeReference(dtoWithNullKey)).isNull();
-        // Repite para los demás (equipmentReference, etc.)
 
-        // 3. Cubrir el "return" (Camino feliz)
         KeyValueDto<String, String> validDto = new KeyValueDto<>("RED", "Rojo");
         assertThat(mapper.colorReference(validDto).getId()).isEqualTo("RED");
     }
@@ -227,7 +222,6 @@ public class OfferInfraSQLMapperTest {
     @Test
     @DisplayName("Should cover 100% of all KeyValue reference methods")
     void testAllKeyValueReferencesFullCoverage() {
-        // 1. Caso: KeyValueDto es NULL (Cubre la primera parte del if)
         assertThat(mapper.equipmentTypeReference(null)).isNull();
         assertThat(mapper.equipmentCategoryReference(null)).isNull();
         assertThat(mapper.equipmentReference(null)).isNull();
@@ -238,7 +232,6 @@ public class OfferInfraSQLMapperTest {
         assertThat(mapper.colorReference(null)).isNull();
         assertThat(mapper.fuelTypeReference(null)).isNull();
 
-        // 2. Caso: Key es NULL dentro del DTO (Cubre la segunda parte del if)
         KeyValueDto dtoWithNullKey = TestDataFactory.createKeyValueDtoWithNullKey();
 
         assertThat(mapper.equipmentTypeReference(dtoWithNullKey)).isNull();
@@ -251,9 +244,119 @@ public class OfferInfraSQLMapperTest {
         assertThat(mapper.colorReference(dtoWithNullKey)).isNull();
         assertThat(mapper.fuelTypeReference(dtoWithNullKey)).isNull();
 
-        // 3. Caso: Éxito (Ya lo tenías, pero asegura que el toString() se ejecute)
         KeyValueDto validDto = new KeyValueDto("VAL", "Label");
         assertThat(mapper.colorReference(validDto).getId()).isEqualTo("VAL");
     }
 
+    @Test
+    @DisplayName("bodyTypeReference: Debe mapear correctamente un DTO válido a Entity")
+    void bodyTypeReference_ShouldMapCorrectly() {
+        // GIVEN
+        KeyValueDto dto = new KeyValueDto();
+        dto.setKey("SEDAN");
+        dto.setValue("Turismo Sedan");
+
+        // WHEN
+        BodyTypesEntity result = mapper.bodyTypeReference(dto);
+
+        // THEN
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo("SEDAN");
+    }
+
+    @Test
+    @DisplayName("changeTypeReference: Debe mapear el ID correctamente desde la clave del DTO")
+    void changeTypeReference_ShouldMapCorrectly() {
+        // GIVEN
+        KeyValueDto dto = new KeyValueDto();
+        dto.setKey("MANUAL");
+        dto.setValue("Transmisión Manual");
+
+        // WHEN
+        ChangeTypesEntity result = mapper.changeTypeReference(dto);
+
+        // THEN
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo("MANUAL");
+    }
+
+    @Test
+    @DisplayName("drivetrainTypeReference: Debe mapear el ID correctamente")
+    void drivetrainTypeReference_ShouldMapCorrectly() {
+        // GIVEN
+        KeyValueDto dto = new KeyValueDto();
+        dto.setKey("AWD");
+        dto.setValue("All Wheel Drive");
+
+        // WHEN
+        DriveTrainTypeEntity result = mapper.drivetrainTypeReference(dto);
+
+        // THEN
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo("AWD");
+    }
+
+    @Test
+    @DisplayName("environmentalBadgeReference: Debe mapear el ID correctamente")
+    void environmentalBadgeReference_ShouldMapCorrectly() {
+        // GIVEN
+        KeyValueDto dto = new KeyValueDto();
+        dto.setKey("ECO");
+        dto.setValue("Etiqueta ECO");
+
+        // WHEN
+        EnvironmentalBadgeEntity result = mapper.environmentalBadgeReference(dto);
+
+        // THEN
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo("ECO");
+    }
+
+    @Test
+    @DisplayName("equipmentReference: Debe mapear el ID correctamente desde el DTO")
+    void equipmentReference_ShouldMapCorrectly() {
+        // GIVEN
+        KeyValueDto dto = new KeyValueDto();
+        dto.setKey("ABS");
+        dto.setValue("Sistema antibloqueo");
+
+        // WHEN
+        EquipmentsEntity result = mapper.equipmentReference(dto);
+
+        // THEN
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo("ABS");
+    }
+
+    @Test
+    @DisplayName("equipmentCategoryReference: Debe mapear el ID correctamente")
+    void equipmentCategoryReference_ShouldMapCorrectly() {
+        // GIVEN
+        KeyValueDto dto = new KeyValueDto();
+        dto.setKey("SEGURIDAD");
+        dto.setValue("Sistemas de seguridad");
+
+        // WHEN
+        EquipmentCategoryEntity result = mapper.equipmentCategoryReference(dto);
+
+        // THEN
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo("SEGURIDAD");
+    }
+
+    @Test
+    @DisplayName("equipmentTypeReference: Debe mapear el ID correctamente")
+    void equipmentTypeReference_ShouldMapCorrectly() {
+        // GIVEN
+        KeyValueDto dto = new KeyValueDto();
+        dto.setKey("OPTIONAL");
+        dto.setValue("Equipamiento Opcional");
+
+        // WHEN
+        EquipmentTypeEntity result = mapper.equipmentTypeReference(dto);
+
+        // THEN
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo("OPTIONAL");
+    }
 }

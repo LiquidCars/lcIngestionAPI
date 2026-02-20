@@ -7,6 +7,7 @@ import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.SortDirection;
 import net.liquidcars.ingestion.domain.model.batch.*;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
+import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IBatchReportInfraSQLService;
@@ -744,6 +745,88 @@ class OfferIngestionProcessServiceImplTest {
 
         verify(offerNoSqlService, never()).countOffersFromReportId(any());
         verify(reportSqlService, never()).upsertIngestionReport(any());
+    }
+
+    @Test
+    @DisplayName("Promote: Debería fallar si el reporte ya fue promovido")
+    void validatePromotion_AlreadyPromoted() {
+        UUID jobId = UUID.randomUUID();
+        IngestionReportDto report = IngestionReportDto.builder()
+                .id(jobId)
+                .promoted(true) // Ya promovido
+                .build();
+        when(reportSqlService.findIngestionReportById(jobId)).thenReturn(report);
+
+        service.promoteDraftOffersToVehicleOffers(jobId, false);
+
+        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Promote: Debería fallar si el reporte no está completado")
+    void validatePromotion_NotCompleted() {
+        UUID jobId = UUID.randomUUID();
+        IngestionReportDto report = IngestionReportDto.builder()
+                .id(jobId)
+                .promoted(false)
+                .processed(true)
+                .status(IngestionBatchStatus.FAILED) // No completado
+                .build();
+        when(reportSqlService.findIngestionReportById(jobId)).thenReturn(report);
+
+        service.promoteDraftOffersToVehicleOffers(jobId, false);
+
+        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Promote: Debería relanzar excepción si NO es asíncrono")
+    void promote_ThrowExceptionWhenSync() {
+        UUID jobId = UUID.randomUUID();
+        IngestionReportDto report = IngestionReportDto.builder()
+                .id(jobId)
+                .status(IngestionBatchStatus.COMPLETED)
+                .processed(true)
+                .build();
+        when(reportSqlService.findIngestionReportById(jobId)).thenReturn(report);
+
+        // Forzamos error en la infraestructura
+        doThrow(LCIngestionException.builder().techCause(LCTechCauseEnum.DATABASE).build())
+                .when(offerNoSqlService).promoteDraftOffersToVehicleOffers(any(), any(), any(), any());
+
+        // Verificamos que al ser async=false, lanza la excepción
+        assertThrows(LCIngestionException.class, () ->
+                service.promoteDraftOffersToVehicleOffers(jobId, false));
+    }
+
+    @Test
+    @DisplayName("Delete: Debería relanzar excepción si ocurre un error y NO es asíncrono")
+    void delete_ThrowExceptionWhenSync() {
+        UUID jobId = UUID.randomUUID();
+        doThrow(LCIngestionException.builder().techCause(LCTechCauseEnum.DATABASE).build())
+                .when(offerNoSqlService).deleteDraftOffersByIngestionReportId(jobId);
+
+        assertThrows(LCIngestionException.class, () ->
+                service.deleteDraftOffersByIngestionReportId(jobId, false));
+
+        verify(kafkaProducer).sendIngestionReportDeleteActionNotification(
+                argThat(dto -> dto.getResult().equals(IngestionReportResponseActionResult.FAILED))
+        );
+    }
+
+    @Test
+    @DisplayName("Lambda Stream: Error cuando execution ES nulo")
+    void processOffersStream_ErrorWithNullExecution() throws Exception {
+        InputStream inputStream = new ByteArrayInputStream("data".getBytes());
+        lenient().when(parserService.supports(any())).thenReturn(true);
+
+        // El launcher lanza la excepción directamente
+        when(jobLauncher.run(any(), any())).thenThrow(new RuntimeException("Launcher Direct Failure"));
+
+        service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
+                IngestionDumpType.UPDATE, OffsetDateTime.now(), "ext-1");
+
+        verify(jobLauncher, timeout(2000)).run(any(), any());
     }
 
 }
