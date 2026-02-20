@@ -121,14 +121,17 @@ public class OfferInfraNoSQLServiceImplTest {
         vehicleEntity.setId(draft.getId());
         OfferDto offerDto = OfferDto.builder().id(draft.getId()).build();
 
+        List<DraftOfferNoSQLEntity> drafts = List.of(draft);
         when(mongoTemplate.stream(any(), eq(DraftOfferNoSQLEntity.class)))
-                .thenReturn(Stream.of(draft))
-                .thenReturn(Stream.of(draft));
+                .thenAnswer(inv -> drafts.stream());
 
         BulkOperations bulkOps = mock(BulkOperations.class);
-        when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(VehicleOfferNoSQLEntity.class))).thenReturn(bulkOps);
-        when(mongoTemplate.getConverter()).thenReturn(mock(org.springframework.data.mongodb.core.convert.MongoConverter.class));
-        when(bulkOps.execute()).thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
+        when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(VehicleOfferNoSQLEntity.class)))
+                .thenReturn(bulkOps);
+        when(mongoTemplate.getConverter())
+                .thenReturn(mock(org.springframework.data.mongodb.core.convert.MongoConverter.class));
+        when(bulkOps.execute())
+                .thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
 
         when(mapper.toVehicleOfferNoSQLEntity(draft)).thenReturn(vehicleEntity);
         when(mapper.toDto(draft)).thenReturn(offerDto);
@@ -136,7 +139,12 @@ public class OfferInfraNoSQLServiceImplTest {
         service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, inventoryId, null);
 
         verify(bulkOps, atLeastOnce()).execute();
-        verify(offerInfraSQLService, atLeastOnce()).processOffer(any());
+
+        verify(offerInfraSQLService, atLeastOnce()).processBatch(anyList());
+
+        verify(offerInfraSQLService).processBatch(argThat(list ->
+                list.size() == 1 && list.get(0).getId().equals(draft.getId())
+        ));
     }
 
     @Test
@@ -149,23 +157,23 @@ public class OfferInfraNoSQLServiceImplTest {
         DraftOfferNoSQLEntity fakeDraft = new DraftOfferNoSQLEntity();
         fakeDraft.setId(offerId);
 
-        VehicleOfferNoSQLEntity fakeProduction = new VehicleOfferNoSQLEntity();
-        fakeProduction.setId(offerId);
-
         when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
-                .thenReturn(Stream.of(fakeDraft))
-                .thenReturn(Stream.of(fakeDraft));
+                .thenAnswer(invocation -> Stream.of(fakeDraft));
 
-        MongoConverter mockConverter = mock(MongoConverter.class);
-        when(mongoTemplate.getConverter()).thenReturn(mockConverter);
-
+        when(mongoTemplate.getConverter()).thenReturn(mock(org.springframework.data.mongodb.core.convert.MongoConverter.class));
         BulkOperations mockBulkOps = mock(BulkOperations.class);
-        BulkWriteResult mockResult = mock(BulkWriteResult.class);
         when(mongoTemplate.bulkOps(any(), eq(VehicleOfferNoSQLEntity.class))).thenReturn(mockBulkOps);
+
+        com.mongodb.bulk.BulkWriteResult mockResult = mock(com.mongodb.bulk.BulkWriteResult.class);
+        when(mockResult.getInsertedCount()).thenReturn(1);
         when(mockBulkOps.execute()).thenReturn(mockResult);
 
-        when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(fakeProduction);
-        when(mapper.toDto(any())).thenReturn(new OfferDto());
+        OfferDto offerDto = new OfferDto();
+        offerDto.setId(offerId);
+        when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(new VehicleOfferNoSQLEntity());
+        when(mapper.toDto(any())).thenReturn(offerDto);
+
+        when(offerInfraSQLService.processBatch(anyList())).thenReturn(List.of(offerId));
 
         service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.REPLACEMENT, inventoryId, null);
 
@@ -265,30 +273,37 @@ public class OfferInfraNoSQLServiceImplTest {
     void promoteDraftOffersToVehicleOffers_SQL_Failure_Coverage() {
         UUID reportId = UUID.randomUUID();
         UUID inventoryId = UUID.randomUUID();
+
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
         draft.setId(UUID.randomUUID());
 
-        OfferDto dto = new OfferDto();
-        dto.setId(draft.getId());
+        VehicleOfferNoSQLEntity productionEntity = new VehicleOfferNoSQLEntity();
+        productionEntity.setId(draft.getId());
+        when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(productionEntity);
 
         when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
-                .thenReturn(Stream.empty())
-                .thenReturn(Stream.of(draft));
+                .thenAnswer(inv -> Stream.of(draft));
 
-        when(mapper.toDto(draft)).thenReturn(dto);
+        when(mongoTemplate.getConverter()).thenReturn(mock(org.springframework.data.mongodb.core.convert.MongoConverter.class));
+        BulkOperations bulkOps = mock(BulkOperations.class);
+        when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(VehicleOfferNoSQLEntity.class)))
+                .thenReturn(bulkOps);
+        when(bulkOps.execute()).thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
+
+        OfferDto dto = new OfferDto();
+        dto.setId(draft.getId());
+        when(mapper.toDto(any())).thenReturn(dto);
 
         doThrow(new RuntimeException("SQL Connection Error"))
-                .when(offerInfraSQLService).processOffer(any(OfferDto.class));
+                .when(offerInfraSQLService).processBatch(anyList());
 
         assertThatThrownBy(() ->
                 service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, inventoryId, null)
         )
                 .isInstanceOf(LCIngestionException.class)
-                .hasMessageContaining("Error in promotion all offers are not processed: " + reportId)
-                .extracting("techCause")
-                .isEqualTo(LCTechCauseEnum.DATABASE);
+                .hasMessageContaining("Error in promotion all offers are not processed: " + reportId);
 
-        verify(offerInfraSQLService).processOffer(dto);
+        verify(offerInfraSQLService).processBatch(anyList());
     }
 
     @Test
@@ -315,25 +330,36 @@ public class OfferInfraNoSQLServiceImplTest {
     void processBatchToSQL_TechnicalException_ShouldThrowLCIngestionException() {
         UUID reportId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
-        OfferDto dto = new OfferDto();
-        dto.setId(UUID.randomUUID());
+        draft.setId(UUID.randomUUID());
+
+        VehicleOfferNoSQLEntity fakeProduction = new VehicleOfferNoSQLEntity();
+        fakeProduction.setId(draft.getId());
+        when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(fakeProduction);
 
         when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
-                .thenReturn(Stream.empty())
-                .thenReturn(Stream.of(draft));
+                .thenAnswer(inv -> Stream.of(draft));
 
-        when(mapper.toDto(draft)).thenReturn(dto);
+        when(mongoTemplate.getConverter()).thenReturn(mock(org.springframework.data.mongodb.core.convert.MongoConverter.class));
+        BulkOperations bulkOps = mock(BulkOperations.class);
+        when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(VehicleOfferNoSQLEntity.class))).thenReturn(bulkOps);
+        when(bulkOps.execute()).thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
+
+        OfferDto dto = new OfferDto();
+        dto.setId(draft.getId());
+        when(mapper.toDto(any())).thenReturn(dto);
 
         doThrow(new RuntimeException("Generic SQL Error"))
-                .when(offerInfraSQLService).processOffer(any(OfferDto.class));
+                .when(offerInfraSQLService).processBatch(anyList());
 
         assertThatThrownBy(() ->
                 service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, UUID.randomUUID(), null)
         )
                 .isInstanceOf(LCIngestionException.class)
-                .hasMessageContaining("Error in promotion all offers are not processed: " + reportId);
+                .hasMessageContaining("Error in promotion all offers are not processed: " + reportId)
+                .extracting("techCause")
+                .isEqualTo(LCTechCauseEnum.DATABASE);
 
-        verify(offerInfraSQLService).processOffer(dto);
+        verify(offerInfraSQLService).processBatch(anyList());
     }
 
     @Test
@@ -413,31 +439,37 @@ public class OfferInfraNoSQLServiceImplTest {
     }
 
     @Test
-    @DisplayName("processBatchToSQL: Cobertura de LCIngestionException (Rama if)")
-    void processBatchToSQL_LCIngestionException_Coverage() {
+    @DisplayName("processBatchToSQL: Cobertura de fallo total en promoción SQL")
+    void processBatchToSQL_TotalFailure_ShouldThrowLCIngestionException() {
         UUID reportId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
+        draft.setId(UUID.randomUUID());
 
-        when(mongoTemplate.stream(any(), any()))
-                .thenReturn(Stream.empty())
-                .thenReturn(Stream.of(draft));
+        VehicleOfferNoSQLEntity fakeProd = new VehicleOfferNoSQLEntity();
+        fakeProd.setId(draft.getId());
+        when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(fakeProd);
+
+        when(mongoTemplate.stream(any(), eq(DraftOfferNoSQLEntity.class)))
+                .thenAnswer(inv -> Stream.of(draft));
+        when(mongoTemplate.getConverter()).thenReturn(mock(org.springframework.data.mongodb.core.convert.MongoConverter.class));
+        BulkOperations bulkOps = mock(BulkOperations.class);
+        when(mongoTemplate.bulkOps(any(), eq(VehicleOfferNoSQLEntity.class))).thenReturn(bulkOps);
+        when(bulkOps.execute()).thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
 
         when(mapper.toDto(any())).thenReturn(new OfferDto());
 
-        LCIngestionException domainError = LCIngestionException.builder()
-                .message("Domain Error")
-                .build();
-
-        doThrow(domainError)
-                .when(offerInfraSQLService).processOffer(any());
+        doThrow(new RuntimeException("SQL Crash"))
+                .when(offerInfraSQLService).processBatch(anyList());
 
         assertThatThrownBy(() ->
                 service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, UUID.randomUUID(), null)
         )
                 .isInstanceOf(LCIngestionException.class)
-                .hasMessageContaining("Error in promotion all offers are not processed: " + reportId);
+                .hasMessageContaining("Error in promotion all offers are not processed: " + reportId)
+                .extracting("techCause")
+                .isEqualTo(LCTechCauseEnum.DATABASE);
 
-        verify(offerInfraSQLService).processOffer(any());
+        verify(offerInfraSQLService).processBatch(anyList());
     }
 
     @Test
@@ -458,29 +490,39 @@ public class OfferInfraNoSQLServiceImplTest {
     }
 
     @Test
-    @DisplayName("promoteDraftOffersToSQL: Debe lanzar LCIngestionException genérica cuando el proceso SQL falla")
+    @DisplayName("promoteDraftOffersToSQL: Debe lanzar LCIngestionException cuando el batch SQL falla")
     void promoteDraftOffersToSQL_TotalFailure_Coverage() {
         UUID reportId = UUID.randomUUID();
+        UUID inventoryId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
+        draft.setId(UUID.randomUUID());
+
+        VehicleOfferNoSQLEntity fakeProduction = new VehicleOfferNoSQLEntity();
+        fakeProduction.setId(draft.getId());
+        when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(fakeProduction);
+
+        when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
+                .thenAnswer(invocation -> Stream.of(draft));
+
+        when(mongoTemplate.getConverter()).thenReturn(mock(org.springframework.data.mongodb.core.convert.MongoConverter.class));
+        BulkOperations bulkOps = mock(BulkOperations.class);
+        when(mongoTemplate.bulkOps(any(), eq(VehicleOfferNoSQLEntity.class))).thenReturn(bulkOps);
+        when(bulkOps.execute()).thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
+
         OfferDto dto = new OfferDto();
-        dto.setId(UUID.randomUUID());
-
-        when(mongoTemplate.stream(any(), eq(DraftOfferNoSQLEntity.class)))
-                .thenReturn(Stream.empty())
-                .thenReturn(Stream.of(draft));
-
+        dto.setId(draft.getId());
         when(mapper.toDto(any())).thenReturn(dto);
 
         doThrow(new RuntimeException("SQL Critical Failure"))
-                .when(offerInfraSQLService).processOffer(any());
+                .when(offerInfraSQLService).processBatch(anyList());
 
         assertThatThrownBy(() ->
-                service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, UUID.randomUUID(), null)
+                service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, inventoryId, null)
         )
                 .isInstanceOf(LCIngestionException.class)
                 .hasMessageContaining("Error in promotion all offers are not processed: " + reportId);
 
-        verify(offerInfraSQLService, atLeastOnce()).processOffer(any());
+        verify(offerInfraSQLService).processBatch(anyList());
     }
 
     @Test
@@ -544,20 +586,30 @@ public class OfferInfraNoSQLServiceImplTest {
     void processBatchToSQL_PropagateDomainException_Coverage() {
         UUID reportId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
+        draft.setId(UUID.randomUUID());
+
+        VehicleOfferNoSQLEntity fakeProduction = new VehicleOfferNoSQLEntity();
+        fakeProduction.setId(draft.getId());
+        when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(fakeProduction);
+
+        when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
+                .thenAnswer(inv -> Stream.of(draft));
+
+        when(mongoTemplate.getConverter()).thenReturn(mock(org.springframework.data.mongodb.core.convert.MongoConverter.class));
+        BulkOperations bulkOps = mock(BulkOperations.class);
+        when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(VehicleOfferNoSQLEntity.class))).thenReturn(bulkOps);
+        when(bulkOps.execute()).thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
+
         OfferDto dto = new OfferDto();
-        dto.setId(UUID.randomUUID());
-
-        when(mongoTemplate.stream(any(), any()))
-                .thenReturn(Stream.empty())
-                .thenReturn(Stream.of(draft));
-
+        dto.setId(draft.getId());
         when(mapper.toDto(any())).thenReturn(dto);
 
         LCIngestionException domainEx = LCIngestionException.builder()
                 .message("Batch domain error")
+                .techCause(LCTechCauseEnum.DATABASE)
                 .build();
 
-        doThrow(domainEx).when(offerInfraSQLService).processOffer(any());
+        doThrow(domainEx).when(offerInfraSQLService).processBatch(anyList());
 
         assertThatThrownBy(() ->
                 service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.UPDATE, UUID.randomUUID(), null)
@@ -565,7 +617,7 @@ public class OfferInfraNoSQLServiceImplTest {
                 .isInstanceOf(LCIngestionException.class)
                 .hasMessageContaining("Error in promotion all offers are not processed");
 
-        verify(offerInfraSQLService).processOffer(any());
+        verify(offerInfraSQLService).processBatch(anyList());
     }
 
     @Test
