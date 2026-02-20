@@ -14,7 +14,6 @@ import org.instancio.Instancio;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -615,5 +614,11 @@ public class TestDataFactory {
 
     public static IngestionReportFilterDto createFullIngestionReportFilter() {
         return org.instancio.Instancio.create(IngestionReportFilterDto.class);
+    }
+
+    // ==================== IngestionReportPageDto Factory ====================
+
+    public static IngestionReportPageDto createIngestionReportPageDto() {
+        return org.instancio.Instancio.create(IngestionReportPageDto.class);
     }
 }
