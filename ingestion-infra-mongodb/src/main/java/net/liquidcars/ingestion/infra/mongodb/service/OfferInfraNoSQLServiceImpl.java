@@ -238,6 +238,9 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                         }
                     }
 
+                    update.set("inventory_id", inventoryId);
+                    update.setOnInsert("_id", productionEntity.getId());
+
                     // Add to bulk execution plan
                     bulkOps.upsert(upsertQuery, update);
                     count++;
