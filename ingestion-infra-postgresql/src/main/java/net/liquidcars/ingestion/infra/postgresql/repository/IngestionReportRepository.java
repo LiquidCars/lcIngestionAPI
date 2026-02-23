@@ -5,6 +5,7 @@ import net.liquidcars.ingestion.infra.postgresql.entity.report.IngestionReportEn
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -26,7 +27,10 @@ public interface IngestionReportRepository extends JpaRepository<IngestionReport
           AND ir.status NOT IN (:statuses)
     )
     """, nativeQuery = true)
-    boolean existsByPhysicalInventoryIdAndStatusNotIn(UUID inventoryId, List<IngestionBatchStatus> statuses);
+    boolean existsByPhysicalInventoryIdAndStatusNotIn(
+            @Param("inventoryId") UUID inventoryId,
+            @Param("statuses") List<String> statuses
+    );
 
     List<IngestionReportEntity> findByProcessedFalse();
 }

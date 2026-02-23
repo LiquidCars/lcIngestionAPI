@@ -138,7 +138,10 @@ public class ReportInfraSQLServiceImpl implements IReportInfraSQLService {
     @Override
     public boolean existsByPhysicalInventoryIdAndStatusNotIn(UUID inventoryId, List<IngestionBatchStatus> statuses) {
         try {
-            return reportRepository.existsByPhysicalInventoryIdAndStatusNotIn(inventoryId, statuses);
+            List<String> statusStrings = statuses.stream()
+                    .map(Enum::name)
+                    .toList();
+            return reportRepository.existsByPhysicalInventoryIdAndStatusNotIn(inventoryId, statusStrings);
         } catch (Exception e) {
             String statusList = (statuses != null)
                     ? statuses.stream().map(Enum::name).collect(Collectors.joining(", "))
