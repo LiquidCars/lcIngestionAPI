@@ -305,7 +305,7 @@ components:
 
     IngestionDumpType:
       type: string
-      enum: [UPDATE, REPLACEMENT]
+      enum: [INCREMENTAL, REPLACEMENT]
       default: UPDATE
 
     IngestionPayload:

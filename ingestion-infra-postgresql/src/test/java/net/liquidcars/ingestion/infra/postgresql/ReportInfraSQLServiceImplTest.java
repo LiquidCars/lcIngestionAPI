@@ -112,9 +112,9 @@ public class ReportInfraSQLServiceImplTest {
             UUID participantId = UUID.randomUUID();
             List<IngestionBatchStatus> statuses = List.of(IngestionBatchStatus.COMPLETED);
 
-            when(reportRepository.existsByRequesterParticipantIdAndStatusNotIn(participantId, statuses)).thenReturn(true);
+            when(reportRepository.existsByPhysicalInventoryIdAndStatusNotIn(participantId, statuses)).thenReturn(true);
 
-            boolean result = reportService.existsByRequesterParticipantIdAndStatusNotIn(participantId, statuses);
+            boolean result = reportService.existsByPhysicalInventoryIdAndStatusNotIn(participantId, statuses);
 
             assertThat(result).isTrue();
         }
@@ -123,10 +123,10 @@ public class ReportInfraSQLServiceImplTest {
         @DisplayName("Should handle exception and format log message correctly")
         void existsFailure() {
             UUID participantId = UUID.randomUUID();
-            when(reportRepository.existsByRequesterParticipantIdAndStatusNotIn(any(), any()))
+            when(reportRepository.existsByPhysicalInventoryIdAndStatusNotIn(any(), any()))
                     .thenThrow(new RuntimeException("Error"));
 
-            assertThatThrownBy(() -> reportService.existsByRequesterParticipantIdAndStatusNotIn(participantId, null))
+            assertThatThrownBy(() -> reportService.existsByPhysicalInventoryIdAndStatusNotIn(participantId, null))
                     .isInstanceOf(LCIngestionException.class)
                     .hasMessageContaining("SQL Failed to check");
         }
@@ -262,10 +262,10 @@ public class ReportInfraSQLServiceImplTest {
             UUID participantId = UUID.randomUUID();
             List<IngestionBatchStatus> statuses = List.of(IngestionBatchStatus.FAILED, IngestionBatchStatus.COMPLETED);
 
-            when(reportRepository.existsByRequesterParticipantIdAndStatusNotIn(any(), any()))
+            when(reportRepository.existsByPhysicalInventoryIdAndStatusNotIn(any(), any()))
                     .thenThrow(new RuntimeException("Error"));
 
-            assertThatThrownBy(() -> reportService.existsByRequesterParticipantIdAndStatusNotIn(participantId, statuses))
+            assertThatThrownBy(() -> reportService.existsByPhysicalInventoryIdAndStatusNotIn(participantId, statuses))
                     .isInstanceOf(LCIngestionException.class)
                     .hasMessageContaining("FAILED, COMPLETED");
         }

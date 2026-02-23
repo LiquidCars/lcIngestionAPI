@@ -5,7 +5,6 @@ import net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus;
 import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
 import net.liquidcars.ingestion.domain.model.batch.IngestionProcessType;
 import net.liquidcars.ingestion.domain.model.batch.IngestionReportFilterDto;
-import net.liquidcars.ingestion.factory.TestDataFactory;
 import net.liquidcars.ingestion.infra.postgresql.entity.report.IngestionReportEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,7 +13,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.jpa.domain.Specification;
 
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -142,13 +140,13 @@ public class IngestionReportSpecificationTest {
     @Test
     void shouldAddDumpTypePredicateWhenPresent() {
         IngestionReportFilterDto filter = IngestionReportFilterDto.builder()
-                .dumpType(IngestionDumpType.UPDATE)
+                .dumpType(IngestionDumpType.INCREMENTAL)
                 .build();
 
         IngestionReportSpecification.filterBy(filter).toPredicate(root, query, cb);
 
         verify(root).get("dumpType");
-        verify(cb).equal(path, IngestionDumpType.UPDATE);
+        verify(cb).equal(path, IngestionDumpType.INCREMENTAL);
     }
 
     @Test

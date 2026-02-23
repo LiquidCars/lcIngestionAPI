@@ -96,7 +96,7 @@ public class IngestionControllerTest {
                 any(),
                 eq(TEST_INVENTORY_ID),
                 eq(TEST_PARTICIPANT_ID),
-                eq(IngestionDumpType.UPDATE),
+                eq(IngestionDumpType.INCREMENTAL),
                 any()
         );
     }
@@ -138,7 +138,7 @@ public class IngestionControllerTest {
                 any(InputStream.class),
                 eq(TEST_INVENTORY_ID),
                 eq(TEST_PARTICIPANT_ID),
-                eq(IngestionDumpType.UPDATE),
+                eq(IngestionDumpType.INCREMENTAL),
                 any(),
                 any()
         );
@@ -284,7 +284,7 @@ public class IngestionControllerTest {
             ingestionController.ingestStream(
                     IngestionFormat.json,
                     UUID.randomUUID(),
-                    IngestionDumpType.UPDATE,
+                    IngestionDumpType.INCREMENTAL,
                     bodyMock, // Pasamos el mock que lanza la excepción
                     null,
                     "ext-id"

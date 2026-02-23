@@ -99,7 +99,7 @@ public class IngestionReportTest {
     @DisplayName("Verificación de valores por defecto")
     void testDefaults() {
         IngestionReport report = new IngestionReport();
-        assertThat(report.getDumpType()).isEqualTo(net.liquidcars.ingestion.domain.model.batch.IngestionDumpType.UPDATE);
+        assertThat(report.getDumpType()).isEqualTo(net.liquidcars.ingestion.domain.model.batch.IngestionDumpType.INCREMENTAL);
     }
 
     @Test
@@ -118,7 +118,7 @@ public class IngestionReportTest {
         report.setExternalRequestId("EXT-1");
         report.setPublicationDate(date);
         report.setStatus("OK");
-        report.setDumpType(net.liquidcars.ingestion.domain.model.batch.IngestionDumpType.UPDATE);
+        report.setDumpType(net.liquidcars.ingestion.domain.model.batch.IngestionDumpType.INCREMENTAL);
         report.setReadCount(100);
         report.setWriteCount(90);
         report.setSkipCount(10);
@@ -137,7 +137,7 @@ public class IngestionReportTest {
                 () -> assertThat(report.getExternalRequestId()).isEqualTo("EXT-1"),
                 () -> assertThat(report.getPublicationDate()).isEqualTo(date),
                 () -> assertThat(report.getStatus()).isEqualTo("OK"),
-                () -> assertThat(report.getDumpType()).isEqualTo(net.liquidcars.ingestion.domain.model.batch.IngestionDumpType.UPDATE),
+                () -> assertThat(report.getDumpType()).isEqualTo(net.liquidcars.ingestion.domain.model.batch.IngestionDumpType.INCREMENTAL),
                 () -> assertThat(report.getReadCount()).isEqualTo(100),
                 () -> assertThat(report.getWriteCount()).isEqualTo(90),
                 () -> assertThat(report.getSkipCount()).isEqualTo(10),
@@ -202,7 +202,7 @@ public class IngestionReportTest {
     @Test
     @DisplayName("Cobertura de los métodos Fluent restantes: dumpType y failedExternalIds")
     void coverageKillerForRemainingFluentMethods() {
-        IngestionDumpType dumpType = IngestionDumpType.UPDATE;
+        IngestionDumpType dumpType = IngestionDumpType.INCREMENTAL;
 
         IngestionReport resultDump = report.dumpType(dumpType);
 

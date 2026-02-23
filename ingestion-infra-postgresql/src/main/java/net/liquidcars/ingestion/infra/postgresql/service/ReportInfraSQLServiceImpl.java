@@ -136,19 +136,19 @@ public class ReportInfraSQLServiceImpl implements IReportInfraSQLService {
     }
 
     @Override
-    public boolean existsByRequesterParticipantIdAndStatusNotIn(UUID requesterParticipantId, List<IngestionBatchStatus> statuses) {
+    public boolean existsByPhysicalInventoryIdAndStatusNotIn(UUID inventoryId, List<IngestionBatchStatus> statuses) {
         try {
-            return reportRepository.existsByRequesterParticipantIdAndStatusNotIn(requesterParticipantId, statuses);
+            return reportRepository.existsByPhysicalInventoryIdAndStatusNotIn(inventoryId, statuses);
         } catch (Exception e) {
             String statusList = (statuses != null)
                     ? statuses.stream().map(Enum::name).collect(Collectors.joining(", "))
                     : "null";
-            log.error("Database error checking ingestion status for participant: {} and statuses: {}",
-                    requesterParticipantId, statusList, e);
+            log.error("Database error checking ingestion status for inventory: {} and statuses: {}",
+                    inventoryId, statusList, e);
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.DATABASE)
-                    .message(String.format("SQL Failed to check if participant [%s] has reports excluding statuses: [%s]",
-                            requesterParticipantId, statusList))
+                    .message(String.format("SQL Failed to check if inventory [%s] has reports excluding statuses: [%s]",
+                            inventoryId, statusList))
                     .cause(e)
                     .build();
         }
