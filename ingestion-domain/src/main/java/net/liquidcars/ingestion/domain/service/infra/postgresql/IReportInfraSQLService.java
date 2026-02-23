@@ -17,7 +17,7 @@ public interface IReportInfraSQLService {
 
     IngestionReportDto findIngestionReportByBatchJobId(UUID batchJobId);
 
-    boolean existsByRequesterParticipantIdAndStatusNotIn(UUID requesterParticipantId, List<IngestionBatchStatus> statuses);
+    boolean existsByPhysicalInventoryIdAndStatusNotIn(UUID inventoryId, List<IngestionBatchStatus> statuses);
 
     List<IngestionReportDto> getPendingReports();
 

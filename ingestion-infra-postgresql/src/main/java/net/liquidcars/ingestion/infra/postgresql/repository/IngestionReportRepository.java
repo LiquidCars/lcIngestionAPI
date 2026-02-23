@@ -4,6 +4,7 @@ import net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus;
 import net.liquidcars.ingestion.infra.postgresql.entity.report.IngestionReportEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,7 +16,17 @@ public interface IngestionReportRepository extends JpaRepository<IngestionReport
 
     Optional<IngestionReportEntity> findByBatchJobId(UUID batchJobId);
 
-    boolean existsByRequesterParticipantIdAndStatusNotIn(UUID requesterParticipantId, List<IngestionBatchStatus> statuses);
+    @Query(value = """
+    SELECT EXISTS (
+        SELECT 1 
+        FROM public.ingestion_reports ir
+        INNER JOIN public.inv_nin_namedinventory inn ON ir.inventory_id = inn.nin_co_id
+        WHERE ir.inventory_id = :inventoryId 
+          AND inn.nin_bo_physical = true
+          AND ir.status NOT IN (:statuses)
+    )
+    """, nativeQuery = true)
+    boolean existsByPhysicalInventoryIdAndStatusNotIn(UUID inventoryId, List<IngestionBatchStatus> statuses);
 
     List<IngestionReportEntity> findByProcessedFalse();
 }

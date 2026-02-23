@@ -61,7 +61,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                               IngestionDumpType dumpType,
                               String externalPublicationId) {
         validateIngestionPayload(ingestionPayloadDto);
-        validateRequesterParticipantHasNotProcessStarted(requesterParticipantId);
+        validatePhysicalInventoryHasNotProcessStarted(inventoryId);
         IngestionReportDto ingestionReportDto = createIngestionReportDto(ingestionPayloadDto, inventoryId, requesterParticipantId, dumpType, externalPublicationId);
         ingestionPayloadDto.getOffers().forEach(offerDto -> {
             offerDto.setIngestionReportId(ingestionReportDto.getId());
@@ -82,7 +82,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                                      String externalPublicationId)
     {
         log.info("Triggering remote ingestion from URL: {} with format: {}", url, format);
-        validateRequesterParticipantHasNotProcessStarted(requesterParticipantId);
+        validatePhysicalInventoryHasNotProcessStarted(inventoryId);
         validateUrl(url);
         IOfferParserService parser = getParser(format);
         Thread.ofVirtual().start(() -> {
@@ -158,20 +158,21 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         }
     }
 
-    private void validateRequesterParticipantHasNotProcessStarted(UUID requestParticipantId) {
+    // TODO se deberia mirar el inventario en vez del participante y comprobar que es físico
+    private void validatePhysicalInventoryHasNotProcessStarted(UUID inventoryId) {
         List<IngestionBatchStatus> finalStatuses = List.of(
                 IngestionBatchStatus.COMPLETED,
                 IngestionBatchStatus.FAILED,
                 IngestionBatchStatus.ABANDONED,
                 IngestionBatchStatus.STOPPED
         );
-        if (iReportInfraSQLService.existsByRequesterParticipantIdAndStatusNotIn(requestParticipantId, finalStatuses)) {
-            log.warn("Validation failed: Participant {} already has an active ingestion process.", requestParticipantId);
+        if (iReportInfraSQLService.existsByPhysicalInventoryIdAndStatusNotIn(inventoryId, finalStatuses)) {
+            log.warn("Validation failed: Inventory {} already has an active ingestion process.", inventoryId);
 
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.INVALID_REQUEST)
-                    .message(String.format("Participant [%s] already has an active ingestion process in progress. " +
-                            "Please wait for it to finish before starting a new one.", requestParticipantId))
+                    .message(String.format("Inventory [%s] already has an active ingestion process in progress. " +
+                            "Please wait for it to finish before starting a new one.", inventoryId))
                     .build();
         }
     }
@@ -224,7 +225,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                                     OffsetDateTime publicationDate,
                                     String externalPublicationId)
     {
-        validateRequesterParticipantHasNotProcessStarted(requesterParticipantId);
+        validatePhysicalInventoryHasNotProcessStarted(inventoryId);
         IOfferParserService parser = getParser(format);
         this.processOffersStream(format, parser, inputStream, inventoryId, requesterParticipantId, externalPublicationId, dumpType, publicationDate);
     }

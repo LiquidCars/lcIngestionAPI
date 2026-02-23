@@ -19,13 +19,11 @@ import net.liquidcars.ingestion.factory.IngestionBatchReportDtoFactory;
 import net.liquidcars.ingestion.factory.IngestionReportDtoFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.slf4j.Logger;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
@@ -37,12 +35,9 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URI;
 import java.time.OffsetDateTime;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -82,7 +77,7 @@ class OfferIngestionProcessServiceImplTest {
                 .offersToDelete(Collections.emptyList())
                 .build();
 
-        when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(any(), any())).thenReturn(false);
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         service.processOffers(payload, inventoryId, participantId, IngestionDumpType.REPLACEMENT, "ext-1");
 
@@ -94,7 +89,7 @@ class OfferIngestionProcessServiceImplTest {
     void shouldTriggerBatchJobOnStream() throws Exception {
         InputStream stream = new ByteArrayInputStream("data".getBytes());
         when(parserService.supports(any())).thenReturn(true);
-        when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(any(), any())).thenReturn(false);
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         service.processOffersStream(IngestionFormat.xml, stream, inventoryId, participantId,
                 IngestionDumpType.REPLACEMENT, OffsetDateTime.now(), "ext-1");
@@ -224,12 +219,12 @@ class OfferIngestionProcessServiceImplTest {
     void shouldCoverProcessOffersFromUrlLambda() {
         URI uri = URI.create("https://localhost:8080/offers.xml");
         when(parserService.supports(IngestionFormat.xml)).thenReturn(true);
-        when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(any(), any())).thenReturn(false);
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         service.processOffersFromUrl(IngestionFormat.xml, uri, inventoryId, participantId,
                 IngestionDumpType.REPLACEMENT, OffsetDateTime.now(), "ext-1");
 
-        verify(reportSqlService, timeout(2000)).existsByRequesterParticipantIdAndStatusNotIn(any(), any());
+        verify(reportSqlService, timeout(2000)).existsByPhysicalInventoryIdAndStatusNotIn(any(), any());
     }
 
     @Test
@@ -237,10 +232,10 @@ class OfferIngestionProcessServiceImplTest {
     void shouldCoverProcessOffersStreamLambda() throws Exception {
         InputStream inputStream = new ByteArrayInputStream("<xml></xml>".getBytes());
         when(parserService.supports(any())).thenReturn(true);
-        when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(any(), any())).thenReturn(false);
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
-                IngestionDumpType.UPDATE, OffsetDateTime.now(), "ext-1");
+                IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(3000)).run(eq(offerIngestionJob), any(JobParameters.class));
         verify(reportSqlService, timeout(3000)).upsertIngestionReport(any());
@@ -263,12 +258,12 @@ class OfferIngestionProcessServiceImplTest {
             URI localUri = URI.create("http://localhost:" + port + "/test");
 
             when(parserService.supports(IngestionFormat.xml)).thenReturn(true);
-            when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(any(), any())).thenReturn(false);
+            when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
             service.processOffersFromUrl(IngestionFormat.xml, localUri, inventoryId, participantId,
                     IngestionDumpType.REPLACEMENT, OffsetDateTime.now(), "ext-1");
 
-            verify(reportSqlService, timeout(2000)).existsByRequesterParticipantIdAndStatusNotIn(any(), any());
+            verify(reportSqlService, timeout(2000)).existsByPhysicalInventoryIdAndStatusNotIn(any(), any());
 
             verify(reportSqlService, timeout(5000)).upsertIngestionReport(any());
             verify(jobLauncher, timeout(5000)).run(any(), any());
@@ -284,12 +279,12 @@ class OfferIngestionProcessServiceImplTest {
     void shouldCoverLambdaCatchBlock() throws Exception {
         URI unreachableUri = URI.create("http://localhost:1");
         when(parserService.supports(any())).thenReturn(true);
-        when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(any(), any())).thenReturn(false);
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         service.processOffersFromUrl(IngestionFormat.xml, unreachableUri, inventoryId, participantId,
                 IngestionDumpType.REPLACEMENT, OffsetDateTime.now(), "ext-1");
 
-        verify(reportSqlService, timeout(2000)).existsByRequesterParticipantIdAndStatusNotIn(any(), any());
+        verify(reportSqlService, timeout(2000)).existsByPhysicalInventoryIdAndStatusNotIn(any(), any());
 
         Thread.sleep(500);
         verify(jobLauncher, never()).run(any(), any());
@@ -391,12 +386,12 @@ class OfferIngestionProcessServiceImplTest {
     void shouldCoverStreamLambdaCatchBlock() throws Exception {
         InputStream inputStream = new ByteArrayInputStream("<xml></xml>".getBytes());
         when(parserService.supports(any())).thenReturn(true);
-        when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(any(), any())).thenReturn(false);
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         doThrow(new RuntimeException("Batch Exception")).when(jobLauncher).run(any(), any());
 
         service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
-                IngestionDumpType.UPDATE, OffsetDateTime.now(), "ext-1");
+                IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(3000)).run(any(), any());
 
@@ -412,7 +407,7 @@ class OfferIngestionProcessServiceImplTest {
         when(parserService.supports(any())).thenReturn(true);
 
         service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
-                IngestionDumpType.UPDATE, OffsetDateTime.now(), "ext-1");
+                IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(3000)).run(any(), any());
     }
@@ -422,7 +417,7 @@ class OfferIngestionProcessServiceImplTest {
     void shouldCoverStreamLambdaCatchWithExecutionNotNull() throws Exception {
         InputStream inputStream = new ByteArrayInputStream("data".getBytes());
         lenient().when(parserService.supports(any())).thenReturn(true);
-        lenient().when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(any(), any())).thenReturn(false);
+        lenient().when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         JobExecution mockExecution = mock(JobExecution.class);
         lenient().when(mockExecution.getJobId()).thenReturn(123L);
@@ -432,7 +427,7 @@ class OfferIngestionProcessServiceImplTest {
                 .thenThrow(new RuntimeException("Forced failure"));
 
         service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
-                IngestionDumpType.UPDATE, OffsetDateTime.now(), "ext-1");
+                IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(3000)).run(any(), any());
 
@@ -494,7 +489,7 @@ class OfferIngestionProcessServiceImplTest {
                 new ByteArrayInputStream("data".getBytes()),
                 inventoryId,
                 participantId,
-                IngestionDumpType.UPDATE,
+                IngestionDumpType.INCREMENTAL,
                 OffsetDateTime.now(),
                 "ext-id"
         );
@@ -535,29 +530,29 @@ class OfferIngestionProcessServiceImplTest {
 
         when(parserService.supports(IngestionFormat.xml)).thenReturn(true);
 
-        when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(requesterId, finalStatuses))
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(requesterId, finalStatuses))
                 .thenReturn(false);
 
         service.processOffersStream(IngestionFormat.xml, new ByteArrayInputStream("".getBytes()),
-                inventoryId, requesterId, IngestionDumpType.UPDATE, null, "ext");
+                inventoryId, requesterId, IngestionDumpType.INCREMENTAL, null, "ext");
 
-        verify(reportSqlService).existsByRequesterParticipantIdAndStatusNotIn(requesterId, finalStatuses);
+        verify(reportSqlService).existsByPhysicalInventoryIdAndStatusNotIn(requesterId, finalStatuses);
     }
 
     @Test
     @DisplayName("Debe lanzar LCIngestionException si el participante ya tiene un proceso en curso")
     void shouldThrowExceptionWhenActiveProcessExists() {
         UUID requesterId = UUID.randomUUID();
-        when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(eq(requesterId), any()))
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(eq(requesterId), any()))
                 .thenReturn(true);
 
         LCIngestionException exception = assertThrows(LCIngestionException.class, () ->
                 service.processOffersStream(IngestionFormat.xml, new ByteArrayInputStream("".getBytes()),
-                        inventoryId, requesterId, IngestionDumpType.UPDATE, null, "ext")
+                        inventoryId, requesterId, IngestionDumpType.INCREMENTAL, null, "ext")
         );
 
         assertThat(exception.getMessage()).contains("already has an active ingestion process in progress");
-        verify(reportSqlService).existsByRequesterParticipantIdAndStatusNotIn(eq(requesterId), any());
+        verify(reportSqlService).existsByPhysicalInventoryIdAndStatusNotIn(eq(requesterId), any());
     }
 
     @Test
@@ -566,7 +561,7 @@ class OfferIngestionProcessServiceImplTest {
         URI uriWithInvalidPort = URI.create("http://localhost:999999");
 
         when(parserService.supports(any())).thenReturn(true);
-        when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(any(), any())).thenReturn(false);
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         service.processOffersFromUrl(
                 IngestionFormat.xml,
@@ -578,7 +573,7 @@ class OfferIngestionProcessServiceImplTest {
                 "ext-1"
         );
 
-        verify(reportSqlService, timeout(2000)).existsByRequesterParticipantIdAndStatusNotIn(any(), any());
+        verify(reportSqlService, timeout(2000)).existsByPhysicalInventoryIdAndStatusNotIn(any(), any());
     }
 
     @Test
@@ -607,7 +602,7 @@ class OfferIngestionProcessServiceImplTest {
         InputStream inputStream = new ByteArrayInputStream("data".getBytes());
 
         lenient().when(parserService.supports(any())).thenReturn(true);
-        lenient().when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(any(), any())).thenReturn(false);
+        lenient().when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         JobExecution mockExecution = mock(JobExecution.class);
         lenient().when(mockExecution.getJobId()).thenReturn(123L);
@@ -619,7 +614,7 @@ class OfferIngestionProcessServiceImplTest {
                 });
 
         service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
-                IngestionDumpType.UPDATE, OffsetDateTime.now(), "ext-1");
+                IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(3000)).run(any(), any());
 
@@ -637,7 +632,7 @@ class OfferIngestionProcessServiceImplTest {
                 .when(jobLauncher).run(any(), any());
 
         service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
-                IngestionDumpType.UPDATE, OffsetDateTime.now(), "ext-1");
+                IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(3000)).run(any(), any());
     }
@@ -648,7 +643,7 @@ class OfferIngestionProcessServiceImplTest {
         IngestionPayloadDto payload = IngestionPayloadDto.builder().offers(null).build();
 
         assertThrows(LCIngestionException.class, () ->
-                service.processOffers(payload, inventoryId, participantId, IngestionDumpType.UPDATE, "ext")
+                service.processOffers(payload, inventoryId, participantId, IngestionDumpType.INCREMENTAL, "ext")
         );
     }
 
@@ -664,7 +659,7 @@ class OfferIngestionProcessServiceImplTest {
         try {
             URI uri = URI.create("http://localhost:" + server.getAddress().getPort() + "/404");
             lenient().when(parserService.supports(any())).thenReturn(true);
-            lenient().when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(any(), any())).thenReturn(false);
+            lenient().when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
             service.processOffersFromUrl(IngestionFormat.xml, uri, inventoryId, participantId, IngestionDumpType.REPLACEMENT, null, "ext");
 
@@ -679,7 +674,7 @@ class OfferIngestionProcessServiceImplTest {
         InputStream stream = new ByteArrayInputStream("data".getBytes());
 
         lenient().when(parserService.supports(any())).thenReturn(true);
-        lenient().when(reportSqlService.existsByRequesterParticipantIdAndStatusNotIn(any(), any())).thenReturn(false);
+        lenient().when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         JobExecution mockExecution = mock(JobExecution.class);
         lenient().when(mockExecution.getJobId()).thenReturn(777L);
@@ -824,7 +819,7 @@ class OfferIngestionProcessServiceImplTest {
         when(jobLauncher.run(any(), any())).thenThrow(new RuntimeException("Launcher Direct Failure"));
 
         service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
-                IngestionDumpType.UPDATE, OffsetDateTime.now(), "ext-1");
+                IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(2000)).run(any(), any());
     }
