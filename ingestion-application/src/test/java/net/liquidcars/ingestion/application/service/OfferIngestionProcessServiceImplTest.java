@@ -324,7 +324,7 @@ class OfferIngestionProcessServiceImplTest {
                 any(),
                 any(),
                 any(),
-                activeBookedOfferIds);
+                any());
         verify(kafkaProducer).sendIngestionReportPromoteActionNotification(
                 argThat(dto -> dto.getResult().equals(IngestionReportResponseActionResult.SUCCESS))
         );
@@ -348,7 +348,7 @@ class OfferIngestionProcessServiceImplTest {
 
         verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(
                 any(), any(), any(), any(),
-                activeBookedOfferIds);
+                any());
 
         verify(reportSqlService, never()).upsertIngestionReport(any());
     }
@@ -367,7 +367,7 @@ class OfferIngestionProcessServiceImplTest {
 
         service.promoteDraftOffersToVehicleOffers(jobId, false);
 
-        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any(), activeBookedOfferIds);
+        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any(), any());
         verify(reportSqlService, never()).upsertIngestionReport(any());
     }
 
@@ -520,7 +520,10 @@ class OfferIngestionProcessServiceImplTest {
     @Test
     @DisplayName("Debe permitir continuar si el participante no tiene procesos activos")
     void shouldAllowProcessingWhenNoActiveProcessExists() {
+        // GIVEN
         UUID requesterId = UUID.randomUUID();
+        UUID inventoryId = UUID.randomUUID();
+
         List<IngestionBatchStatus> finalStatuses = List.of(
                 IngestionBatchStatus.COMPLETED,
                 IngestionBatchStatus.FAILED,
@@ -530,29 +533,44 @@ class OfferIngestionProcessServiceImplTest {
 
         when(parserService.supports(IngestionFormat.xml)).thenReturn(true);
 
-        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(requesterId, finalStatuses))
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(eq(inventoryId), any()))
                 .thenReturn(false);
 
-        service.processOffersStream(IngestionFormat.xml, new ByteArrayInputStream("".getBytes()),
-                inventoryId, requesterId, IngestionDumpType.INCREMENTAL, null, "ext");
+        service.processOffersStream(
+                IngestionFormat.xml,
+                new ByteArrayInputStream("".getBytes()),
+                inventoryId,
+                requesterId,
+                IngestionDumpType.INCREMENTAL,
+                null,
+                "ext"
+        );
 
-        verify(reportSqlService).existsByPhysicalInventoryIdAndStatusNotIn(requesterId, finalStatuses);
+        verify(reportSqlService).existsByPhysicalInventoryIdAndStatusNotIn(eq(inventoryId), any());
     }
 
     @Test
     @DisplayName("Debe lanzar LCIngestionException si el participante ya tiene un proceso en curso")
     void shouldThrowExceptionWhenActiveProcessExists() {
         UUID requesterId = UUID.randomUUID();
-        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(eq(requesterId), any()))
+
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(UUID.class), any()))
                 .thenReturn(true);
 
         LCIngestionException exception = assertThrows(LCIngestionException.class, () ->
-                service.processOffersStream(IngestionFormat.xml, new ByteArrayInputStream("".getBytes()),
-                        inventoryId, requesterId, IngestionDumpType.INCREMENTAL, null, "ext")
+                service.processOffersStream(
+                        IngestionFormat.xml,
+                        new ByteArrayInputStream("".getBytes()),
+                        UUID.randomUUID(),
+                        requesterId,
+                        IngestionDumpType.INCREMENTAL,
+                        null,
+                        "ext")
         );
 
         assertThat(exception.getMessage()).contains("already has an active ingestion process in progress");
-        verify(reportSqlService).existsByPhysicalInventoryIdAndStatusNotIn(eq(requesterId), any());
+
+        verify(reportSqlService).existsByPhysicalInventoryIdAndStatusNotIn(any(UUID.class), any());
     }
 
     @Test
@@ -754,7 +772,7 @@ class OfferIngestionProcessServiceImplTest {
 
         service.promoteDraftOffersToVehicleOffers(jobId, false);
 
-        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any(), activeBookedOfferIds);
+        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -771,7 +789,7 @@ class OfferIngestionProcessServiceImplTest {
 
         service.promoteDraftOffersToVehicleOffers(jobId, false);
 
-        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any(), activeBookedOfferIds);
+        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -787,7 +805,7 @@ class OfferIngestionProcessServiceImplTest {
 
         // Forzamos error en la infraestructura
         doThrow(LCIngestionException.builder().techCause(LCTechCauseEnum.DATABASE).build())
-                .when(offerNoSqlService).promoteDraftOffersToVehicleOffers(any(), any(), any(), any(), activeBookedOfferIds);
+                .when(offerNoSqlService).promoteDraftOffersToVehicleOffers(any(), any(), any(), any(), any());
 
         // Verificamos que al ser async=false, lanza la excepción
         assertThrows(LCIngestionException.class, () ->

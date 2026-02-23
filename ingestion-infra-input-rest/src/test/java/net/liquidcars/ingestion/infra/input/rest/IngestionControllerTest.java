@@ -87,7 +87,7 @@ public class IngestionControllerTest {
 
         mockMvc.perform(post("/v1/ingestion/batch")
                         .param("inventoryId", TEST_INVENTORY_ID.toString())
-                        .param("dumpType", "UPDATE")
+                        .param("dumpType", "INCREMENTAL")
                         .content("{}")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isAccepted());
@@ -128,7 +128,7 @@ public class IngestionControllerTest {
         mockMvc.perform(post("/v1/ingestion/stream")
                         .param("format", "xml")
                         .param("inventoryId", TEST_INVENTORY_ID.toString())
-                        .param("dumpType", "UPDATE")
+                        .param("dumpType", "INCREMENTAL")
                         .content(content)
                         .contentType(MediaType.APPLICATION_OCTET_STREAM))
                 .andExpect(status().isAccepted());
@@ -158,7 +158,7 @@ public class IngestionControllerTest {
         mockMvc.perform(post("/v1/ingestion/stream")
                         .param("format", "xml")
                         .param("inventoryId", TEST_INVENTORY_ID.toString())
-                        .param("dumpType", "UPDATE")
+                        .param("dumpType", "INCREMENTAL")
                         .content("test content")
                         .contentType(MediaType.APPLICATION_OCTET_STREAM))
                 .andExpect(status().isBadRequest())
@@ -252,7 +252,7 @@ public class IngestionControllerTest {
         mockMvc.perform(post("/v1/ingestion/stream")
                         .param("format", "json")
                         .param("inventoryId", TEST_INVENTORY_ID.toString())
-                        .param("dumpType", "UPDATE")
+                        .param("dumpType", "INCREMENTAL")
                         .contentType(MediaType.APPLICATION_OCTET_STREAM)
                         .content(content))
                 .andExpect(status().isAccepted());

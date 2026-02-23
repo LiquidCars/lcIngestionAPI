@@ -36,7 +36,7 @@ public class IngestionApiTest {
     void ingestBatch_ShouldReturnNotImplementedByDefault() throws Exception {
         mockMvc.perform(post("/v1/ingestion/batch")
                         .param("inventoryId", TEST_INVENTORY_ID)
-                        .param("dumpType", "UPDATE")
+                        .param("dumpType", "INCREMENTAL")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isNotImplemented());
@@ -57,7 +57,7 @@ public class IngestionApiTest {
         mockMvc.perform(post("/v1/ingestion/stream")
                         .param("format", "xml")
                         .param("inventoryId", TEST_INVENTORY_ID)
-                        .param("dumpType", "UPDATE")
+                        .param("dumpType", "INCREMENTAL")
                         .contentType(MediaType.APPLICATION_OCTET_STREAM)
                         .content("binary-data"))
                 .andExpect(status().isNotImplemented());
@@ -67,7 +67,7 @@ public class IngestionApiTest {
     void ingestBatch_ShouldFailWhenInventoryIdIsMissing() throws Exception {
         // Al ser un parámetro @NotNull en la interfaz, el dispatcher fallará si no se envía
         mockMvc.perform(post("/v1/ingestion/batch")
-                        .param("dumpType", "UPDATE")
+                        .param("dumpType", "INCREMENTAL")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("[]"))
                 .andExpect(status().isBadRequest());

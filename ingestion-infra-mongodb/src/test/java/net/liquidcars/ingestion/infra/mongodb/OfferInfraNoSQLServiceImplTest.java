@@ -135,15 +135,20 @@ public class OfferInfraNoSQLServiceImplTest {
         when(mapper.toVehicleOfferNoSQLEntity(draft)).thenReturn(vehicleEntity);
         when(mapper.toDto(draft)).thenReturn(offerDto);
 
-        service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, inventoryId, null);
+        service.promoteDraftOffersToVehicleOffers(
+                reportId,
+                IngestionDumpType.INCREMENTAL,
+                inventoryId,
+                List.of(),
+                List.of()
+        );
 
         verify(bulkOps, atLeastOnce()).execute();
 
-        verify(offerInfraSQLService, atLeastOnce()).processBatch(anyList());
-
-        verify(offerInfraSQLService).processBatch(argThat(list ->
-                list.size() == 1 && list.get(0).getId().equals(draft.getId())
-        ));
+        verify(offerInfraSQLService).processBatch(
+                argThat(list -> list.size() == 1 && list.get(0).getId().equals(draft.getId())),
+                anyList()
+        );
     }
 
     @Test
@@ -152,6 +157,7 @@ public class OfferInfraNoSQLServiceImplTest {
         UUID reportId = UUID.randomUUID();
         UUID inventoryId = UUID.randomUUID();
         UUID offerId = UUID.randomUUID();
+        List<UUID> activeBookedOfferIds = List.of();
 
         DraftOfferNoSQLEntity fakeDraft = new DraftOfferNoSQLEntity();
         fakeDraft.setId(offerId);
@@ -172,9 +178,9 @@ public class OfferInfraNoSQLServiceImplTest {
         when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(new VehicleOfferNoSQLEntity());
         when(mapper.toDto(any())).thenReturn(offerDto);
 
-        when(offerInfraSQLService.processBatch(anyList())).thenReturn(List.of(offerId));
+        when(offerInfraSQLService.processBatch(anyList(), anyList())).thenReturn(List.of(offerId));
 
-        service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.REPLACEMENT, inventoryId, null);
+        service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.REPLACEMENT, inventoryId, null, activeBookedOfferIds);
 
         verify(vehicleOfferNoSqlRepository).deleteByInventoryIdAndIdNotIn(eq(inventoryId), anyList());
 
@@ -204,6 +210,7 @@ public class OfferInfraNoSQLServiceImplTest {
     void deleteOffersInPromotion_FullCoverage() {
         UUID invId = UUID.randomUUID();
         List<String> toDelete = List.of("REF1");
+        List<UUID> activeBookedOfferIds = List.of();
 
         when(mongoTemplate.stream(any(), eq(DraftOfferNoSQLEntity.class)))
                 .thenReturn(Stream.empty())
@@ -218,9 +225,10 @@ public class OfferInfraNoSQLServiceImplTest {
         when(mongoTemplate.remove(any(org.springframework.data.mongodb.core.query.Query.class), eq(VehicleOfferNoSQLEntity.class)))
                 .thenReturn(deleteResult);
 
-        service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.INCREMENTAL, invId, toDelete);
+        service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.INCREMENTAL, invId, toDelete, activeBookedOfferIds);
 
-        verify(offerInfraSQLService).deleteOffersByInventoryIdAndReferences(eq(invId), eq(toDelete));
+        verify(offerInfraSQLService).deleteOffersByInventoryIdAndReferences(eq(invId), any());
+
         verify(mongoTemplate).remove(any(org.springframework.data.mongodb.core.query.Query.class), eq(VehicleOfferNoSQLEntity.class));
     }
 
@@ -230,6 +238,7 @@ public class OfferInfraNoSQLServiceImplTest {
         UUID reportId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
         draft.setId(UUID.randomUUID());
+
         draft.setOwnerReference(null);
         draft.setDealerReference(null);
         draft.setChannelReference(null);
@@ -250,8 +259,15 @@ public class OfferInfraNoSQLServiceImplTest {
 
         when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(vehicleEntity);
 
-        service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, UUID.randomUUID(), null);
+        service.promoteDraftOffersToVehicleOffers(
+                reportId,
+                IngestionDumpType.INCREMENTAL,
+                UUID.randomUUID(),
+                List.of(),
+                List.of()
+        );
 
+        // THEN
         verify(bulkOpsMock).upsert(any(), any());
         verify(mapper).toVehicleOfferNoSQLEntity(draft);
     }
@@ -260,11 +276,20 @@ public class OfferInfraNoSQLServiceImplTest {
     @DisplayName("promoteDraftOffers: Error total en promoción debe lanzar excepción")
     void promoteDraftOffers_TotalFailure_Exception() {
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
+
         when(mongoTemplate.stream(any(), eq(DraftOfferNoSQLEntity.class))).thenReturn(Stream.of(draft));
+
         when(mapper.toVehicleOfferNoSQLEntity(any())).thenThrow(new RuntimeException("Mapping error"));
 
-        assertThatThrownBy(() -> service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.INCREMENTAL, UUID.randomUUID(), null))
-                .isInstanceOf(LCIngestionException.class);
+        assertThatThrownBy(() ->
+                service.promoteDraftOffersToVehicleOffers(
+                        UUID.randomUUID(),
+                        IngestionDumpType.INCREMENTAL,
+                        UUID.randomUUID(),
+                        List.of(),
+                        List.of()
+                )
+        ).isInstanceOf(LCIngestionException.class);
     }
 
     @Test
@@ -294,15 +319,21 @@ public class OfferInfraNoSQLServiceImplTest {
         when(mapper.toDto(any())).thenReturn(dto);
 
         doThrow(new RuntimeException("SQL Connection Error"))
-                .when(offerInfraSQLService).processBatch(anyList());
+                .when(offerInfraSQLService).processBatch(anyList(), anyList());
 
         assertThatThrownBy(() ->
-                service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, inventoryId, null)
+                service.promoteDraftOffersToVehicleOffers(
+                        reportId,
+                        IngestionDumpType.INCREMENTAL,
+                        inventoryId,
+                        List.of(),
+                        List.of()
+                )
         )
                 .isInstanceOf(LCIngestionException.class)
                 .hasMessageContaining("Error in promotion all offers are not processed: " + reportId);
 
-        verify(offerInfraSQLService).processBatch(anyList());
+        verify(offerInfraSQLService).processBatch(anyList(), anyList());
     }
 
     @Test
@@ -348,17 +379,23 @@ public class OfferInfraNoSQLServiceImplTest {
         when(mapper.toDto(any())).thenReturn(dto);
 
         doThrow(new RuntimeException("Generic SQL Error"))
-                .when(offerInfraSQLService).processBatch(anyList());
+                .when(offerInfraSQLService).processBatch(anyList(), anyList());
 
         assertThatThrownBy(() ->
-                service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, UUID.randomUUID(), null)
+                service.promoteDraftOffersToVehicleOffers(
+                        reportId,
+                        IngestionDumpType.INCREMENTAL,
+                        UUID.randomUUID(),
+                        List.of(),
+                        List.of()
+                )
         )
                 .isInstanceOf(LCIngestionException.class)
                 .hasMessageContaining("Error in promotion all offers are not processed: " + reportId)
                 .extracting("techCause")
                 .isEqualTo(LCTechCauseEnum.DATABASE);
 
-        verify(offerInfraSQLService).processBatch(anyList());
+        verify(offerInfraSQLService).processBatch(anyList(), anyList());
     }
 
     @Test
@@ -429,9 +466,16 @@ public class OfferInfraNoSQLServiceImplTest {
 
         when(mongoTemplate.getConverter()).thenReturn(mock(org.springframework.data.mongodb.core.convert.MongoConverter.class));
         when(bulkOpsMock.execute()).thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
+
         when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(vehicle);
 
-        service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.INCREMENTAL, UUID.randomUUID(), null);
+        service.promoteDraftOffersToVehicleOffers(
+                UUID.randomUUID(),
+                IngestionDumpType.INCREMENTAL,
+                UUID.randomUUID(),
+                List.of(),
+                List.of()
+        );
 
         verify(bulkOpsMock).upsert(any(), any());
         verify(bulkOpsMock).execute();
@@ -443,7 +487,6 @@ public class OfferInfraNoSQLServiceImplTest {
         UUID reportId = UUID.randomUUID();
         DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
         draft.setId(UUID.randomUUID());
-
         VehicleOfferNoSQLEntity fakeProd = new VehicleOfferNoSQLEntity();
         fakeProd.setId(draft.getId());
         when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(fakeProd);
@@ -458,17 +501,23 @@ public class OfferInfraNoSQLServiceImplTest {
         when(mapper.toDto(any())).thenReturn(new OfferDto());
 
         doThrow(new RuntimeException("SQL Crash"))
-                .when(offerInfraSQLService).processBatch(anyList());
+                .when(offerInfraSQLService).processBatch(anyList(), anyList());
 
         assertThatThrownBy(() ->
-                service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, UUID.randomUUID(), null)
+                service.promoteDraftOffersToVehicleOffers(
+                        reportId,
+                        IngestionDumpType.INCREMENTAL,
+                        UUID.randomUUID(),
+                        List.of(),
+                        List.of()
+                )
         )
                 .isInstanceOf(LCIngestionException.class)
                 .hasMessageContaining("Error in promotion all offers are not processed: " + reportId)
                 .extracting("techCause")
                 .isEqualTo(LCTechCauseEnum.DATABASE);
 
-        verify(offerInfraSQLService).processBatch(anyList());
+        verify(offerInfraSQLService).processBatch(anyList(), anyList());
     }
 
     @Test
@@ -513,15 +562,21 @@ public class OfferInfraNoSQLServiceImplTest {
         when(mapper.toDto(any())).thenReturn(dto);
 
         doThrow(new RuntimeException("SQL Critical Failure"))
-                .when(offerInfraSQLService).processBatch(anyList());
+                .when(offerInfraSQLService).processBatch(anyList(), anyList());
 
         assertThatThrownBy(() ->
-                service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, inventoryId, null)
+                service.promoteDraftOffersToVehicleOffers(
+                        reportId,
+                        IngestionDumpType.INCREMENTAL,
+                        inventoryId,
+                        List.of(),
+                        List.of()
+                )
         )
                 .isInstanceOf(LCIngestionException.class)
                 .hasMessageContaining("Error in promotion all offers are not processed: " + reportId);
 
-        verify(offerInfraSQLService).processBatch(anyList());
+        verify(offerInfraSQLService).processBatch(anyList(), anyList());
     }
 
     @Test
@@ -608,15 +663,21 @@ public class OfferInfraNoSQLServiceImplTest {
                 .techCause(LCTechCauseEnum.DATABASE)
                 .build();
 
-        doThrow(domainEx).when(offerInfraSQLService).processBatch(anyList());
+        doThrow(domainEx).when(offerInfraSQLService).processBatch(anyList(), anyList());
 
         assertThatThrownBy(() ->
-                service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, UUID.randomUUID(), null)
+                service.promoteDraftOffersToVehicleOffers(
+                        reportId,
+                        IngestionDumpType.INCREMENTAL,
+                        UUID.randomUUID(),
+                        List.of(),
+                        List.of()
+                )
         )
                 .isInstanceOf(LCIngestionException.class)
                 .hasMessageContaining("Error in promotion all offers are not processed");
 
-        verify(offerInfraSQLService).processBatch(anyList());
+        verify(offerInfraSQLService).processBatch(anyList(), anyList());
     }
 
     @Test
@@ -684,6 +745,7 @@ public class OfferInfraNoSQLServiceImplTest {
         Document docWithNull = new Document("field1", "value1").append("field2", null);
         MongoConverter mockConverter = mock(MongoConverter.class);
         when(mongoTemplate.getConverter()).thenReturn(mockConverter);
+
         doAnswer(inv -> {
             Document d = inv.getArgument(1);
             d.putAll(docWithNull);
@@ -701,7 +763,13 @@ public class OfferInfraNoSQLServiceImplTest {
         when(mockResult.getModifiedCount()).thenReturn(0);
         when(mockResult.getUpserts()).thenReturn(Collections.emptyList());
 
-        service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, inventoryId, null);
+        service.promoteDraftOffersToVehicleOffers(
+                reportId,
+                IngestionDumpType.INCREMENTAL,
+                inventoryId,
+                List.of(),
+                List.of()
+        );
 
         verify(mongoTemplate, atLeastOnce()).getConverter();
         verify(mockBulkOps).execute();
@@ -711,6 +779,7 @@ public class OfferInfraNoSQLServiceImplTest {
     @DisplayName("Promote: Debe ejecutar bulkOps cuando se alcanza el tamaño de batch (100)")
     void promote_ShouldExecuteBulkWhenBatchSizeReached() {
         UUID reportId = UUID.randomUUID();
+        UUID inventoryId = UUID.randomUUID();
 
         List<DraftOfferNoSQLEntity> drafts = new ArrayList<>();
         for (int i = 0; i < 101; i++) {
@@ -733,7 +802,13 @@ public class OfferInfraNoSQLServiceImplTest {
         when(mongoTemplate.bulkOps(any(), eq(VehicleOfferNoSQLEntity.class))).thenReturn(mockBulk);
         when(mockBulk.execute()).thenReturn(mockResult);
 
-        service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, UUID.randomUUID(), null);
+        service.promoteDraftOffersToVehicleOffers(
+                reportId,
+                IngestionDumpType.INCREMENTAL,
+                inventoryId,
+                List.of(),
+                List.of()
+        );
 
         verify(mockBulk, atLeast(2)).execute();
     }
@@ -778,14 +853,18 @@ public class OfferInfraNoSQLServiceImplTest {
     @DisplayName("promoteDraftOffersToSQL: Cobertura de error crítico en la promoción SQL")
     void promoteDraftOffersToSQL_CriticalError_Coverage() {
         UUID reportId = UUID.randomUUID();
+        List<UUID> activeBookedOfferIds = java.util.Collections.emptyList();
 
         when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
                 .thenThrow(new RuntimeException("MongoDB Connection Failure"));
 
         assertThatThrownBy(() ->
                 org.springframework.test.util.ReflectionTestUtils.invokeMethod(
-                        service, "promoteDraftOffersToSQL", reportId))
-                .isInstanceOf(LCIngestionException.class) // Cambio aquí
+                        service,
+                        "promoteDraftOffersToSQL",
+                        reportId,
+                        activeBookedOfferIds))
+                .isInstanceOf(LCIngestionException.class)
                 .hasMessageContaining("Error during SQL promotion for ingestionReportId: " + reportId);
     }
 
@@ -793,13 +872,20 @@ public class OfferInfraNoSQLServiceImplTest {
     @DisplayName("promoteDraftAndGetsPromoted: Cobertura de error crítico en el bloque catch externo")
     void promoteDraftAndGetsPromoted_ExternalCatch_Coverage() {
         UUID reportId = UUID.randomUUID();
+        UUID inventoryId = UUID.randomUUID();
+
+        List<UUID> activeBookedOfferIds = Collections.emptyList();
 
         when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
                 .thenThrow(new RuntimeException("Critical Mongo Failure"));
 
         org.assertj.core.api.Assertions.assertThatThrownBy(() ->
                         org.springframework.test.util.ReflectionTestUtils.invokeMethod(
-                                service, "promoteDraftOffersAndGetsPromoted", reportId, UUID.randomUUID()))
+                                service,
+                                "promoteDraftOffersAndGetsPromoted",
+                                reportId,
+                                inventoryId,
+                                activeBookedOfferIds))
                 .isInstanceOf(LCIngestionException.class)
                 .hasMessageContaining("Error during NoSQL promotion for report: " + reportId)
                 .extracting("techCause")
