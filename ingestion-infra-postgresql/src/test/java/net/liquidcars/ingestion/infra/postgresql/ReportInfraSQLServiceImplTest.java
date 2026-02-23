@@ -111,8 +111,10 @@ public class ReportInfraSQLServiceImplTest {
         void existsSuccess() {
             UUID participantId = UUID.randomUUID();
             List<IngestionBatchStatus> statuses = List.of(IngestionBatchStatus.COMPLETED);
-
-            when(reportRepository.existsByPhysicalInventoryIdAndStatusNotIn(participantId, statuses)).thenReturn(true);
+            List<String> statusStrings = statuses.stream()
+                    .map(Enum::name)
+                    .toList();
+            when(reportRepository.existsByPhysicalInventoryIdAndStatusNotIn(participantId, statusStrings)).thenReturn(true);
 
             boolean result = reportService.existsByPhysicalInventoryIdAndStatusNotIn(participantId, statuses);
 
@@ -123,10 +125,13 @@ public class ReportInfraSQLServiceImplTest {
         @DisplayName("Should handle exception and format log message correctly")
         void existsFailure() {
             UUID participantId = UUID.randomUUID();
-            when(reportRepository.existsByPhysicalInventoryIdAndStatusNotIn(any(), any()))
-                    .thenThrow(new RuntimeException("Error"));
+            List<IngestionBatchStatus> statuses = List.of();
 
-            assertThatThrownBy(() -> reportService.existsByPhysicalInventoryIdAndStatusNotIn(participantId, null))
+            when(reportRepository.existsByPhysicalInventoryIdAndStatusNotIn(any(UUID.class), any()))
+                    .thenThrow(new RuntimeException("SQL Error"));
+
+            assertThatThrownBy(() ->
+                    reportService.existsByPhysicalInventoryIdAndStatusNotIn(participantId, statuses))
                     .isInstanceOf(LCIngestionException.class)
                     .hasMessageContaining("SQL Failed to check");
         }
