@@ -430,6 +430,8 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
             ingestionReportDto.setActiveBookedOfferIds(activeBookedOfferIds);
             iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
             offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
+            //When offers are promoted we delete the draft offers of NoSQLDB
+            offerInfraNoSQLService.deleteDraftOffersByIngestionReportId(ingestionReportId);
             log.debug("Finish promotion for jobIdentifier: {}", ingestionReportId);
             offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
                     IngestionReportResponseActionDto.builder().ingestionReportId(ingestionReportId).result(IngestionReportResponseActionResult.SUCCESS).build()
