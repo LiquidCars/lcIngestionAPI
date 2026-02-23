@@ -641,6 +641,11 @@ components:
           type: array
           items:
             type: string
+        activeBookedOfferIds:
+          type: array
+          items:
+            type: string
+            format: uuid
         processed:
           type: boolean
         promoted:

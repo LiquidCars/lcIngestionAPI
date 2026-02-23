@@ -1,5 +1,6 @@
 package net.liquidcars.ingestion.infra.postgresql.repository;
 
+import net.liquidcars.ingestion.infra.postgresql.entity.ExternalIdInfoProjection;
 import net.liquidcars.ingestion.infra.postgresql.entity.OfferEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -167,4 +168,22 @@ public interface OfferSQLRepository extends JpaRepository<OfferEntity, UUID> {
             @Param("inventoryId") UUID inventoryId,
             @Param("ownerRefs") List<String> ownerRefs
     );
+
+    @Query(value = """
+    SELECT DISTINCT o.ofr_co_id
+    FROM inv_ofr_offer o
+    JOIN inv_ninof_inventoryoffers ni ON o.ofr_co_id = ni.ofr_co_id
+    JOIN op_bok_bookings b ON o.ofr_co_id = b.ofr_co_id
+    WHERE ni.nin_co_id = :invId
+    AND b.bs_co_id = 'active'
+    AND b.bok_bo_enabled = true
+    """, nativeQuery = true)
+    List<UUID> findActiveBookedOfferIds(@Param("invId") UUID inventoryId);
+
+    @Query(value = """
+    SELECT o.ofr_ownerref, o.ofr_dealerref, o.ofr_channelref
+    FROM inv_ofr_offer o
+    WHERE o.ofr_co_id IN (:ids)
+    """, nativeQuery = true)
+    List<ExternalIdInfoProjection> findExternalRefsByOfferIds(@Param("ids") List<UUID> ids);
 }

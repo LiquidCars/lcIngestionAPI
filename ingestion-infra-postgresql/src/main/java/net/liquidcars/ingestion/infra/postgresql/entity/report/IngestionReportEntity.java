@@ -75,6 +75,10 @@ public class IngestionReportEntity {
     @Column(name = "ids_for_delete", columnDefinition = "jsonb")
     private List<String> idsForDelete;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "active_booked_offer_ids", columnDefinition = "jsonb")
+    private List<UUID> activeBookedOfferIds;
+
     @Builder.Default
     @Column(name = "processed", nullable = false)
     private boolean processed = false;

@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public interface IOfferInfraSQLService {
@@ -21,5 +22,9 @@ public interface IOfferInfraSQLService {
     void processOffer(OfferDto offer);
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    List<UUID> processBatch(List<OfferDto> offers);
+    List<UUID> processBatch(List<OfferDto> offers, List<UUID> activeBookedOfferIds);
+
+    List<UUID> findActiveBookedOfferIds(UUID inventoryId);
+
+    Set<String> findExternalRefsByOfferIds(List<UUID> offerIds);
 }

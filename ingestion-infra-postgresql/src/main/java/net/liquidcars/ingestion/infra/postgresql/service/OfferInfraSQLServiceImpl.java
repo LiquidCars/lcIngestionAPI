@@ -18,6 +18,7 @@ import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -297,36 +298,60 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     }
 
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    /**
+     * Optimized batch processing for promotion flow.
+     * Instead of N individual transactions (one per offer), this method:
+     * 1. Loads all existing offers in ONE query
+     * 2. Classifies them into inserts/updates
+     * 3. Persists everything in ONE transaction using saveAll (Hibernate batch)
+     * 4. Handles resources, equipments and addresses in batch too
+     *
+     * Offers with active bookings are protected: they are added to processedIds
+     * (so REPLACEMENT doesn't delete them) but their data is NOT updated.
+     */
     @Override
-    public List<UUID> processBatch(List<OfferDto> offers) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public List<UUID> processBatch(List<OfferDto> offers, List<UUID> activeBookedOfferIds) {
         if (offers.isEmpty()) return List.of();
 
         UUID inventoryId = offers.get(0).getInventoryId();
         log.info("Processing SQL batch of {} offers for inventoryId: {}", offers.size(), inventoryId);
 
         try {
-            // 1. Cargar modelos de vehículo en cache (evita N queries a vehicle_model)
+            // 1. Build vehicle model cache to avoid N queries to vehicle_model table
             Map<String, VehicleModelEntity> modelCache = buildModelCache(offers);
 
-            // 2. Cargar todas las ofertas existentes en UNA query
+            // 2. Resolve booked refs upfront to protect offers with active bookings
+            Set<String> bookedRefs = activeBookedOfferIds.isEmpty()
+                    ? Set.of()
+                    : findExternalRefsByOfferIds(activeBookedOfferIds);
+
+            // 3. Load all existing offers in ONE query instead of one per offer
             List<String> allRefs = extractAllRefs(offers);
             Map<String, OfferEntity> existingByRef = loadExistingOffers(inventoryId, allRefs);
 
-            // 3. Clasificar en inserts y updates
             List<OfferEntity> toInsert = new ArrayList<>();
             List<OfferEntity> toUpdate = new ArrayList<>();
-            List<OfferDto> insertDtos = new ArrayList<>();  // para recursos/equipos post-save
+            List<OfferDto> insertDtos = new ArrayList<>(); // Parallel list for resources/equipments post-save
             List<OfferDto> updateDtos = new ArrayList<>();
             List<UUID> processedIds = new ArrayList<>();
 
             for (OfferDto offer : offers) {
                 try {
-                    VehicleModelEntity model = modelCache.get(modelKey(offer.getVehicleInstance().getVehicleModel()));
                     String ref = extractRef(offer.getExternalIdInfo());
+                    VehicleModelEntity model = modelCache.get(modelKey(offer.getVehicleInstance().getVehicleModel()));
                     OfferEntity existing = existingByRef.get(ref);
 
                     if (existing != null) {
+                        // BOOKING PROTECTION: if the offer has an active booking, skip update
+                        // but include its ID in processedIds so REPLACEMENT does not delete it
+                        if (bookedRefs.contains(ref)) {
+                            log.info("Skipping SQL update for booked offer ref: {}", ref);
+                            processedIds.add(existing.getId());
+                            continue;
+                        }
+
+                        // Update logic
                         OffsetDateTime incomingDate = mapper.mapEpoch(offer.getLastUpdated());
                         OffsetDateTime existingDate = existing.getLastUpdated() != null
                                 ? existing.getLastUpdated() : existing.getCreatedAt();
@@ -338,6 +363,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                             mapper.updateEntityFromDto(offer, existing);
                             existing.setLastUpdated(incomingDate);
 
+                            // Restore the ID on the (possibly re-mapped) vehicleInstance
                             if (existing.getVehicleInstance() != null) {
                                 existing.getVehicleInstance().setVehicleModel(model);
                                 if (existingVehicleInstanceId != null) {
@@ -353,35 +379,44 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                             toUpdate.add(existing);
                             updateDtos.add(offer);
                         }
+                        processedIds.add(existing.getId());
+
                     } else {
+                        // Create logic - new offers are always inserted, even if a booking exists for a new ref
                         OfferEntity newEntity = mapper.toEntity(offer);
                         newEntity.getVehicleInstance().setVehicleModel(model);
-                        newEntity.getVehicleInstance().setId(
-                                ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L)
-                        );
+                        if (newEntity.getVehicleInstance().getId() == null || newEntity.getVehicleInstance().getId() == 0) {
+                            newEntity.getVehicleInstance().setId(
+                                    ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L)
+                            );
+                        }
                         newEntity.setJsonCarOffer(buildJsonEntity(offer));
                         toInsert.add(newEntity);
                         insertDtos.add(offer);
+                        processedIds.add(offer.getId());
                     }
-                    processedIds.add(offer.getId());
                 } catch (Exception e) {
                     log.error("Error preparing offer {} in batch", offer.getId(), e);
                 }
             }
 
-            // 4. Persistir ofertas en batch
+            // 4. Persist all inserts and updates in ONE flush (Hibernate batch_size from config applies here)
             List<OfferEntity> savedInserts = offerSqlRepository.saveAll(toInsert);
             offerSqlRepository.saveAll(toUpdate);
 
-            // 5. Recursos y equipos en batch (agrupados por oferta)
+            // 5. Resources in batch (delete all for affected offers, then re-insert)
             saveResourcesBatch(savedInserts, insertDtos);
             saveResourcesBatch(toUpdate, updateDtos);
 
+            // 6. Equipments in batch
             saveEquipmentsBatch(savedInserts, insertDtos);
             saveEquipmentsBatch(toUpdate, updateDtos);
 
-            // 6. Direcciones en batch
+            // 7. Addresses in batch
             saveAddressesBatch(offers);
+
+            log.info("SQL batch completed for inventoryId: {}. Inserts: {}, Updates: {}, ProcessedIds: {}",
+                    inventoryId, toInsert.size(), toUpdate.size(), processedIds.size());
 
             return processedIds;
 
@@ -394,6 +429,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                     .build();
         }
     }
+
 
 // --- Métodos de soporte batch ---
 
@@ -504,6 +540,41 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         }
         if (!toSave.isEmpty()) {
             participantAddressEntityRepository.saveAll(toSave);
+        }
+    }
+
+    @Override
+    public List<UUID> findActiveBookedOfferIds(UUID inventoryId){
+        log.info("Find active bookings for inventoryId: {}", inventoryId);
+        try {
+            return offerSqlRepository.findActiveBookedOfferIds(inventoryId);
+        } catch (Exception e) {
+            log.error("Error finding active bookings for inventoryId: {}", inventoryId, e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.DATABASE)
+                    .message("Error finding active bookings for inventoryId: " + inventoryId)
+                    .cause(e)
+                    .build();
+        }
+    }
+
+    @Override
+    public Set<String> findExternalRefsByOfferIds(List<UUID> offerIds) {
+        log.info("Find external references for offer ids: {}", offerIds);
+        try {
+            if (offerIds.isEmpty()) return Set.of();
+            return offerSqlRepository.findExternalRefsByOfferIds(offerIds)
+                    .stream()
+                    .flatMap(e -> Stream.of(e.getOwnerReference(), e.getDealerReference(), e.getChannelReference()))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+        } catch (Exception e) {
+            log.error("Error finding external references for offer ids: {}", offerIds, e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.DATABASE)
+                    .message("Error finding external references for offer ids: " + offerIds)
+                    .cause(e)
+                    .build();
         }
     }
 }

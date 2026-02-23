@@ -15,6 +15,7 @@ import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProces
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
 import net.liquidcars.ingestion.domain.service.infra.output.kafka.IOfferInfraKafkaProducerService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IBatchReportInfraSQLService;
+import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IReportInfraSQLService;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
 import org.springframework.batch.core.Job;
@@ -47,6 +48,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     private final Job offerIngestionJob;
     private final OfferStreamItemReader offerReader;
     private final IOfferInfraNoSQLService offerInfraNoSQLService;
+    private final IOfferInfraSQLService offerInfraSQLService;
     private final IBatchReportInfraSQLService batchReportInfraSQLService;
     private final IReportInfraSQLService iReportInfraSQLService;
 
@@ -420,9 +422,11 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         IngestionReportDto ingestionReportDto = findIngestionReportById(ingestionReportId);
         if (validatePromotion(ingestionReportId, ingestionReportDto)) return;
         try {
-            offerInfraNoSQLService.promoteDraftOffersToVehicleOffers(ingestionReportId, ingestionReportDto.getDumpType(), ingestionReportDto.getInventoryId(), ingestionReportDto.getIdsForDelete());
+            List<UUID> activeBookedOfferIds = offerInfraSQLService.findActiveBookedOfferIds(ingestionReportDto.getInventoryId());
+            offerInfraNoSQLService.promoteDraftOffersToVehicleOffers(ingestionReportId, ingestionReportDto.getDumpType(), ingestionReportDto.getInventoryId(), ingestionReportDto.getIdsForDelete(), activeBookedOfferIds);
             //Once promotion process is completed we mark job as processed and we update
             ingestionReportDto.setPromoted(true);
+            ingestionReportDto.setActiveBookedOfferIds(activeBookedOfferIds);
             iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
             offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
             log.debug("Finish promotion for jobIdentifier: {}", ingestionReportId);

@@ -19,13 +19,11 @@ import net.liquidcars.ingestion.factory.IngestionBatchReportDtoFactory;
 import net.liquidcars.ingestion.factory.IngestionReportDtoFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.slf4j.Logger;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
@@ -37,12 +35,9 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URI;
 import java.time.OffsetDateTime;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -328,8 +323,8 @@ class OfferIngestionProcessServiceImplTest {
                 eq(jobId),
                 any(),
                 any(),
-                any()
-        );
+                any(),
+                activeBookedOfferIds);
         verify(kafkaProducer).sendIngestionReportPromoteActionNotification(
                 argThat(dto -> dto.getResult().equals(IngestionReportResponseActionResult.SUCCESS))
         );
@@ -352,8 +347,8 @@ class OfferIngestionProcessServiceImplTest {
         service.promoteDraftOffersToVehicleOffers(jobId, false);
 
         verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(
-                any(), any(), any(), any()
-        );
+                any(), any(), any(), any(),
+                activeBookedOfferIds);
 
         verify(reportSqlService, never()).upsertIngestionReport(any());
     }
@@ -372,7 +367,7 @@ class OfferIngestionProcessServiceImplTest {
 
         service.promoteDraftOffersToVehicleOffers(jobId, false);
 
-        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any());
+        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any(), activeBookedOfferIds);
         verify(reportSqlService, never()).upsertIngestionReport(any());
     }
 
@@ -759,7 +754,7 @@ class OfferIngestionProcessServiceImplTest {
 
         service.promoteDraftOffersToVehicleOffers(jobId, false);
 
-        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any());
+        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any(), activeBookedOfferIds);
     }
 
     @Test
@@ -776,7 +771,7 @@ class OfferIngestionProcessServiceImplTest {
 
         service.promoteDraftOffersToVehicleOffers(jobId, false);
 
-        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any());
+        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(any(), any(), any(), any(), activeBookedOfferIds);
     }
 
     @Test
@@ -792,7 +787,7 @@ class OfferIngestionProcessServiceImplTest {
 
         // Forzamos error en la infraestructura
         doThrow(LCIngestionException.builder().techCause(LCTechCauseEnum.DATABASE).build())
-                .when(offerNoSqlService).promoteDraftOffersToVehicleOffers(any(), any(), any(), any());
+                .when(offerNoSqlService).promoteDraftOffersToVehicleOffers(any(), any(), any(), any(), activeBookedOfferIds);
 
         // Verificamos que al ser async=false, lanza la excepción
         assertThrows(LCIngestionException.class, () ->

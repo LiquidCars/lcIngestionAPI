@@ -21,17 +21,12 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.*;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -160,25 +155,31 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     }
 
     @Override
-    public void promoteDraftOffersToVehicleOffers(UUID ingestionReportId, IngestionDumpType dumpType, UUID inventoryId, List<String> externalIdsToDelete) {
+    public void promoteDraftOffersToVehicleOffers(UUID ingestionReportId, IngestionDumpType dumpType, UUID inventoryId, List<String> externalIdsToDelete, List<UUID> activeBookedOfferIds) {
         log.info("Starting promotion for ingestionReportId: {}", ingestionReportId);
 
             // 1. Promote to NoSQL (vehicle offers collection)
-            List<UUID> promotedNoSQLIds = promoteDraftOffersAndGetsPromoted(ingestionReportId, inventoryId);
+            List<UUID> promotedNoSQLIds = promoteDraftOffersAndGetsPromoted(ingestionReportId, inventoryId, activeBookedOfferIds);
 
             // 2. Promote to SQL (PostgreSQL) and get promoted IDs
-            List<UUID> promotedSQLIds = promoteDraftOffersToSQL(ingestionReportId);
+            List<UUID> promotedSQLIds = promoteDraftOffersToSQL(ingestionReportId, activeBookedOfferIds);
 
             // 3. REPLACEMENT logic for both databases
-            replaceOffers(dumpType, inventoryId, promotedNoSQLIds, promotedSQLIds);
+            replaceOffers(dumpType, inventoryId, promotedNoSQLIds, promotedSQLIds, activeBookedOfferIds);
 
             // 4. Process explicit deletions (offersToDelete from JSON) in both databases
-            deleteOffersInPromotion(inventoryId, externalIdsToDelete);
+            deleteOffersInPromotion(inventoryId, externalIdsToDelete, activeBookedOfferIds);
     }
 
-    private List<UUID> promoteDraftOffersAndGetsPromoted(UUID ingestionReportId, UUID inventoryId) {
+    private List<UUID> promoteDraftOffersAndGetsPromoted(UUID ingestionReportId, UUID inventoryId,
+                                                         List<UUID> activeBookedOfferIds) {
         // 1. Use a Stream to avoid loading the entire list into memory and prevent OOM
         Query draftQuery = new Query(Criteria.where("ingestion_report_id").is(ingestionReportId));
+
+        // Load external refs of booked offers upfront to avoid per-record SQL lookups during the stream
+        Set<String> bookedRefs = activeBookedOfferIds.isEmpty()
+                ? Set.of()
+                : offerInfraSQLService.findExternalRefsByOfferIds(activeBookedOfferIds);
 
         // List to track processed IDs for the REPLACEMENT logic
         List<UUID> promotedIds = new ArrayList<>();
@@ -188,6 +189,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         int count = 0;
         int totalPromoted = 0;
         int totalErrors = 0;
+        int totalSkipped = 0;
 
         // Use mongoTemplate.stream to open a cursor and process records one by one
         try (Stream<DraftOfferNoSQLEntity> draftStream = mongoTemplate.stream(draftQuery, DraftOfferNoSQLEntity.class)) {
@@ -202,6 +204,15 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
 
                     log.info("Processing draft offer - ID: {}, ownerRef: {}, dealerRef: {}, channelRef: {}",
                             draft.getId(), draft.getOwnerReference(), draft.getDealerReference(), draft.getChannelReference());
+
+                    // BOOKING PROTECTION: if the offer has an active booking, skip the upsert
+                    // but still add its production ID to promotedIds so REPLACEMENT does not delete it
+                    if (isBooked(draft, bookedRefs)) {
+                        log.info("Skipping NoSQL upsert for booked offer - ownerRef: {}", draft.getOwnerReference());
+                        findProductionIdByRefs(inventoryId, draft).ifPresent(promotedIds::add);
+                        totalSkipped++;
+                        continue;
+                    }
 
                     VehicleOfferNoSQLEntity productionEntity = offerInfraNoSQLMapper.toVehicleOfferNoSQLEntity(draft);
                     promotedIds.add(productionEntity.getId());
@@ -238,7 +249,9 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                         }
                     }
 
+                    // Always force inventory_id from parameter to guarantee it is never null
                     update.set("inventory_id", inventoryId);
+                    // On INSERT: fix the UUID as _id so promotedIds tracking stays consistent
                     update.setOnInsert("_id", productionEntity.getId());
 
                     // Add to bulk execution plan
@@ -269,10 +282,11 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                 totalPromoted += (result.getInsertedCount() + result.getModifiedCount() + result.getUpserts().size());
             }
 
-            log.info("Promotion finished for report {}. Success: {}, Errors: {}", ingestionReportId, totalPromoted, totalErrors);
+            log.info("Promotion finished for report {}. Success: {}, Skipped (booked): {}, Errors: {}",
+                    ingestionReportId, totalPromoted, totalSkipped, totalErrors);
 
             // 6. Final Validation: If we have errors and zero success, we must inform the Application Service
-            if (totalErrors > 0 && totalPromoted == 0) {
+            if (totalErrors > 0 && totalPromoted == 0 && totalSkipped == 0) {
                 throw LCIngestionException.builder()
                         .techCause(LCTechCauseEnum.DATABASE)
                         .message("NoSQL promotion failed: All records failed for report " + ingestionReportId)
@@ -281,7 +295,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
 
         } catch (Exception e) {
             log.error("Critical failure during NoSQL promotion stream", e);
-            if (e instanceof LCIngestionException){
+            if (e instanceof LCIngestionException) {
                 throw e;
             }
             throw LCIngestionException.builder()
@@ -293,8 +307,36 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         return promotedIds;
     }
 
+    /**
+     * Returns true if any of the draft's external references matches a booked ref.
+     * Used to skip upsert on offers with active bookings.
+     */
+    private boolean isBooked(DraftOfferNoSQLEntity draft, Set<String> bookedRefs) {
+        if (bookedRefs.isEmpty()) return false;
+        return (draft.getOwnerReference() != null && bookedRefs.contains(draft.getOwnerReference()))
+                || (draft.getDealerReference() != null && bookedRefs.contains(draft.getDealerReference()))
+                || (draft.getChannelReference() != null && bookedRefs.contains(draft.getChannelReference()));
+    }
 
-    private List<UUID> promoteDraftOffersToSQL(UUID ingestionReportId) {
+    /**
+     * Looks up the existing production document _id for a booked offer so it can be added
+     * to promotedIds and protected from REPLACEMENT deletion.
+     */
+    private Optional<UUID> findProductionIdByRefs(UUID inventoryId, DraftOfferNoSQLEntity draft) {
+        List<Criteria> criteria = new ArrayList<>();
+        criteria.add(Criteria.where("inventory_id").is(inventoryId));
+        if (draft.getOwnerReference() != null) criteria.add(Criteria.where("owner_reference").is(draft.getOwnerReference()));
+        if (draft.getDealerReference() != null) criteria.add(Criteria.where("dealer_reference").is(draft.getDealerReference()));
+        if (draft.getChannelReference() != null) criteria.add(Criteria.where("channel_reference").is(draft.getChannelReference()));
+
+        Query q = new Query(new Criteria().andOperator(criteria.toArray(new Criteria[0])));
+        q.fields().include("_id"); // Only fetch the ID, no need for full document
+
+        VehicleOfferNoSQLEntity existing = mongoTemplate.findOne(q, VehicleOfferNoSQLEntity.class);
+        return Optional.ofNullable(existing).map(VehicleOfferNoSQLEntity::getId);
+    }
+
+    private List<UUID> promoteDraftOffersToSQL(UUID ingestionReportId, List<UUID> activeBookedOfferIds) {
         log.info("Starting SQL promotion for ingestionReportId: {}", ingestionReportId);
 
         Query draftQuery = new Query(Criteria.where("ingestion_report_id").is(ingestionReportId));
@@ -318,7 +360,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                 if (batch.size() >= batchSize || !iterator.hasNext()) {
                     try {
                         // Process entire batch in ONE SQL transaction
-                        List<UUID> batchPromotedIds = processBatchToSQL(new ArrayList<>(batch));
+                        List<UUID> batchPromotedIds = processBatchToSQL(new ArrayList<>(batch), activeBookedOfferIds);
                         allPromotedIds.addAll(batchPromotedIds);
                         totalProcessed += batchPromotedIds.size();
                         log.info("Processed SQL batch of {} offers. Total: {}", batchPromotedIds.size(), totalProcessed);
@@ -345,7 +387,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
             return allPromotedIds;
 
         } catch (Exception e) {
-            if(e instanceof LCIngestionException){
+            if (e instanceof LCIngestionException) {
                 throw e;
             }
             log.error("Failed during SQL promotion", e);
@@ -357,38 +399,9 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         }
     }
 
-    /*@Transactional(propagation = Propagation.REQUIRED)
-    private List<UUID> processBatchToSQL(List<OfferDto> offers) {
-        // This entire method runs in ONE SQL transaction
-        // All offers in the batch are committed together
-
-        List<UUID> processedIds = new ArrayList<>();
-
-        for (OfferDto offer : offers) {
-            try {
-                offerInfraSQLService.processOffer(offer);
-                processedIds.add(offer.getId());
-            } catch (Exception e) {
-                log.error("Error processing offer {} in batch", offer.getId(), e);
-                // Re-throw to rollback entire batch
-                if(e instanceof LCIngestionException){
-                    throw e;
-                }
-                log.error("Failed during SQL promotion", e);
-                throw LCIngestionException.builder()
-                        .techCause(LCTechCauseEnum.DATABASE)
-                        .message("Error processing batch")
-                        .cause(e)
-                        .build();
-            }
-        }
-
-        return processedIds;
-    }*/
-
-    private List<UUID> processBatchToSQL(List<OfferDto> offers) {
+    private List<UUID> processBatchToSQL(List<OfferDto> offers, List<UUID> activeBookedOfferIds) {
         try {
-            return offerInfraSQLService.processBatch(offers);
+            return offerInfraSQLService.processBatch(offers, activeBookedOfferIds);
         } catch (Exception e) {
             log.error("Batch failed", e);
             throw e;
@@ -396,17 +409,27 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     }
 
     private void replaceOffers(IngestionDumpType dumpType, UUID inventoryId,
-                               List<UUID> promotedNoSQLIds, List<UUID> promotedSQLIds) {
+                               List<UUID> promotedNoSQLIds, List<UUID> promotedSQLIds,
+                               List<UUID> activeBookedOfferIds) {
         if (dumpType == IngestionDumpType.REPLACEMENT && !promotedNoSQLIds.isEmpty() && !promotedSQLIds.isEmpty()) {
             log.info("Executing REPLACEMENT cleanup for inventoryId {}", inventoryId);
 
+            // Combine promoted + booked = everything that must NOT be deleted
+            List<UUID> noSQLIdsToKeep = new ArrayList<>(promotedNoSQLIds);
+            noSQLIdsToKeep.addAll(activeBookedOfferIds);
+
+            List<UUID> sqlIdsToKeep = new ArrayList<>(promotedSQLIds);
+            sqlIdsToKeep.addAll(activeBookedOfferIds);
+
             // Delete from NoSQL
-            long noSqlDeleted = vehicleOfferNoSqlRepository.deleteByInventoryIdAndIdNotIn(inventoryId, promotedNoSQLIds);
-            log.info("REPLACEMENT: Deleted {} offers from NoSQL vehicleoffers", noSqlDeleted);
+            long noSqlDeleted = vehicleOfferNoSqlRepository.deleteByInventoryIdAndIdNotIn(inventoryId, noSQLIdsToKeep);
+            log.info("REPLACEMENT: Deleted {} offers from NoSQL vehicleoffers (protected {} booked)",
+                    noSqlDeleted, activeBookedOfferIds.size());
 
             // Delete from SQL
-            long sqlDeleted = replaceOffersInSQL(inventoryId, promotedSQLIds);
-            log.info("REPLACEMENT: Deleted {} offers from SQL", sqlDeleted);
+            long sqlDeleted = replaceOffersInSQL(inventoryId, sqlIdsToKeep);
+            log.info("REPLACEMENT: Deleted {} offers from SQL (protected {} booked)",
+                    sqlDeleted, activeBookedOfferIds.size());
         }
     }
 
@@ -425,16 +448,43 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         return offerInfraSQLService.deleteOffersByInventoryIdExcludingIds(inventoryId, promotedIds);
     }
 
+    private void deleteOffersInPromotion(UUID inventoryId, List<String> externalIdsToDelete,
+                                         List<UUID> activeBookedOfferIds) {
+        if (externalIdsToDelete == null || externalIdsToDelete.isEmpty()) return;
 
-    private void deleteOffersInPromotion(UUID inventoryId, List<String> externalIdsToDelete) {
-        if (externalIdsToDelete != null && !externalIdsToDelete.isEmpty()) {
-            log.info("Processing {} explicit deletions for inventory {}", externalIdsToDelete.size(), inventoryId);
+        log.info("Processing {} explicit deletions for inventory {}", externalIdsToDelete.size(), inventoryId);
+
+        // If no active bookings, proceed normally without filtering
+        if (activeBookedOfferIds.isEmpty()) {
+            deleteOffersInPromotionNoSQL(inventoryId, externalIdsToDelete);
+            deleteOffersInPromotionSQL(inventoryId, externalIdsToDelete);
+            return;
+        }
+
+        // Filter out refs that belong to booked offers to avoid cancelling active reservations
+        Set<String> bookedRefs = offerInfraSQLService.findExternalRefsByOfferIds(activeBookedOfferIds);
+
+        List<String> safeToDelete = externalIdsToDelete.stream()
+                .filter(ref -> !bookedRefs.contains(ref))
+                .toList();
+
+        List<String> skipped = externalIdsToDelete.stream()
+                .filter(bookedRefs::contains)
+                .toList();
+
+        if (!skipped.isEmpty()) {
+            log.warn("Skipping explicit deletion of {} refs with active bookings: {}", skipped.size(), skipped);
+        }
+
+        if (!safeToDelete.isEmpty()) {
+            log.info("Processing {} explicit deletions (filtered from {}) for inventory {}",
+                    safeToDelete.size(), externalIdsToDelete.size(), inventoryId);
 
             // Delete from NoSQL
-            deleteOffersInPromotionNoSQL(inventoryId, externalIdsToDelete);
+            deleteOffersInPromotionNoSQL(inventoryId, safeToDelete);
 
             // Delete from SQL
-            deleteOffersInPromotionSQL(inventoryId, externalIdsToDelete);
+            deleteOffersInPromotionSQL(inventoryId, safeToDelete);
         }
     }
 

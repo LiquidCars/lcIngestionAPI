@@ -29,6 +29,7 @@ public class IngestionReportMsg {
     private Integer skipCount;
     private List<ExternalIdInfoMsg> failedExternalIds;
     private List<String> idsForDelete;
+    private List<UUID> activeBookedOfferIds;
     private boolean processed;
     private boolean promoted;
     private String createdAt;

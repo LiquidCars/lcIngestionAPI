@@ -25,6 +25,7 @@ public class IngestionReportDto {
     private Integer skipCount;
     private List<ExternalIdInfoDto> failedExternalIds;
     private List<String> idsForDelete;
+    private List<UUID> activeBookedOfferIds;
     private boolean processed = false;
     private boolean promoted = false;
     private OffsetDateTime createdAt;
