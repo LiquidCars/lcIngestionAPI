@@ -21,10 +21,20 @@ spec:
       transaction.state.log.min.isr: 1
       default.replication.factor: 1
       min.insync.replicas: 1
-    storage:
-      type: persistent-claim
-      size: {{ .Values.kafka.storage.size }}
-      class: {{ .Values.kafka.storage.storageClass }}
   entityOperator:
-    topicOperator: {}
-    userOperator: {}
+    topicOperator:
+      resources:
+        requests:
+          memory: {{ .Values.kafka.entityOperator.resources.requests.memory }}
+          cpu: {{ .Values.kafka.entityOperator.resources.requests.cpu }}
+        limits:
+          memory: {{ .Values.kafka.entityOperator.resources.limits.memory }}
+          cpu: {{ .Values.kafka.entityOperator.resources.limits.cpu }}
+    userOperator:
+      resources:
+        requests:
+          memory: {{ .Values.kafka.entityOperator.resources.requests.memory }}
+          cpu: {{ .Values.kafka.entityOperator.resources.requests.cpu }}
+        limits:
+          memory: {{ .Values.kafka.entityOperator.resources.limits.memory }}
+          cpu: {{ .Values.kafka.entityOperator.resources.limits.cpu }}

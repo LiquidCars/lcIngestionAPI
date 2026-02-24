@@ -47,6 +47,21 @@ kafka:
   storage:
     size: 8Gi
     storageClass: "managed-csi"
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  entityOperator:
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
 
 # MongoDB (Community Operator)
 mongodb:
@@ -59,6 +74,22 @@ mongodb:
   storage:
     size: 8Gi
     storageClass: "managed-csi"
+  # Reduce memory requirements on dev
+  statefulSet:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: mongod
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "500m"
+  additionalMongodConfig:
+    storage.wiredTiger.engineConfig.cacheSizeGB: 0.25
 
 
 tls:
@@ -189,11 +220,11 @@ serviceAccount:
 
 resources:
   requests:
-    memory: "2048Mi"
+    memory: "512Mi"
     cpu: "500m"
   limits:
-    memory: "4096Mi"
-    cpu: "1000m"
+    memory: "1024Mi"
+    cpu: "800m"
 
 autoscaling:
   enabled: false
