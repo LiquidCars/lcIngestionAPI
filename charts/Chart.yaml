@@ -1,0 +1,20 @@
+apiVersion: v2
+name: liquidcars
+description: A Helm chart for Kubernetes
+
+type: application
+
+version: 0.0.1
+
+appVersion: "0.0.1"
+
+dependencies:
+  - name: strimzi-kafka-operator
+    version: "0.50.1"          # check https://artifacthub.io/packages/helm/strimzi/strimzi-kafka-operator
+    repository: "https://strimzi.io/charts/"
+    alias: kafka
+
+  - name: community-operator
+    version: "0.13.0" # https://artifacthub.io/packages/helm/mongodb-helm-charts/community-operator
+    repository: "https://mongodb.github.io/helm-charts"
+    alias: mongodb

@@ -173,6 +173,7 @@ def getVersionFromFile() {
         }
 }
 
+//mainClassName = 'net.liquidcars.ingestion.IngestionApiApplication'
 
 jib {
 

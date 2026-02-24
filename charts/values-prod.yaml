@@ -1,0 +1,13 @@
+image:
+  repository: liquidcars.azurecr.io/liquidcars/prod/ingestion
+
+configData:
+  SPRING_DATASOURCE_URL: jdbc:postgresql://db-lc-prod-eu.postgres.database.azure.com:5432/liquidcars-prod?sslmode=require
+  SPRING_DATASOURCE_USERNAME: postgreslc
+  SPRING_DATASOURCE_PASSWORD: "PSQL#prod!2026%%"
+  SPRING_PROFILES_ACTIVE: "PROD"
+  DUMMY_DEV_ENV_MODE: "N"
+  SPRING_RABBITMQ_HOST: shared-rmq.rabbitmq-system.svc.cluster.local
+  SPRING_RABBITMQ_USERNAME: user-liquidcars-prod
+  SPRING_RABBITMQ_PASSWORD: changeme123
+  SPRING_RABBITMQ_VIRTUAL_HOST: /liquidcars-prod
