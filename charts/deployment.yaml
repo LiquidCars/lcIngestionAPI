@@ -1,0 +1,30 @@
+   apiVersion: apps/v1
+   kind: Deployment
+   metadata:
+     name: {{ include "my-spring-boot-app.fullname" . }}
+     labels:
+       {{- include "my-spring-boot-app.labels" . | nindent 4 }}
+   spec:
+     replicas: {{ .Values.replicaCount }}
+     selector:
+       matchLabels:
+         {{- include "my-spring-boot-app.selectorLabels" . | nindent 6 }}
+     template:
+       metadata:
+         labels:
+           {{- include "my-spring-boot-app.selectorLabels" . | nindent 8 }}
+       spec:
+         imagePullSecrets:
+           - name: {{ .Values.imagePullSecrets[0].name }}
+         containers:
+           - name: {{ .Chart.Name }}
+             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+             imagePullPolicy: {{ .Values.image.pullPolicy }}
+            {{- with .Values.envFrom }}
+             envFrom:
+               {{- toYaml . | nindent 12 }}
+             {{- end }}
+             ports:
+               - containerPort: 8080
+             resources:
+               {{- toYaml .Values.resources | nindent 12 }}

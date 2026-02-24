@@ -1,0 +1,176 @@
+
+Thank you for installing {{ .Chart.Name }}!
+
+This chart deploys the {{ .Chart.Name }} application into the
+"{{ .Release.Namespace }}" namespace.
+
+================================================================
+🚀 Application Status
+================================================================
+
+Check the status of the deployment:
+
+  kubectl get deployments -n {{ .Release.Namespace }}
+  kubectl get pods -n {{ .Release.Namespace }}
+  kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "charts.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+
+To watch the rollout:
+
+  kubectl rollout status deployment/{{ include "charts.fullname" . }} \
+    -n {{ .Release.Namespace }}
+
+================================================================
+🌐 Accessing the Application
+================================================================
+
+{{- if .Values.ingress.enabled }}
+
+An Ingress has been created for this release.
+
+Hosts:
+{{- range .Values.ingress.hosts }}
+  - http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+
+Check ingress status:
+
+  kubectl get ingress -n {{ .Release.Namespace }}
+
+View the nginx configuration
+  kexec deployment/ingress-nginx-controller -n ingress-nginx -- cat /etc/nginx/nginx.conf
+  kexec deployment/ingress-nginx-controller -n ingress-nginx -- cat /etc/nginx/conf.d/{{ .Release.Namespace }}-{{ include "charts.fullname" . }}.conf
+  kubectl logs -l app.kubernetes.io/name=ingress-nginx -n ingress-nginx --tail 100
+
+{{- else }}
+
+No Ingress is enabled.
+
+The application is exposed via a Service:
+
+  Service name: {{ include "charts.fullname" . }}
+  Service type: {{ .Values.service.type }}
+  Service port: {{ .Values.service.port }}
+
+To access via port-forwarding:
+
+  kubectl port-forward svc/{{ include "charts.fullname" . }} \
+    {{ .Values.service.port }}:{{ .Values.service.port }} \
+    -n {{ .Release.Namespace }}
+
+Then open:
+
+  http://localhost:{{ .Values.service.port }}
+
+{{- end }}
+
+================================================================
+📜 Viewing Application Logs
+================================================================
+
+List pods:
+
+  kubectl get pods -n {{ .Release.Namespace }}
+
+View logs for a specific pod:
+
+  kubectl logs <pod-name> -n {{ .Release.Namespace }}
+
+If the pod has multiple containers:
+
+  kubectl logs <pod-name> -c <container-name> -n {{ .Release.Namespace }}
+
+Follow logs in real time:
+
+  kubectl logs -f <pod-name> -n {{ .Release.Namespace }}
+
+================================================================
+🩺 Troubleshooting & Debugging
+================================================================
+
+Describe a pod to see events and errors:
+
+  kubectl describe pod <pod-name> -n {{ .Release.Namespace }}
+
+Common things to check:
+- Image pull errors (check imagePullSecrets or ACR permissions)
+- CrashLoopBackOff (check logs above)
+- Failed readiness/liveness probes
+
+Check recent events:
+
+  kubectl get events -n {{ .Release.Namespace }} --sort-by=.lastTimestamp
+
+Check the permissions used to pull the image:
+
+  kubectl get secret acr-secret -o jsonpath="{.data.\\.dockerconfigjson}" | base64 --decode | jq '.registry'
+  kubectl get secret acr-secret -o jsonpath="{.data.\\.dockerconfigjson}" | base64 --decode | jq '.auths."liquidcars.azurecr.io".username'
+  kubectl get secret acr-secret -o jsonpath="{.data.\\.dockerconfigjson}" | base64 --decode | jq '.auths."liquidcars.azurecr.io".password'
+
+================================================================
+📦 Configuration and Values
+================================================================
+
+The values used for this release:
+
+  helm get values {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+Application values are stored in {{ .Chart.Name }}-config
+The configMap is created from configData in the values.yaml
+Data in values-{ENV}.yaml will overwrite values.yaml properties.
+
+  kubectl get configmap {{ include "charts.fullname" . }}-config -o yaml
+
+Rendered Kubernetes manifests:
+
+  helm get manifest {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+================================================================
+🔄 Upgrading the Release
+================================================================
+
+To upgrade this release with new values:
+
+  helm upgrade {{ .Release.Name }} {{ .Chart.Name }} \
+    -n {{ .Release.Namespace }} \
+    -f charts/values.yaml -f --values charts/values-${ENV}.yaml
+
+================================================================
+🗑️ Uninstalling the Release
+================================================================
+
+Best to rollback, and if that fails then uninstall:
+  helm history {{ .Release.Name }} -n {{ .Release.Namespace }}
+  helm rollback {{ .Release.Name }} -n {{ .Release.Namespace }} [REVISION]
+
+To remove all resources created by this release:
+
+  helm uninstall {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+Note: This does NOT remove:
+- PersistentVolumes created dynamically
+- Secrets created outside this chart
+- Shared imagePullSecrets
+
+================================================================
+☁️ AKS-Specific Notes (Optional)
+================================================================
+
+- If pulling images from Azure Container Registry (ACR):
+  - Ensure the AKS node or workload identity has 'AcrPull' role
+  - imagePullSecrets are not required when using managed identity
+
+- Check node status:
+  kubectl get nodes
+
+- Check cluster autoscaler events:
+  kubectl get events -A | grep autoscaler
+
+================================================================
+📖 Chart Information
+================================================================
+
+Chart version: {{ .Chart.Version }}
+App version:   {{ .Chart.AppVersion }}
+Release name:  {{ .Release.Name }}
+
+================================================================
