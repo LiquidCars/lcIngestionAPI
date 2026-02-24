@@ -93,7 +93,7 @@ kubectl label crd mongodbcommunity.mongodbcommunity.mongodb.com \
   app.kubernetes.io/managed-by=Helm
 kubectl annotate crd mongodbcommunity.mongodbcommunity.mongodb.com \
   meta.helm.sh/release-name=ingestion \
-  meta.helm.sh/release-namespace=liquidcars-dev
+  meta.helm.sh/release-namespace=liquidcars-${ENV}
 
 
 # Gradle will have increased the version, so we use this.
