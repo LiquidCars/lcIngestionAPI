@@ -39,6 +39,30 @@ paths:
       responses:
         '202':
           description: Batch accepted.
+        '400':
+          description:  Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
 
   /v1/ingestion/stream:
     post:
@@ -63,6 +87,30 @@ paths:
       responses:
         '202':
           description: Stream accepted.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
 
   /v1/ingestion/url:
     post:
@@ -86,6 +134,30 @@ paths:
       responses:
         '202':
           description: Upload started.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
 
   # --- Management Operations ---
   /v1/ingestion/reports:
@@ -194,6 +266,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IngestionReportPage'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
 
   /v1/ingestion/reports/{ingestionReportId}:
     get:
@@ -216,6 +312,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IngestionReport'
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '404':
+          description: Ingestion report not found for the provided ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
 
   /v1/ingestion/promote/{ingestionReportId}:
     post:
@@ -234,6 +360,36 @@ paths:
       responses:
         '200':
           description: Promotion triggered successfully.
+        '400':
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '404':
+          description: Ingestion report not found for the provided ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
 
   /v1/ingestion/draft/{ingestionReportId}:
     delete:
@@ -252,6 +408,30 @@ paths:
       responses:
         '204':
           description: Drafts deleted.
+        '401':
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '404':
+          description: Report ID not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LCIngestionExceptionApiResponse'
 
 components:
   parameters:
@@ -673,3 +853,28 @@ components:
         - processed
         - createdAt
         - updatedAt
+
+    LCIngestionExceptionApiResponse:
+      type: object
+      properties:
+        uid:
+          type: string
+          format: uuid
+          description: "Unique identifier for the error (useful for log tracing)."
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        code:
+          type: string
+          description: "Technical error code from LCTechCauseEnum."
+          example: "INVALID_REQUEST"
+        numericCode:
+          type: integer
+          description: "Internal numeric error code."
+          example: 1001
+        message:
+          type: string
+          description: "Human-readable explanation of the error."
+          example: "Inventory [uuid] already has an active ingestion process in progress."
+        status:
+          type: integer
+          description: "The HTTP status code."
+          example: 400
