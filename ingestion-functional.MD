@@ -419,8 +419,8 @@ Before starting any ingestion, the system verifies that no active process alread
 ```java
 // Final statuses that allow a new ingestion
 List<IngestionBatchStatus> finalStatuses = List.of(
-    COMPLETED, FAILED, ABANDONED, STOPPED
-);
+                COMPLETED, FAILED, ABANDONED, STOPPED
+        );
 // If a report exists in a non-final status → exception
 ```
 
@@ -472,7 +472,278 @@ Swagger UI available at `/swagger-ui.html`, with the OpenAPI specification loade
 
 ---
 
-## 12. Expected Performance
+## 12. REST API Endpoints
+
+All endpoints are secured with JWT (Keycloak). Two roles are defined:
+- `LCSupport_role` — Support and administration.
+- `M2M_role` — Automated machine-to-machine integrations.
+
+### 12.1 Ingestion Endpoints
+
+| Method | Path | Roles | Description |
+|--------|------|-------|-------------|
+| `POST` | `/v1/ingestion/batch` | `LCSupport_role`, `M2M_role` | Submits a structured JSON payload (up to ~1,000 offers) for synchronous queuing. Accepts `IngestionPayload` with an `offers` array and an optional `offersToDelete` list of external IDs. Returns `202 Accepted`. |
+| `POST` | `/v1/ingestion/stream` | `LCSupport_role`, `M2M_role` | Uploads a large binary file (`application/octet-stream`) of any size. The file is processed incrementally via Spring Batch without loading it into memory. Format (`xml`/`json`) is specified as a query parameter. Returns `202 Accepted`. |
+| `POST` | `/v1/ingestion/url` | `LCSupport_role`, `M2M_role` | Triggers a pull ingestion from a remote URL. The system downloads and streams the file directly from the provided URI. Useful when partners cannot push data. Returns `202 Accepted`. |
+
+**Common query parameters for ingestion endpoints:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `inventoryId` | UUID | Yes | Target physical inventory identifier |
+| `dumpType` | `INCREMENTAL` / `REPLACEMENT` | Yes | Whether the ingestion adds/updates records or fully replaces the inventory |
+| `format` | `xml` / `json` | Yes (stream, url) | File format of the ingested data |
+| `publicationDate` | datetime | No | Date to associate with the publication |
+| `externalPublicationId` | string | No | External reference ID for traceability |
+
+### 12.2 Management Endpoints
+
+| Method | Path | Roles | Description |
+|--------|------|-------|-------------|
+| `GET` | `/v1/ingestion/reports` | `LCSupport_role`, `M2M_role` | Returns a paginated list of ingestion reports with rich filtering options (see below). |
+| `GET` | `/v1/ingestion/reports/{ingestionReportId}` | `LCSupport_role`, `M2M_role` | Returns the full detail of a single ingestion report by its UUID, including counters, status, failed IDs, and promotion state. |
+| `POST` | `/v1/ingestion/promote/{ingestionReportId}` | `LCSupport_role` | Manually triggers the promotion of draft offers (MongoDB draft collection → MongoDB final collection) for a given report. Normally triggered automatically by the workflow. |
+| `DELETE` | `/v1/ingestion/draft/{ingestionReportId}` | `LCSupport_role` | Deletes all draft offers in the temporary MongoDB collection associated with a report. Used for cleanup after a failed or aborted ingestion. Returns `204 No Content`. |
+
+**Available filters for `GET /v1/ingestion/reports`:**
+
+| Filter | Type               | Description |
+|--------|--------------------|-------------|
+| `page` / `size` | integer            | Pagination (default: page 0, size 20) |
+| `sortBy` / `sortDirection` | enum               | Sort field and direction (`ASC`/`DESC`) |
+| `processType` | `FILE` / `PROCESS` | Whether the ingestion came from a file stream or a direct API call |
+| `status` | enum               | `COMPLETED`, `STARTED`, `FAILED`, `ABANDONED`, etc. |
+| `dumpType` | enum               | `INCREMENTAL` / `REPLACEMENT` |
+| `inventoryId` | UUID               | Filter by inventory |
+| `requesterParticipantId` | UUID               | Filter by the requesting participant |
+| `externalRequestId` | string             | Filter by external reference |
+| `processed` / `promoted` | boolean            | Whether offers have been fully processed or promoted |
+| `createdFrom` / `createdTo` | datetime           | Creation date range |
+| `updatedFrom` / `updatedTo` | datetime           | Last update date range |
+
+### 12.3 IngestionReport Response Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Unique report identifier |
+| `processType` | `FILE` / `PROCESS` | Ingestion origin type |
+| `batchJobId` | UUID | Spring Batch job ID (only for FILE type) |
+| `requesterParticipantId` | UUID | Participant who triggered the ingestion |
+| `inventoryId` | UUID | Target inventory |
+| `externalRequestId` | string | External reference for traceability |
+| `publicationDate` | datetime | Associated publication date |
+| `status` | enum | Current lifecycle status |
+| `dumpType` | enum | `INCREMENTAL` or `REPLACEMENT` |
+| `readCount` | integer | Total records read from the source |
+| `writeCount` | integer | Records successfully written |
+| `skipCount` | integer | Records skipped due to data errors |
+| `failedExternalIds` | array | External IDs of records that failed processing |
+| `idsForDelete` | array | External IDs requested for deletion |
+| `activeBookedOfferIds` | array | Offer IDs preserved during promotion due to active bookings |
+| `processed` | boolean | Whether all written offers have been confirmed in MongoDB |
+| `promoted` | boolean | Whether draft offers have been promoted to the final collection |
+| `createdAt` / `updatedAt` | datetime | Audit timestamps |
+
+---
+
+## 13. Kafka Topics and Messages
+
+The ingestion system uses Kafka as its primary integration bus between `ingestion-api` and `lcAPI`. Below are all topics, their direction, and the structure of the messages exchanged.
+
+### 13.1 Topic Overview
+
+```mermaid
+graph LR
+    subgraph ingestion-api
+        P1([Producer])
+        P2([Producer])
+        C1([Consumer])
+        C2([Consumer])
+    end
+
+    subgraph Kafka
+        T1[offers]
+        T2[ingestion-job-report]
+        T3[ingestion-promote-action]
+        T4[ingestion-delete-action]
+        T5[ingestion-promote-action-result]
+        T6[ingestion-delete-action-result]
+    end
+
+    subgraph lcAPI
+        C3([Consumer])
+        C4([Consumer])
+        P3([Producer])
+        P4([Producer])
+    end
+
+    P1 -->|OfferDto| T1
+    P2 -->|IngestionReportDto| T2
+    T3 -->|IngestionReportActionMsg| C1
+    T4 -->|IngestionReportActionMsg| C2
+
+    T2 -->|IngestionReportMsg| C3
+    T5 -->|IngestionReportResponseActionMsg| C4
+    T6 -->|IngestionReportResponseActionMsg| C4
+    C3 & C4 --> P3 & P4
+    P3 -->|IngestionReportActionMsg| T3
+    P4 -->|IngestionReportActionMsg| T4
+```
+
+### 13.2 Topic: `offers`
+
+**Direction**: `ingestion-api` → downstream consumers
+**Producer**: `IOfferInfraKafkaProducerService.sendOffer()`
+**Trigger**: Each individual offer processed during a batch API ingestion (`processOffers()`).
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Offer identifier |
+| `ingestionReportId` | UUID | Associated ingestion report |
+| `externalIdInfo` | object | `ownerReference`, `dealerReference`, `channelReference` |
+| `vehicleInstance` | object | Full vehicle data (model, plate, mileage, equipment, etc.) |
+| `price` / `financedPrice` | Money | Pricing information (`amount` + `currency`) |
+| `sellerType` | enum | `usedCar_ProfessionalSeller` / `usedCar_PrivateSeller` |
+| `resources` | array | Images and media resources |
+| `pickUpAddress` | object | Pickup location with GPS coordinates |
+
+---
+
+### 13.3 Topic: `ingestion-job-report`
+
+**Direction**: `ingestion-api` → `lcAPI`
+**Producer**: `IOfferInfraKafkaProducerService.sendIngestionJobReport()`
+**Consumer**: `IngestionMicroService.processIngestionReport()` in `lcAPI`
+**Trigger**: Published at key lifecycle moments — job start, completion, failure, and after promotion.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Ingestion report ID |
+| `status` | enum | `STARTING`, `STARTED`, `COMPLETED`, `FAILED`, `ABANDONED`, `STOPPED` |
+| `processType` | enum | `FILE` or `PROCESS` |
+| `batchJobId` | UUID | Spring Batch job reference |
+| `inventoryId` | UUID | Target inventory |
+| `requesterParticipantId` | UUID | Who triggered the ingestion |
+| `dumpType` | enum | `INCREMENTAL` or `REPLACEMENT` |
+| `readCount` | integer | Records read |
+| `writeCount` | integer | Records written |
+| `skipCount` | integer | Records skipped |
+| `processed` | boolean | All offers confirmed in MongoDB |
+| `promoted` | boolean | Offers promoted to final collection |
+| `failedExternalIds` | array | Failed record identifiers |
+| `idsForDelete` | array | IDs requested for deletion |
+| `publicationDate` | datetime | Associated publication date |
+
+**Behaviour in `lcAPI` based on `status`:**
+
+| Status received | Action |
+|----------------|--------|
+| `STARTING` / `STARTED` | Creates a new `MICRO_ING_SM` workflow instance |
+| `COMPLETED` + `processed=true` + `promoted=false` | Fires `EV_PERSISTANCE_SUCCESS` → triggers promotion |
+| `FAILED` / `ABANDONED` | Fires `EV_PERSISTANCE_FAIL` → triggers cleanup |
+| `STOPPING` / `STOPPED` | No action |
+
+---
+
+### 13.4 Topic: `ingestion-promote-action`
+
+**Direction**: `lcAPI` → `ingestion-api`
+**Producer**: `IngestionReportPromoteActionResultInfraKafkaProducer.sendPromoteAction()` (fired from `ST_PUBLISH_ALL` state)
+**Consumer**: `ingestion-api` — triggers `promoteDraftOffersToVehicleOffers()`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ingestionReportId` | UUID | Report whose drafts must be promoted |
+
+Upon receiving this message, `ingestion-api`:
+1. Loads the associated `IngestionReportDto`.
+2. Fetches active booked offer IDs to preserve them during the promotion.
+3. Moves draft offers from the temporary MongoDB collection to the final collection, applying `DumpType` logic.
+4. Deletes the draft offers from the temporary collection.
+5. Publishes the result to `ingestion-promote-action-result`.
+
+---
+
+### 13.5 Topic: `ingestion-delete-action`
+
+**Direction**: `lcAPI` → `ingestion-api`
+**Producer**: `IngestionReportDeleteActionResultInfraKafkaProducer.sendDeleteAction()` (fired from `ST_CLEAN_PUBLISHING` state)
+**Consumer**: `ingestion-api` — triggers `deleteDraftOffersByIngestionReportId()`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ingestionReportId` | UUID | Report whose drafts must be deleted |
+
+Upon receiving this message, `ingestion-api` deletes all draft offers associated with the report from the temporary MongoDB collection and publishes the result to `ingestion-delete-action-result`.
+
+---
+
+### 13.6 Topic: `ingestion-promote-action-result`
+
+**Direction**: `ingestion-api` → `lcAPI`
+**Producer**: `IOfferInfraKafkaProducerService.sendIngestionReportPromoteActionNotification()`
+**Consumer**: `IngestionMicroService.processIngestionReportPromoteAction()` in `lcAPI`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ingestionReportId` | UUID | Report identifier |
+| `result` | enum | `SUCCESS` or `FAILED` |
+| `techCause` | enum | Technical error cause (only on failure) |
+| `errorMsg` | string | Error description (only on failure) |
+
+| Result | Workflow event fired |
+|--------|---------------------|
+| `SUCCESS` | `EV_INGESTION_PUBLISHED` → END |
+| `FAILED` | `EV_INGESTION_NOT_PUBLISHED` → END |
+
+---
+
+### 13.7 Topic: `ingestion-delete-action-result`
+
+**Direction**: `ingestion-api` → `lcAPI`
+**Producer**: `IOfferInfraKafkaProducerService.sendIngestionReportDeleteActionNotification()`
+**Consumer**: `IngestionMicroService.processIngestionReportDeleteAction()` in `lcAPI`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ingestionReportId` | UUID | Report identifier |
+| `result` | enum | `SUCCESS` or `FAILED` |
+| `techCause` | enum | Technical error cause (only on failure) |
+| `errorMsg` | string | Error description (only on failure) |
+
+| Result | Workflow event fired |
+|--------|---------------------|
+| `SUCCESS` | `EV_JOB_CLEANED` → END |
+| `FAILED` | `EV_JOB_NOT_CLEANED` → END |
+
+---
+
+### 13.8 Kafka Producer Configuration
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| `acks` | `all` | Maximum durability — waits for full replication before confirming |
+| `retries` | `3` | Automatic retry on transient producer errors |
+| `linger.ms` | `0` | Immediate send — no batching delay |
+| `delivery.timeout.ms` | `120,000 ms` | 2-minute total delivery window |
+| `request.timeout.ms` | `30,000 ms` | 30-second per-request timeout |
+| `max.block.ms` | `6,000 ms` | Max time to block when the send buffer is full |
+
+### 13.9 Kafka Consumer Configuration
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `group-id` | `liquidcars-ingestion-group` | Consumer group for the ingestion service |
+| `auto-offset-reset` | `earliest` | Reads from the beginning if no offset is stored |
+| `enable-auto-commit` | `false` | Manual acknowledgment per record (`ack-mode: record`) |
+| `max-attempts` | `5` | Retry attempts on consumer-side processing failure |
+| `initial-interval` | `5,000 ms` | Wait before first retry |
+| `multiplier` | `2.0` | Doubles the wait on each retry (5s → 10s → 20s → 30s) |
+| `max-interval` | `30,000 ms` | Maximum wait cap between retries |
+
+---
+
+## 14. Expected Performance
 
 | Scenario | Volume | Estimated Time | Memory |
 |----------|--------|----------------|--------|
@@ -488,9 +759,9 @@ Swagger UI available at `/swagger-ui.html`, with the OpenAPI specification loade
 
 ---
 
-## 13. Infrastructure Configuration (application.yml)
+## 15. Infrastructure Configuration (application.yml)
 
-### 13.1 Key Configuration Summary
+### 15.1 Key Configuration Summary
 
 | Section | Key Parameter | Default Value |
 |---------|--------------|---------------|
@@ -506,7 +777,7 @@ Swagger UI available at `/swagger-ui.html`, with the OpenAPI specification loade
 
 ---
 
-## 14. Success Criteria
+## 16. Success Criteria
 
 The system will be considered successful when:
 
@@ -520,13 +791,13 @@ The system will be considered successful when:
 
 ---
 
-## 15. Glossary
+## 17. Glossary
 
 | Term | Definition |
 |------|-----------|
-| **Draft Offer** | Offer persisted in MongoDB awaiting promotion |
-| **Promoted Offer** | Offer visible in Elasticsearch, accessible by end users |
-| **DumpType** | Ingestion type: incremental (changes only) or full (replaces everything) |
+| **Draft Offer** | Offer persisted in the temporary MongoDB collection awaiting promotion |
+| **Promoted Offer** | Offer written to the final MongoDB collection, accessible by the platform |
+| **DumpType** | Ingestion type: `INCREMENTAL` (adds/updates) or `REPLACEMENT` (replaces everything) |
 | **Chunk** | Subset of records processed together as an atomic unit |
 | **Skip** | Record omitted due to a non-critical data error |
 | **Workflow (MICRO_ING_SM)** | State machine in lcAPI that orchestrates the lifecycle of each ingestion |

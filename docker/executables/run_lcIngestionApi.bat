@@ -8,8 +8,8 @@ set COMPOSE_FILE=db_kafka_docker_compose.yml
 REM Navigate to the directory
 pushd "%COMPOSE_DIR%"
 
-REM Start Postgres and RabbitMQ
-echo Starting Postgres and RabbitMQ...
+REM Start Postgres and Kafka
+echo Starting Postgres and Kafka...
 docker-compose -f %COMPOSE_FILE% --project-name lcingestionapi up -d
 
 if %ERRORLEVEL% NEQ 0 (
