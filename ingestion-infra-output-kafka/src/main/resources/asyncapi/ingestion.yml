@@ -163,31 +163,59 @@ components:
       type: object
       properties:
         id: { type: string, format: uuid }
-        processType: { type: string }
-        batchJobId: { type: string }
+        processType: { type: string, enum: [FILE, PROCESS] }
+        batchJobId: { type: string, format: uuid }
         requesterParticipantId: { type: string, format: uuid }
         inventoryId: { type: string, format: uuid }
         externalRequestId: { type: string }
         publicationDate: { type: string, format: date-time }
-        status: { type: string }
-        dumpType: { type: string, enum: [UPDATE, REPLACEMENT] }
+        status: { $ref: '#/components/schemas/IngestionBatchStatus' }
+        dumpType: { type: string, enum: [INCREMENTAL, REPLACEMENT] }
         readCount: { type: integer }
         writeCount: { type: integer }
         skipCount: { type: integer }
         failedExternalIds: { type: array, items: { $ref: '#/components/schemas/ExternalIdInfoMsg' } }
         idsForDelete: { type: array, items: { type: string } }
         processed: { type: boolean }
-        createdAt: { type: string }
-        updatedAt: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
 
     IngestionReportResponseActionMsg:
       type: object
       required: [ ingestionReportId, result ]
       properties:
         ingestionReportId: { type: string, format: uuid }
-        result: { type: string }
-        techCause: { type: string }
+        result: { type: string, enum: [SUCCESS, FAILED]}
+        techCause: { $ref: '#/components/schemas/LCTechCauseEnum' }
         errorMsg: { type: string }
+
+    IngestionBatchStatus:
+      type: string
+      description: Technical identifier for the current state of an ingestion batch process.
+      enum:
+        - COMPLETED
+        - STARTING
+        - STARTED
+        - STOPPING
+        - STOPPED
+        - FAILED
+        - ABANDONED
+        - UNKNOWN
+
+    LCTechCauseEnum:
+      type: string
+      description: Technical Cause Identifier.
+      enum:
+        - INVALID_REQUEST
+        - UNAUTHORIZED
+        - FORBIDDEN
+        - NOT_FOUND
+        - PAYLOAD_TOO_LARGE
+        - CONVERSION_ERROR
+        - DATABASE
+        - INTERNAL_ERROR
+        - NOT_IMPLEMENTED
+        - MESSAGING_BROKER_ERROR
 
     OfferSummaryMsg:
       type: object

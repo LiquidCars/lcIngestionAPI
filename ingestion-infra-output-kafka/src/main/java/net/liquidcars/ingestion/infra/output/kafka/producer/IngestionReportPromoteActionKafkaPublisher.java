@@ -9,6 +9,8 @@ import net.liquidcars.ingestion.infra.output.kafka.model.OfferSummaryMsg;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -20,7 +22,7 @@ public class IngestionReportPromoteActionKafkaPublisher {
     public void sendIngestionReportResponseAction(IngestionReportResponseActionMsg ingestionReportResponseActionMsg) {
         try {
             log.info("Sending kafka topic{}: {}", REPORT_PROMOTE_ACTION_RESULT_TOPIC, ingestionReportResponseActionMsg);
-            kafkaTemplate.send(REPORT_PROMOTE_ACTION_RESULT_TOPIC, ingestionReportResponseActionMsg.getIngestionReportId(), ingestionReportResponseActionMsg).get();
+            kafkaTemplate.send(REPORT_PROMOTE_ACTION_RESULT_TOPIC, ingestionReportResponseActionMsg.getIngestionReportId().toString(), ingestionReportResponseActionMsg).get();
         } catch (Exception e) {
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.MESSAGING_BROKER_ERROR)
