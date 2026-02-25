@@ -3,7 +3,6 @@ package net.liquidcars.ingestion.infra.postgresql.service.mapper;
 import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionReportPageDto;
 import net.liquidcars.ingestion.infra.postgresql.entity.report.IngestionReportEntity;
-import net.liquidcars.ingestion.infra.postgresql.entity.report.WorkflowEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -17,20 +16,11 @@ import java.util.UUID;
         imports = { OffsetDateTime.class })
 public interface ReportInfraSQLMapper {
 
-    @Mapping(target = "workflow", source = "workflowId")
     IngestionReportEntity toIngestionReportEntity(IngestionReportDto ingestionReportDto);
 
-    @Mapping(target = "workflowId", source = "workflow.id")
     IngestionReportDto toIngestionReportDto(IngestionReportEntity ingestionReportEntity);
 
     List<IngestionReportDto> toIngestionReportDtoList(List<IngestionReportEntity> ingestionReportEntityList);
-
-    default WorkflowEntity mapWorkflowIdToEntity(UUID workflowId) {
-        if (workflowId == null) {
-            return null;
-        }
-        return WorkflowEntity.builder().id(workflowId).build();
-    }
 
     default IngestionReportPageDto toIngestionReportPageDto(Page<IngestionReportEntity> entityPage) {
         if (entityPage == null) {

@@ -439,7 +439,16 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                         IngestionReportResponseActionDto.builder().ingestionReportId(ingestionReportId).result(IngestionReportResponseActionResult.SUCCESS).build()
                 );
             } else {
-                log.info("Promotion postponed for report {} until publication date {}.", ingestionReportId, ingestionReportDto.getPublicationDate());
+                String msg = "Promotion postponed: current time is before publication date (" + ingestionReportDto.getPublicationDate() + ")";
+                log.info(msg);
+                offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
+                        IngestionReportResponseActionDto.builder()
+                                .ingestionReportId(ingestionReportId)
+                                .result(IngestionReportResponseActionResult.FAILED)
+                                .techCause(LCTechCauseEnum.DEFERRED_PUBLICATION)
+                                .errorMsg(msg)
+                                .build()
+                );
             }
 
         } catch (LCIngestionException e) {
