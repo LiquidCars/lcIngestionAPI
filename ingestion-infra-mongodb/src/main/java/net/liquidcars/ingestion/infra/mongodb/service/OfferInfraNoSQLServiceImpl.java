@@ -1,21 +1,27 @@
 package net.liquidcars.ingestion.infra.mongodb.service;
 
-import com.mongodb.bulk.BulkWriteUpsert;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.SortDirection;
 import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
+import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionReportFilterDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionReportSortField;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
+import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
+import net.liquidcars.ingestion.domain.service.infra.postgresql.IReportInfraSQLService;
 import net.liquidcars.ingestion.infra.mongodb.entity.DraftOfferNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.VehicleOfferNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.repository.DraftOfferNoSqlRepository;
 import net.liquidcars.ingestion.infra.mongodb.repository.VehicleOfferNoSqlRepository;
 import net.liquidcars.ingestion.infra.mongodb.service.mapper.OfferInfraNoSQLMapper;
 import org.bson.Document;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -26,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -44,6 +51,8 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
 
     private final IOfferInfraSQLService offerInfraSQLService;
     private final TransactionTemplate transactionTemplate;
+
+    private final IReportInfraSQLService reportInfraSQLService;
 
     @Override
     @Transactional
@@ -157,20 +166,29 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     }
 
     @Override
-    public void promoteDraftOffersToVehicleOffers(UUID ingestionReportId, IngestionDumpType dumpType, UUID inventoryId, List<String> externalIdsToDelete, List<UUID> activeBookedOfferIds) {
+    public boolean promoteDraftOffersToVehicleOffers(UUID ingestionReportId, IngestionDumpType dumpType, UUID inventoryId, List<String> externalIdsToDelete, List<UUID> activeBookedOfferIds) {
+        IngestionReportDto report = reportInfraSQLService.findIngestionReportById(ingestionReportId);
+
+        if(report.getPublicationDate() != null && report.getPublicationDate().isAfter(OffsetDateTime.now())){
+            log.info("Promotion is in standby until publication date: {}", report.getPublicationDate());
+            return false;
+        }
+
         log.info("Starting promotion for ingestionReportId: {}", ingestionReportId);
 
-            // 1. Promote to NoSQL (vehicle offers collection)
-            List<UUID> promotedNoSQLIds = promoteDraftOffersAndGetsPromoted(ingestionReportId, inventoryId, activeBookedOfferIds);
+        // 1. Promote to NoSQL (vehicle offers collection)
+        List<UUID> promotedNoSQLIds = promoteDraftOffersAndGetsPromoted(ingestionReportId, inventoryId, activeBookedOfferIds);
 
-            // 2. Promote to SQL (PostgreSQL) and get promoted IDs
-            List<UUID> promotedSQLIds = promoteDraftOffersToSQL(ingestionReportId, activeBookedOfferIds);
+        // 2. Promote to SQL (PostgreSQL) and get promoted IDs
+        List<UUID> promotedSQLIds = promoteDraftOffersToSQL(ingestionReportId, activeBookedOfferIds);
 
-            // 3. REPLACEMENT logic for both databases
-            replaceOffers(dumpType, inventoryId, promotedNoSQLIds, promotedSQLIds, activeBookedOfferIds);
+        // 3. REPLACEMENT logic for both databases
+        replaceOffers(dumpType, inventoryId, promotedNoSQLIds, promotedSQLIds, activeBookedOfferIds);
 
-            // 4. Process explicit deletions (offersToDelete from JSON) in both databases
-            deleteOffersInPromotion(inventoryId, externalIdsToDelete, activeBookedOfferIds);
+        // 4. Process explicit deletions (offersToDelete from JSON) in both databases
+        deleteOffersInPromotion(inventoryId, externalIdsToDelete, activeBookedOfferIds);
+
+        return true;
     }
 
     private List<UUID> promoteDraftOffersAndGetsPromoted(UUID ingestionReportId, UUID inventoryId,

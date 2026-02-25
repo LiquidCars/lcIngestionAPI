@@ -424,18 +424,24 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         if (validatePromotion(ingestionReportId, ingestionReportDto)) return;
         try {
             List<UUID> activeBookedOfferIds = offerInfraSQLService.findActiveBookedOfferIds(ingestionReportDto.getInventoryId());
-            offerInfraNoSQLService.promoteDraftOffersToVehicleOffers(ingestionReportId, ingestionReportDto.getDumpType(), ingestionReportDto.getInventoryId(), ingestionReportDto.getIdsForDelete(), activeBookedOfferIds);
-            //Once promotion process is completed we mark job as processed and we update
-            ingestionReportDto.setPromoted(true);
-            ingestionReportDto.setActiveBookedOfferIds(activeBookedOfferIds);
-            iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
-            offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
-            //When offers are promoted we delete the draft offers of NoSQLDB
-            offerInfraNoSQLService.deleteDraftOffersByIngestionReportId(ingestionReportId);
-            log.debug("Finish promotion for jobIdentifier: {}", ingestionReportId);
-            offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
-                    IngestionReportResponseActionDto.builder().ingestionReportId(ingestionReportId).result(IngestionReportResponseActionResult.SUCCESS).build()
-            );
+            boolean ispromoted = offerInfraNoSQLService.promoteDraftOffersToVehicleOffers(ingestionReportId, ingestionReportDto.getDumpType(),
+                    ingestionReportDto.getInventoryId(), ingestionReportDto.getIdsForDelete(), activeBookedOfferIds);
+            if(ispromoted){
+                //Once promotion process is completed we mark job as processed and we update
+                ingestionReportDto.setPromoted(true);
+                ingestionReportDto.setActiveBookedOfferIds(activeBookedOfferIds);
+                iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
+                offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
+                //When offers are promoted we delete the draft offers of NoSQLDB
+                offerInfraNoSQLService.deleteDraftOffersByIngestionReportId(ingestionReportId);
+                log.debug("Finish promotion for jobIdentifier: {}", ingestionReportId);
+                offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
+                        IngestionReportResponseActionDto.builder().ingestionReportId(ingestionReportId).result(IngestionReportResponseActionResult.SUCCESS).build()
+                );
+            } else {
+                log.info("Promotion postponed for report {} until publication date {}.", ingestionReportId, ingestionReportDto.getPublicationDate());
+            }
+
         } catch (LCIngestionException e) {
             log.error("Promotion failed for job: {}", ingestionReportId, e);
             offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
