@@ -222,7 +222,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         carInstanceEquipmentEntityRepository.deleteByVehicleInstanceId(vehicleInstance.getId());
         List<CarInstanceEquipmentEntity> entities = mapper.toCarInstanceEquipmentEntityList(equipments);
         entities.forEach(entity -> {
-            int id = ThreadLocalRandom.current().nextInt(1000, 10000);
+            int id = ThreadLocalRandom.current().nextInt(100_000_000, Integer.MAX_VALUE);
             entity.setId(id);
             entity.setVehicleInstance(vehicleInstance);
             if(entity.getType() == null){
@@ -248,7 +248,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                 .id("UrlImage")
                 .build();
         byte[] image = convertUrlToBytes(dto.getResource());
-        int id = ThreadLocalRandom.current().nextInt(1000, 10000);
+        int id = ThreadLocalRandom.current().nextInt(100_000_000, Integer.MAX_VALUE);
         CarOfferResourceEntity resourceEntity = CarOfferResourceEntity.builder()
                 .id(id)
                 .offer(offer)
@@ -290,7 +290,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                         dto.getBrand(), dto.getModel(), dto.getVersion())
                 .orElseGet(() -> {
                     VehicleModelEntity model = mapper.toVehicleModelEntity(dto);
-                    Long id = ThreadLocalRandom.current().nextLong(100_000_000L, 1_000_000_000L);
+                    long id = ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999_999L);
                     model.setId(id);
                     model.setEnabled(true); // Asegúrate de habilitarlo
                     return vehicleModelRepository.save(model);
@@ -515,7 +515,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                         dto.getVehicleInstance().getEquipments()
                 );
                 entities.forEach(eq -> {
-                    eq.setId(ThreadLocalRandom.current().nextInt(1000, 10000));
+                    eq.setId(ThreadLocalRandom.current().nextInt(100_000_000, Integer.MAX_VALUE));
                     eq.setVehicleInstance(entity.getVehicleInstance());
                     if (eq.getType() == null) {
                         eq.setType(EquipmentTypeEntity.builder().id("Other").build());
