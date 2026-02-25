@@ -1,5 +1,6 @@
 package net.liquidcars.ingestion.infra.mongodb.service;
 
+import com.mongodb.bulk.BulkWriteUpsert;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
@@ -27,6 +28,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -191,6 +193,8 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         int totalErrors = 0;
         int totalSkipped = 0;
 
+        Map<String, UUID> existingProductionIds = loadAllProductionIdsByInventory(inventoryId);
+
         // Use mongoTemplate.stream to open a cursor and process records one by one
         try (Stream<DraftOfferNoSQLEntity> draftStream = mongoTemplate.stream(draftQuery, DraftOfferNoSQLEntity.class)) {
 
@@ -215,7 +219,13 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                     }
 
                     VehicleOfferNoSQLEntity productionEntity = offerInfraNoSQLMapper.toVehicleOfferNoSQLEntity(draft);
-                    promotedIds.add(productionEntity.getId());
+
+                    String ref = draft.getOwnerReference() != null ? draft.getOwnerReference()
+                            : draft.getDealerReference() != null ? draft.getDealerReference()
+                            : draft.getChannelReference();
+
+                    UUID productionEntityId = existingProductionIds.getOrDefault(ref, productionEntity.getId());
+                    promotedIds.add(productionEntityId);
 
                     // 3. Build the query to find existing record
                     // Match by inventory_id AND all present business references (AND logic)
@@ -252,7 +262,8 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                     // Always force inventory_id from parameter to guarantee it is never null
                     update.set("inventory_id", inventoryId);
                     // On INSERT: fix the UUID as _id so promotedIds tracking stays consistent
-                    update.setOnInsert("_id", productionEntity.getId());
+                    update.setOnInsert("_id", productionEntityId);
+
 
                     // Add to bulk execution plan
                     bulkOps.upsert(upsertQuery, update);
@@ -262,7 +273,8 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                     if (count >= batchSize) {
                         log.info("Executing bulk of {} operations", count);
                         var result = bulkOps.execute();
-                        totalPromoted += (result.getInsertedCount() + result.getModifiedCount() + result.getUpserts().size());
+
+                        totalPromoted += result.getModifiedCount() + result.getUpserts().size();
 
                         // Reset for next batch
                         bulkOps = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, VehicleOfferNoSQLEntity.class);
@@ -279,7 +291,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
             if (count > 0) {
                 log.debug("Executing final bulk of {} operations", count);
                 var result = bulkOps.execute();
-                totalPromoted += (result.getInsertedCount() + result.getModifiedCount() + result.getUpserts().size());
+                totalPromoted += result.getModifiedCount() + result.getUpserts().size();
             }
 
             log.info("Promotion finished for report {}. Success: {}, Skipped (booked): {}, Errors: {}",
@@ -305,6 +317,21 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                     .build();
         }
         return promotedIds;
+    }
+
+    private Map<String, UUID> loadAllProductionIdsByInventory(UUID inventoryId) {
+        Query q = new Query(Criteria.where("inventory_id").is(inventoryId));
+        q.fields().include("_id").include("owner_reference").include("dealer_reference").include("channel_reference");
+
+        return mongoTemplate.find(q, VehicleOfferNoSQLEntity.class)
+                .stream()
+                .collect(Collectors.toMap(
+                        e -> e.getOwnerReference() != null ? e.getOwnerReference()
+                                : e.getDealerReference() != null ? e.getDealerReference()
+                                : e.getChannelReference(),
+                        VehicleOfferNoSQLEntity::getId,
+                        (a, b) -> a
+                ));
     }
 
     /**
