@@ -81,7 +81,8 @@ tasks.register('openApiIngestion', GenerateTask) {
             IngestionProcessType: "net.liquidcars.ingestion.domain.model.batch.IngestionProcessType",
             IngestionBatchStatus: "net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus",
             IngestionReportSortField: "net.liquidcars.ingestion.domain.model.batch.IngestionReportSortField",
-            SortDirection: "net.liquidcars.ingestion.domain.model.SortDirection"
+            SortDirection: "net.liquidcars.ingestion.domain.model.SortDirection",
+            LCIngestionExceptionApiResponse: "net.liquidcars.ingestion.infra.input.rest.model.LCIngestionExceptionApiResponse"
     ]
 }
 

@@ -25,7 +25,7 @@ public class IngestionReportPromoteInfraKafkaConsumer {
     public void consumeIngestionReportActionPromote(IngestionReportActionMsg message) {
         log.info("Received ingestion report job with id: {} for promote offers", message.getIngestionReportId());
         try {
-            offerInfraKafkaConsumerService.processIngestionReportPromoteAction(UUID.fromString(message.getIngestionReportId()));
+            offerInfraKafkaConsumerService.processIngestionReportPromoteAction(message.getIngestionReportId());
         } catch (Exception e) {
             log.error("Critical error processing report with id: {}. Triggering Kafka retry...", message.getIngestionReportId(), e);
             // We wrap and rethrow the exception.

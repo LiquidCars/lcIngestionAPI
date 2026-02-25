@@ -8,6 +8,8 @@ import net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportMsg;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -19,7 +21,7 @@ public class IngestionReportKafkaPublisher {
     public void sendIngestionReport(IngestionReportMsg ingestionReport) {
         try {
             log.info("Sending kafka topic {}: {}", UPDATED_REPORT_TOPIC, ingestionReport);
-            kafkaTemplate.send(UPDATED_REPORT_TOPIC, ingestionReport.getId(), ingestionReport).get();
+            kafkaTemplate.send(UPDATED_REPORT_TOPIC, ingestionReport.getId().toString(), ingestionReport).get();
         } catch (Exception e) {
             throw LCIngestionException.builder()
                     .techCause(LCTechCauseEnum.MESSAGING_BROKER_ERROR)

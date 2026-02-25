@@ -4,7 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus;
 import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
+import net.liquidcars.ingestion.domain.model.batch.IngestionProcessType;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -15,14 +17,14 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class IngestionReportMsg {
-    private String id;
-    private String processType;
-    private String batchJobId;
+    private UUID id;
+    private IngestionProcessType processType;
+    private UUID batchJobId;
     private UUID requesterParticipantId;
     private UUID inventoryId;
     private String externalRequestId;
-    private String publicationDate;
-    private String status;
+    private OffsetDateTime publicationDate;
+    private IngestionBatchStatus status;
     private IngestionDumpType dumpType;
     private Integer readCount;
     private Integer writeCount;
@@ -32,6 +34,6 @@ public class IngestionReportMsg {
     private List<UUID> activeBookedOfferIds;
     private boolean processed;
     private boolean promoted;
-    private String createdAt;
-    private String updatedAt;
+    private OffsetDateTime createdAt;
+    private OffsetDateTime updatedAt;
 }
