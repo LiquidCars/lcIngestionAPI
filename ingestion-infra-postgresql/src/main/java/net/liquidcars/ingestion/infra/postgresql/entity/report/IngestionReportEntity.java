@@ -94,4 +94,8 @@ public class IngestionReportEntity {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "workflow_id")
+    private WorkflowEntity workflow;
 }

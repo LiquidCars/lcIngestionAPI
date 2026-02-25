@@ -179,6 +179,7 @@ components:
         processed: { type: boolean }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        workflowId: { type: string, format: uuid }
 
     IngestionReportResponseActionMsg:
       type: object
