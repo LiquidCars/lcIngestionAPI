@@ -762,7 +762,7 @@ class OfferIngestionProcessServiceImplTest {
 
     @Test
     @DisplayName("Promote: Debería fallar si el reporte ya fue promovido")
-    void validatePromotion_AlreadyPromoted() {
+    void validatePromotion_ByPublishDate_AlreadyPromoted() {
         UUID jobId = UUID.randomUUID();
         IngestionReportDto report = IngestionReportDto.builder()
                 .id(jobId)
@@ -777,7 +777,7 @@ class OfferIngestionProcessServiceImplTest {
 
     @Test
     @DisplayName("Promote: Debería fallar si el reporte no está completado")
-    void validatePromotion_NotCompleted() {
+    void validatePromotion_ByPublishDate_NotCompleted() {
         UUID jobId = UUID.randomUUID();
         IngestionReportDto report = IngestionReportDto.builder()
                 .id(jobId)

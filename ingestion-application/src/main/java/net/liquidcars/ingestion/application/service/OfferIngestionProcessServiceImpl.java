@@ -421,7 +421,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     public void promoteDraftOffersToVehicleOffers(UUID ingestionReportId, boolean async) {
         log.debug("Calling for start promotion for jobIdentifier: {}", ingestionReportId);
         IngestionReportDto ingestionReportDto = findIngestionReportById(ingestionReportId);
-        validatePromotion(ingestionReportDto, async);
+        validatePromotionByPublishDate(ingestionReportDto, async);
         try {
             List<UUID> activeBookedOfferIds = offerInfraSQLService.findActiveBookedOfferIds(ingestionReportDto.getInventoryId());
             offerInfraNoSQLService.promoteDraftOffersToVehicleOffers(ingestionReportId, ingestionReportDto.getDumpType(),
@@ -453,7 +453,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         }
     }
 
-    private void validatePromotion(IngestionReportDto ingestionReportDto, boolean async) {
+    private void validatePromotionByPublishDate(IngestionReportDto ingestionReportDto, boolean async) {
         if(ingestionReportDto.getPublicationDate() != null && ingestionReportDto.getPublicationDate().isAfter(OffsetDateTime.now())){
             String warnMsg = String.format(
                     "Cannot promote offers with ingestionReportId: %s. Promotion is in standby until publication date: %s.",
