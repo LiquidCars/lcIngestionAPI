@@ -38,7 +38,7 @@ public interface IngestionReportRepository extends JpaRepository<IngestionReport
     SELECT * FROM public.ingestion_reports 
     WHERE status = 'COMPLETED'
       AND promoted = false 
-      AND (publication_date IS NULL OR publication_date <= :time)
+      AND publication_date <= :time
     """, nativeQuery = true)
     List<IngestionReportEntity> findPendingPromotions(@Param("time") OffsetDateTime time);
 }
