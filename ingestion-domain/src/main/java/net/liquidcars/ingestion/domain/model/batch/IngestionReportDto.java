@@ -30,4 +30,5 @@ public class IngestionReportDto {
     private boolean promoted = false;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
+    private UUID workflowId;
 }

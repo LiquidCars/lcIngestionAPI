@@ -4,6 +4,9 @@ import lombok.Getter;
 
 @Getter
 public enum LCTechCauseEnum {
+    // Publicación diferida
+    DEFERRED_PUBLICATION(43, 202, "LCException.Global.deferred_publication"),
+
     // Errores de Cliente (4xx)
     INVALID_REQUEST(4, 400, "LCException.Global.invalid_request"),
     UNAUTHORIZED(11, 401, "LCException.Global.Unauthorized"),

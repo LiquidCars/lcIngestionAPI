@@ -94,4 +94,7 @@ public class IngestionReportEntity {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
+
+    @Column(name = "workflow_id")
+    private UUID workflowId;
 }

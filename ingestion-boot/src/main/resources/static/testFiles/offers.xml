@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <motorflash>
     <anuncio>
-        <!-- añadir hash? -->
         <motorflashid>77339314</motorflashid>
         <dealerid>211</dealerid>
         <instalacion><![CDATA[Canalcar Automoviles]]></instalacion>
         <mail>ventas@canalcar.es</mail>
-        <matricula>1234ABC</matricula>
+        <matricula>1235ABD</matricula>
         <chasis>WBA2P31020P827474</chasis>
         <marca><![CDATA[BMW]]></marca>
         <modelo><![CDATA[Serie 1]]></modelo>

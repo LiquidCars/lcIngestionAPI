@@ -36,4 +36,5 @@ public class IngestionReportMsg {
     private boolean promoted;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
+    private UUID workflowId;
 }
