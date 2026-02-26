@@ -29,7 +29,7 @@ public class IngestionReportDeleteInfraKafkaConsumerTest {
     @DisplayName("Should call delete action successfully when message is valid")
     void consumeIngestionReportActionDelete_Success() {
         // Arrange
-        String reportId = UUID.randomUUID().toString();
+        UUID reportId = UUID.randomUUID();
         IngestionReportActionMsg message = new IngestionReportActionMsg();
         message.setIngestionReportId(reportId);
 
@@ -38,14 +38,14 @@ public class IngestionReportDeleteInfraKafkaConsumerTest {
 
         // Assert
         verify(offerInfraKafkaConsumerService, times(1))
-                .processIngestionReportDeleteAction(UUID.fromString(reportId));
+                .processIngestionReportDeleteAction(reportId);
     }
 
     @Test
     @DisplayName("Should throw LCIngestionException when service fails during delete")
     void consumeIngestionReportActionDelete_ServiceFails_ShouldThrowLCIngestionException() {
         // Arrange
-        String reportId = UUID.randomUUID().toString();
+        UUID reportId = UUID.randomUUID();
         IngestionReportActionMsg message = new IngestionReportActionMsg();
         message.setIngestionReportId(reportId);
 
@@ -59,7 +59,7 @@ public class IngestionReportDeleteInfraKafkaConsumerTest {
 
         assertAll(
                 () -> assertEquals(LCTechCauseEnum.DATABASE, exception.getTechCause()),
-                () -> assertTrue(exception.getMessage().contains(reportId)),
+                () -> assertTrue(exception.getMessage().contains(reportId.toString())),
                 () -> assertTrue(exception.getMessage().contains("for delete offers")),
                 () -> assertEquals("Database error on delete", exception.getCause().getMessage())
         );
@@ -68,9 +68,10 @@ public class IngestionReportDeleteInfraKafkaConsumerTest {
     @Test
     @DisplayName("Should throw LCIngestionException if IngestionReportId is not a valid UUID")
     void consumeIngestionReportActionDelete_InvalidUuid_ShouldThrowLCIngestionException() {
+        UUID reportId = UUID.randomUUID();
         // Arrange
         IngestionReportActionMsg message = new IngestionReportActionMsg();
-        message.setIngestionReportId("id-invalido-123");
+        message.setIngestionReportId(reportId);
 
         // Act & Assert
         LCIngestionException exception = assertThrows(LCIngestionException.class,

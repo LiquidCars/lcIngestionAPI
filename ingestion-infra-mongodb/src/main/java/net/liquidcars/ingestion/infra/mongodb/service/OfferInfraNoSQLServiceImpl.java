@@ -166,14 +166,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     }
 
     @Override
-    public boolean promoteDraftOffersToVehicleOffers(UUID ingestionReportId, IngestionDumpType dumpType, UUID inventoryId, List<String> externalIdsToDelete, List<UUID> activeBookedOfferIds) {
-        IngestionReportDto report = reportInfraSQLService.findIngestionReportById(ingestionReportId);
-
-        if(report.getPublicationDate() != null && report.getPublicationDate().isAfter(OffsetDateTime.now())){
-            log.info("Promotion is in standby until publication date: {}", report.getPublicationDate());
-            return false;
-        }
-
+    public void promoteDraftOffersToVehicleOffers(UUID ingestionReportId, IngestionDumpType dumpType, UUID inventoryId, List<String> externalIdsToDelete, List<UUID> activeBookedOfferIds) {
         log.info("Starting promotion for ingestionReportId: {}", ingestionReportId);
 
         // 1. Promote to NoSQL (vehicle offers collection)
@@ -187,8 +180,6 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
 
         // 4. Process explicit deletions (offersToDelete from JSON) in both databases
         deleteOffersInPromotion(inventoryId, externalIdsToDelete, activeBookedOfferIds);
-
-        return true;
     }
 
     private List<UUID> promoteDraftOffersAndGetsPromoted(UUID ingestionReportId, UUID inventoryId,

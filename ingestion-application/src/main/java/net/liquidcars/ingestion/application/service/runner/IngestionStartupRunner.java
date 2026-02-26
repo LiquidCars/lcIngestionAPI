@@ -2,8 +2,8 @@ package net.liquidcars.ingestion.application.service.runner;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.liquidcars.ingestion.domain.model.SortDirection;
-import net.liquidcars.ingestion.domain.model.batch.*;
+import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
+import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
 import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -14,8 +14,6 @@ import org.springframework.stereotype.Component;
 import java.io.InputStream;
 import java.time.OffsetDateTime;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -58,66 +56,8 @@ public class IngestionStartupRunner {
                     EXTERNAL_PUBLICATION_ID
             );
 
-            // 3. Start asynchronous monitoring for draft-to-SQL promotion
-            startAsyncPromotionMonitor(TEST_PARTICIPANT_ID);
-
         } catch (Exception e) {
             log.error("Failed to execute startup ingestion", e);
         }
-    }
-
-    private void startAsyncPromotionMonitor(UUID participantId) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                boolean completed = false;
-                int attempts = 0;
-                UUID reportId;
-
-                log.info("Waiting for ingestion report to be created and completed...");
-
-                while (!completed && attempts < 30) { // Max 5 minutes (30 attempts * 10s)
-                    TimeUnit.SECONDS.sleep(10);
-                    attempts++;
-
-                    // Find the most recent report for this specific startup participant
-                    IngestionReportDto report = findCurrentStartupReport(participantId);
-
-                    if (report != null) {
-                        reportId = report.getId();
-                        log.debug("Checking status for report {}: {}", reportId, report.getStatus());
-
-                        if (report.getStatus() == IngestionBatchStatus.COMPLETED && report.isProcessed()) {
-                            completed = true;
-                            log.info("Ingestion completed! Triggering promotion for report: {}", reportId);
-                            ingestionProcessService.promoteDraftOffersToVehicleOffers(reportId, true);
-                        } else if (report.getStatus() == IngestionBatchStatus.FAILED) {
-                            log.error("Startup ingestion failed according to report status.");
-                            break;
-                        }
-                    }
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } catch (Exception e) {
-                log.error("Error during startup promotion monitoring", e);
-            }
-        });
-    }
-
-    private IngestionReportDto findCurrentStartupReport(UUID participantId) {
-        // Build filter to find the specific startup report
-        IngestionReportFilterDto filterDto = IngestionReportFilterDto.builder()
-                .externalRequestId(EXTERNAL_PUBLICATION_ID)
-                .requesterParticipantId(participantId)
-                .page(0)
-                .size(1)
-                .sortBy(IngestionReportSortField.updatedAt)
-                .sortDirection(SortDirection.DESC)
-                .build();
-
-        return ingestionProcessService.findIngestionReports(filterDto)
-                .getContent().stream()
-                .findFirst()
-                .orElse(null);
     }
 }

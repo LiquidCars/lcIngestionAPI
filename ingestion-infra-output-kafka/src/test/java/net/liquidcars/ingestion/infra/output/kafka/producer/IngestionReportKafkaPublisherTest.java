@@ -43,14 +43,14 @@ public class IngestionReportKafkaPublisherTest {
         CompletableFuture<SendResult<String, IngestionReportMsg>> future =
                 CompletableFuture.completedFuture(mock(SendResult.class));
 
-        when(kafkaTemplate.send(eq(TOPIC), eq(report.getId()), eq(report)))
+        when(kafkaTemplate.send(eq(TOPIC), eq(report.getId().toString()), eq(report)))
                 .thenReturn(future);
 
         // Act
         publisher.sendIngestionReport(report);
 
         // Assert
-        verify(kafkaTemplate, times(1)).send(TOPIC, report.getId(), report);
+        verify(kafkaTemplate, times(1)).send(TOPIC, report.getId().toString(), report);
     }
 
     @Test
@@ -73,7 +73,7 @@ public class IngestionReportKafkaPublisherTest {
 
         // Verificamos el contrato de error de tu dominio
         assertThat(exception.getTechCause()).isEqualTo(LCTechCauseEnum.MESSAGING_BROKER_ERROR);
-        assertThat(exception.getMessage()).contains(report.getId());
+        assertThat(exception.getMessage()).contains(report.getId().toString());
 
         // Verificamos que la causa raíz esté envuelta en una ExecutionException (por el .get())
         assertThat(exception.getCause()).isInstanceOf(ExecutionException.class);

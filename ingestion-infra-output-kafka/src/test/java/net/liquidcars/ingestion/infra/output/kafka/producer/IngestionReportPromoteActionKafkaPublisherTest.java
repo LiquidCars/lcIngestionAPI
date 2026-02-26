@@ -43,14 +43,14 @@ public class IngestionReportPromoteActionKafkaPublisherTest {
         CompletableFuture<SendResult<String, IngestionReportResponseActionMsg>> future =
                 CompletableFuture.completedFuture(mock(SendResult.class));
 
-        when(kafkaTemplate.send(eq(TOPIC), eq(message.getIngestionReportId()), eq(message)))
+        when(kafkaTemplate.send(eq(TOPIC), eq(message.getIngestionReportId().toString()), eq(message)))
                 .thenReturn(future);
 
         // Act
         publisher.sendIngestionReportResponseAction(message);
 
         // Assert
-        verify(kafkaTemplate, times(1)).send(TOPIC, message.getIngestionReportId(), message);
+        verify(kafkaTemplate, times(1)).send(TOPIC, message.getIngestionReportId().toString(), message);
     }
 
     @Test
@@ -73,7 +73,7 @@ public class IngestionReportPromoteActionKafkaPublisherTest {
 
         // 2. Verificamos los detalles de tu excepción personalizada
         assertThat(exception.getTechCause()).isEqualTo(LCTechCauseEnum.MESSAGING_BROKER_ERROR);
-        assertThat(exception.getMessage()).contains(message.getIngestionReportId());
+        assertThat(exception.getMessage()).contains(message.getIngestionReportId().toString());
 
         // 3. ¡IMPORTANTE! La causa de LCIngestionException será una ExecutionException
         // debido al .get() del CompletableFuture

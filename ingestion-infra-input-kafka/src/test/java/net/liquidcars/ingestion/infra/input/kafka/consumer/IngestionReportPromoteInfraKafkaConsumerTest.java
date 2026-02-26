@@ -29,7 +29,7 @@ public class IngestionReportPromoteInfraKafkaConsumerTest {
     @DisplayName("Should call promote action successfully when message is valid")
     void consumePromoteOffers_Success() {
         // Arrange
-        String reportId = UUID.randomUUID().toString();
+        UUID reportId = UUID.randomUUID();
         IngestionReportActionMsg message = new IngestionReportActionMsg();
         message.setIngestionReportId(reportId);
 
@@ -38,14 +38,14 @@ public class IngestionReportPromoteInfraKafkaConsumerTest {
 
         // Assert
         verify(offerInfraKafkaConsumerService, times(1))
-                .processIngestionReportPromoteAction(UUID.fromString(reportId));
+                .processIngestionReportPromoteAction(reportId);
     }
 
     @Test
     @DisplayName("Should throw LCIngestionException when service fails")
     void consumePromoteOffers_ServiceFails_ShouldThrowLCIngestionException() {
         // Arrange
-        String reportId = UUID.randomUUID().toString();
+        UUID reportId = UUID.randomUUID();
         IngestionReportActionMsg message = new IngestionReportActionMsg();
         message.setIngestionReportId(reportId);
 
@@ -59,7 +59,7 @@ public class IngestionReportPromoteInfraKafkaConsumerTest {
 
         assertAll(
                 () -> assertEquals(LCTechCauseEnum.DATABASE, exception.getTechCause()),
-                () -> assertTrue(exception.getMessage().contains(reportId)),
+                () -> assertTrue(exception.getMessage().contains(reportId.toString())),
                 () -> assertTrue(exception.getMessage().contains("promote offers"))
         );
     }
@@ -68,7 +68,7 @@ public class IngestionReportPromoteInfraKafkaConsumerTest {
     @DisplayName("Should throw LCIngestionException when UUID format is invalid")
     void consumePromoteOffers_InvalidUuid_ShouldThrowLCIngestionException() {
         // Arrange
-        String invalidId = "not-a-uuid";
+        UUID invalidId = UUID.randomUUID();
         IngestionReportActionMsg message = new IngestionReportActionMsg();
         message.setIngestionReportId(invalidId);
 

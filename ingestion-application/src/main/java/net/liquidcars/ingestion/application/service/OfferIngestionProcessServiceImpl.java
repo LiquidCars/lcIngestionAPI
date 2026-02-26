@@ -421,36 +421,22 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     public void promoteDraftOffersToVehicleOffers(UUID ingestionReportId, boolean async) {
         log.debug("Calling for start promotion for jobIdentifier: {}", ingestionReportId);
         IngestionReportDto ingestionReportDto = findIngestionReportById(ingestionReportId);
-        if (validatePromotion(ingestionReportId, ingestionReportDto)) return;
+        validatePromotion(ingestionReportDto, async);
         try {
             List<UUID> activeBookedOfferIds = offerInfraSQLService.findActiveBookedOfferIds(ingestionReportDto.getInventoryId());
-            boolean ispromoted = offerInfraNoSQLService.promoteDraftOffersToVehicleOffers(ingestionReportId, ingestionReportDto.getDumpType(),
+            offerInfraNoSQLService.promoteDraftOffersToVehicleOffers(ingestionReportId, ingestionReportDto.getDumpType(),
                     ingestionReportDto.getInventoryId(), ingestionReportDto.getIdsForDelete(), activeBookedOfferIds);
-            if(ispromoted){
-                //Once promotion process is completed we mark job as processed and we update
-                ingestionReportDto.setPromoted(true);
-                ingestionReportDto.setActiveBookedOfferIds(activeBookedOfferIds);
-                iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
-                offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
-                //When offers are promoted we delete the draft offers of NoSQLDB
-                offerInfraNoSQLService.deleteDraftOffersByIngestionReportId(ingestionReportId);
-                log.debug("Finish promotion for jobIdentifier: {}", ingestionReportId);
-                offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
-                        IngestionReportResponseActionDto.builder().ingestionReportId(ingestionReportId).result(IngestionReportResponseActionResult.SUCCESS).build()
-                );
-            } else {
-                String msg = "Promotion postponed: current time is before publication date (" + ingestionReportDto.getPublicationDate() + ")";
-                log.info(msg);
-                offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
-                        IngestionReportResponseActionDto.builder()
-                                .ingestionReportId(ingestionReportId)
-                                .result(IngestionReportResponseActionResult.FAILED)
-                                .techCause(LCTechCauseEnum.DEFERRED_PUBLICATION)
-                                .errorMsg(msg)
-                                .build()
-                );
-            }
-
+            //Once promotion process is completed we mark job as processed and we update
+            ingestionReportDto.setPromoted(true);
+            ingestionReportDto.setActiveBookedOfferIds(activeBookedOfferIds);
+            iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
+            offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
+            //When offers are promoted we delete the draft offers of NoSQLDB
+            offerInfraNoSQLService.deleteDraftOffersByIngestionReportId(ingestionReportId);
+            log.debug("Finish promotion for jobIdentifier: {}", ingestionReportId);
+            offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
+                    IngestionReportResponseActionDto.builder().ingestionReportId(ingestionReportId).result(IngestionReportResponseActionResult.SUCCESS).build()
+            );
         } catch (LCIngestionException e) {
             log.error("Promotion failed for job: {}", ingestionReportId, e);
             offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
@@ -467,16 +453,31 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         }
     }
 
-    private static boolean validatePromotion(UUID ingestionReportId, IngestionReportDto ingestionReportDto) {
-        if(ingestionReportDto.isPromoted()){
-            log.warn("Cannot promote offers with jobIdentifier: {}. The job was promoted yet.", ingestionReportId);
-            return true;
+    private void validatePromotion(IngestionReportDto ingestionReportDto, boolean async) {
+        if(ingestionReportDto.getPublicationDate() != null && ingestionReportDto.getPublicationDate().isAfter(OffsetDateTime.now())){
+            String warnMsg = String.format(
+                    "Cannot promote offers with ingestionReportId: %s. Promotion is in standby until publication date: %s.",
+                    ingestionReportDto.getId(),
+                    ingestionReportDto.getPublicationDate());
+            log.warn(warnMsg);
+            if(async) {
+                String msg = "Promotion postponed: current time is before publication date (" + ingestionReportDto.getPublicationDate() + ")";
+                log.info(msg);
+                offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
+                        IngestionReportResponseActionDto.builder()
+                                .ingestionReportId(ingestionReportDto.getId())
+                                .result(IngestionReportResponseActionResult.FAILED)
+                                .techCause(LCTechCauseEnum.DEFERRED_PUBLICATION)
+                                .errorMsg(msg)
+                                .build()
+                );
+            } else {
+                throw LCIngestionException.builder()
+                        .techCause(LCTechCauseEnum.INVALID_REQUEST)
+                        .message(warnMsg)
+                        .build();
+            }
         }
-        if(!ingestionReportDto.getStatus().equals(IngestionBatchStatus.COMPLETED) && ingestionReportDto.isProcessed()){
-            log.warn("Cannot promote offers with jobIdentifier: {}. The job is not completed.", ingestionReportId);
-            return true;
-        }
-        return false;
     }
 
     @Override
