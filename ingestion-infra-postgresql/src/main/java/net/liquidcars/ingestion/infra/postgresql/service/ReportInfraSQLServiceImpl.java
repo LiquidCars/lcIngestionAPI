@@ -166,6 +166,15 @@ public class ReportInfraSQLServiceImpl implements IReportInfraSQLService {
 
     @Override
     public List<IngestionReportDto> getPendingPromotionReports(OffsetDateTime time) {
-        return mapper.toIngestionReportDtoList(reportRepository.findPendingPromotions(time));
+        try{
+            return mapper.toIngestionReportDtoList(reportRepository.findPendingPromotions(time));
+        } catch (Exception e){
+            log.error("Failed to get ingestion reports in SQL database.", e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.DATABASE)
+                    .message("SQL error for get ingestion reports.")
+                    .cause(e)
+                    .build();
+        }
     }
 }

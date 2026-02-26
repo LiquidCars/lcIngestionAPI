@@ -50,7 +50,7 @@ public class OfferInfraKafkaProducerMapperTest {
         IngestionReportMsg result = mapper.toIngestionReportMsg(dto);
 
         assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(dto.getId().toString());
+        assertThat(result.getId().toString()).isEqualTo(dto.getId().toString());
     }
 
     @Test
@@ -71,7 +71,7 @@ public class OfferInfraKafkaProducerMapperTest {
         IngestionReportResponseActionMsg result = mapper.toIngestionReportResponseActionMsg(dto);
 
         assertThat(result).isNotNull();
-        assertThat(result.getIngestionReportId()).isEqualTo(dto.getIngestionReportId().toString());
+        assertThat(result.getIngestionReportId()).isEqualTo(dto.getIngestionReportId());
     }
 
     @Test
