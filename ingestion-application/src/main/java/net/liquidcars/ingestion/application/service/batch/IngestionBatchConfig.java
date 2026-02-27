@@ -12,11 +12,15 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.launch.support.TaskExecutorJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -32,6 +36,22 @@ public class IngestionBatchConfig {
 
     @Value("${ingestion.batch.skip-limit:100}")
     private int skipLimit;
+
+    /**
+     * Used when the calling thread MUST wait for the batch job to complete
+     * before closing the pipe (e.g. URL ingestion with PipedInputStream).
+     * run() blocks until the job finishes, allowing batchCompleted.complete()
+     * to be called only after all records have been processed.
+     */
+    @Primary
+    @Bean("syncJobLauncher")
+    public JobLauncher jobLauncher(JobRepository jobRepository) throws Exception {
+        TaskExecutorJobLauncher launcher = new TaskExecutorJobLauncher();
+        launcher.setJobRepository(jobRepository);
+        launcher.setTaskExecutor(new SyncTaskExecutor());
+        launcher.afterPropertiesSet();
+        return launcher;
+    }
 
     @Bean
     public Job offerIngestionJob(JobRepository jobRepository, Step ingestionStep, JobCompletionNotificationListener jobCompletionListener) {

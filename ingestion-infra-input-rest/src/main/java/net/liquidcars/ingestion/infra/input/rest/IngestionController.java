@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -94,25 +96,15 @@ public class IngestionController implements IngestionApi {
             String externalPublicationId
     ) {
         log.info("REST: IngestStream - Format: {}, Inventory: {}, Dump: {}", format, inventoryId, dumpType);
-
-        try (InputStream inputStream = body.getInputStream()) {
-            offerIngestionProcessService.processOffersStream(
-                    format,
-                    inputStream,
-                    inventoryId,
-                    getParticipantIdFromContext(),
-                    dumpType,
-                    publicationDate,
-                    externalPublicationId
-            );
-        } catch (IOException e) {
-            log.error("Failed to extract input stream from body resource", e);
-            throw LCIngestionException.builder()
-                    .techCause(LCTechCauseEnum.INVALID_REQUEST)
-                    .message("The binary stream could not be opened")
-                    .build();
-        }
-
+        offerIngestionProcessService.processOffersStream(
+                format,
+                body,
+                inventoryId,
+                getParticipantIdFromContext(),
+                dumpType,
+                publicationDate,
+                externalPublicationId
+        );
         return ResponseEntity.accepted().build();
     }
 

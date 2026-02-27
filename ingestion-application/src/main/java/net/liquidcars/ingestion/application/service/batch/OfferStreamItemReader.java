@@ -4,9 +4,11 @@ import lombok.extern.slf4j.Slf4j;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.JobDeleteExternalIdsCollector;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
+import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.domain.service.offer.parser.IOfferParserService;
 import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.item.ItemReader;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
@@ -18,10 +20,16 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class OfferStreamItemReader implements ItemReader<OfferDto>, StepExecutionListener {
 
-    private final BlockingQueue<ParsingResult> queue = new LinkedBlockingQueue<>(500);
+    private BlockingQueue<ParsingResult> queue;
     private volatile boolean isParsingFinished = false;
     private volatile Throwable fatalError = null;
     private JobDeleteExternalIdsCollector deleteExternalIdsCollector;
+    private final int queueCapacity;
+
+    public OfferStreamItemReader(@Value("${ingestion.batch.queue-size:5000}") int queueCapacity) {
+        this.queueCapacity = queueCapacity;
+        this.queue = new LinkedBlockingQueue<>(queueCapacity);
+    }
 
     @Override
     public void beforeStep(org.springframework.batch.core.StepExecution stepExecution) {
@@ -30,14 +38,21 @@ public class OfferStreamItemReader implements ItemReader<OfferDto>, StepExecutio
 
     public void start(IOfferParserService parser, InputStream is, JobDeleteExternalIdsCollector deleteExternalIdsCollector) {
         this.deleteExternalIdsCollector = deleteExternalIdsCollector;
-        this.queue.clear();
+        this.queue = new LinkedBlockingQueue<>(queueCapacity);
         this.isParsingFinished = false;
         this.fatalError = null;
 
         Thread.ofVirtual().start(() -> {
             try (is) {
                 // We pass a lambda that wraps the success in a ParsingResult
-                parser.parseAndProcess(is, offer -> queue.add(ParsingResult.success(offer)), deleteExternalIdsCollector);
+                parser.parseAndProcess(is, offer -> {
+                    try {
+                        queue.put(ParsingResult.success(offer));
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new LCIngestionException(LCTechCauseEnum.INTERNAL_ERROR, "Interrupted error", e);
+                    }
+                }, deleteExternalIdsCollector);
             } catch (LCIngestionException e) {
                 log.debug("Parser thread caught a record error already queued");
             } catch (Exception e) {
@@ -67,7 +82,12 @@ public class OfferStreamItemReader implements ItemReader<OfferDto>, StepExecutio
     }
 
     public void addErrorToQueue(LCIngestionException e) {
-        queue.add(ParsingResult.failure(e));
+        try {
+            queue.put(ParsingResult.failure(e));
+        } catch (InterruptedException ie) {
+            log.error("Interrupted error", e);
+            Thread.currentThread().interrupt();
+        }
     }
 
     public record ParsingResult(OfferDto offer, LCIngestionException error) {

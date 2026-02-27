@@ -61,8 +61,14 @@
                 "value": "application/octet-stream"
               }
             ],
+            "body": {
+              "mode": "file",
+              "file": {
+                "src": "/C:/wksLiquidcars/lcIngestionAPI/offersGenerators/motorflash_export.xml"
+              }
+            },
             "url": {
-              "raw": "http://localhost:8890/v1/ingestion/stream?format=json&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=UPDATE",
+              "raw": "http://localhost:8890/v1/ingestion/stream?format=xml&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=INCREMENTAL",
               "protocol": "http",
               "host": [
                 "localhost"
@@ -76,7 +82,7 @@
               "query": [
                 {
                   "key": "format",
-                  "value": "json"
+                  "value": "xml"
                 },
                 {
                   "key": "inventoryId",
@@ -84,7 +90,7 @@
                 },
                 {
                   "key": "dumpType",
-                  "value": "UPDATE"
+                  "value": "INCREMENTAL"
                 }
               ]
             }
@@ -97,7 +103,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "http://localhost:8890/v1/ingestion/url?format=xml&url=http://localhost:8083/MF_856b7d9a-cabd-4e86-aaca-b7a9641a9d0b_CC_2024_09_30_A.xml&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=UPDATE&externalPublicationId=localPub1%23",
+              "raw": "http://localhost:8890/v1/ingestion/url?format=xml&url=http://localhost:8890/testFiles/motorflash_export.xml&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=REPLACEMENT&externalPublicationId=localPub1%23&publicationDate=2026-02-27T08:00:00Z",
               "protocol": "http",
               "host": [
                 "localhost"
@@ -115,7 +121,7 @@
                 },
                 {
                   "key": "url",
-                  "value": "http://localhost:8083/MF_856b7d9a-cabd-4e86-aaca-b7a9641a9d0b_CC_2024_09_30_A.xml"
+                  "value": "http://localhost:8890/testFiles/motorflash_export.xml"
                 },
                 {
                   "key": "inventoryId",
@@ -124,11 +130,15 @@
                 },
                 {
                   "key": "dumpType",
-                  "value": "UPDATE"
+                  "value": "REPLACEMENT"
                 },
                 {
                   "key": "externalPublicationId",
                   "value": "localPub1%23"
+                },
+                {
+                  "key": "publicationDate",
+                  "value": "2026-02-27T08:00:00Z"
                 }
               ]
             }
@@ -146,7 +156,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8890/v1/ingestion/reports?page=0&size=20&sortBy=createdAt&sortDirection=DESC&status=COMPLETED&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b",
+              "raw": "http://localhost:8890/v1/ingestion/reports?page=0&size=20&sortBy=createdAt&sortDirection=DESC",
               "protocol": "http",
               "host": [
                 "localhost"
@@ -181,11 +191,13 @@
                 {
                   "key": "status",
                   "value": "COMPLETED",
-                  "description": "Filtrar por estado"
+                  "description": "Filtrar por estado",
+                  "disabled": true
                 },
                 {
                   "key": "inventoryId",
-                  "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b"
+                  "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b",
+                  "disabled": true
                 },
                 {
                   "key": "createdFrom",
@@ -246,7 +258,7 @@
               "variable": [
                 {
                   "key": "ingestionReportId",
-                  "value": "43427b33-ff59-484b-8e9b-f69cccb9342f"
+                  "value": "d895e0d6-89cb-45ae-93d8-a2473cb0213c"
                 }
               ]
             }
@@ -274,7 +286,7 @@
               "variable": [
                 {
                   "key": "ingestionReportId",
-                  "value": "43427b33-ff59-484b-8e9b-f69cccb9342f"
+                  "value": "5f781312-6d5b-4e60-9646-c69bd7140447"
                 }
               ]
             }
