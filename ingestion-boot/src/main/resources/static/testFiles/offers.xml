@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <motorflash>
     <anuncio>
-        <motorflashid>77339314</motorflashid>
+        <motorflashid>77777777</motorflashid>
         <dealerid>211</dealerid>
         <instalacion><![CDATA[Canalcar Automoviles]]></instalacion>
         <mail>ventas@canalcar.es</mail>
-        <matricula>1235ABD</matricula>
+        <matricula>3995JHJ</matricula>
         <chasis>WBA2P31020P827474</chasis>
         <marca><![CDATA[BMW]]></marca>
         <modelo><![CDATA[Serie 1]]></modelo>
@@ -13,7 +13,7 @@
         <carroceria>Compacto</carroceria>
         <estado>usado</estado>
         <disponible>DISPONIBLE</disponible>
-        <precio>10500</precio>
+        <precio>12000</precio>
         <precio_nuevo>30254</precio_nuevo>
         <precio_profesional></precio_profesional>
         <precio_ofertafinanciacion>8671</precio_ofertafinanciacion>
@@ -28,7 +28,7 @@
         <velocidadmax>200</velocidadmax>
         <peso>1395</peso>
         <marchas>6</marchas>
-        <kilometros>198788</kilometros>
+        <kilometros>200000</kilometros>
         <combustible>Diésel</combustible>
         <potencia>116.00</potencia>
         <garantia>12</garantia>
