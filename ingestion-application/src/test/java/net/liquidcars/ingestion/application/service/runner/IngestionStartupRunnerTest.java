@@ -73,12 +73,11 @@ public class IngestionStartupRunnerTest {
     }
 
     @Test
-    @DisplayName("onApplicationReady: Debería entrar en el catch si falla la lectura del stream")
+    @DisplayName("onApplicationReady: Should enter catch if an exception occurs during resource check")
     void onApplicationReady_ExceptionCatch() throws Exception {
         try (var mockedResource = mockConstruction(org.springframework.core.io.ClassPathResource.class,
                 (mock, context) -> {
-                    when(mock.exists()).thenReturn(true);
-                    when(mock.getInputStream()).thenThrow(new RuntimeException("Error de lectura simulado"));
+                    when(mock.exists()).thenThrow(new RuntimeException("Simulated error"));
                 })) {
 
             startupRunner.onApplicationReady();
