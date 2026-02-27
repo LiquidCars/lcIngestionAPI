@@ -21,6 +21,8 @@ public interface IOfferIngestionProcessService {
 
     void syncPendingReports();
 
+    void executeDeferredPromotions();
+
     void processIngestionReport(IngestionReportDto ingestionReportDto);
 
     void promoteDraftOffersToVehicleOffers(UUID ingestionReportId, boolean async);

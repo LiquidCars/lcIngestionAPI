@@ -66,18 +66,19 @@ public class IngestionReportDeleteInfraKafkaConsumerTest {
     }
 
     @Test
-    @DisplayName("Should throw LCIngestionException if IngestionReportId is not a valid UUID")
-    void consumeIngestionReportActionDelete_InvalidUuid_ShouldThrowLCIngestionException() {
-        UUID reportId = UUID.randomUUID();
-        // Arrange
+    @DisplayName("Should throw LCIngestionException if service fails due to null ID")
+    void consumeIngestionReportActionDelete_NullId_ShouldThrowLCIngestionException() {
         IngestionReportActionMsg message = new IngestionReportActionMsg();
-        message.setIngestionReportId(reportId);
+        message.setIngestionReportId(null);
 
-        // Act & Assert
+        doThrow(new IllegalArgumentException("ID cannot be null"))
+                .when(offerInfraKafkaConsumerService)
+                .processIngestionReportDeleteAction(null);
+
         LCIngestionException exception = assertThrows(LCIngestionException.class,
                 () -> consumer.consumeIngestionReportActionDelete(message));
 
         assertEquals(LCTechCauseEnum.DATABASE, exception.getTechCause());
-        verifyNoInteractions(offerInfraKafkaConsumerService);
+        verify(offerInfraKafkaConsumerService, times(1)).processIngestionReportDeleteAction(null);
     }
 }

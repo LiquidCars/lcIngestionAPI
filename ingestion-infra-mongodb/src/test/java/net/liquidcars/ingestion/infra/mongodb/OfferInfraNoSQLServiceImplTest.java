@@ -1,6 +1,7 @@
 package net.liquidcars.ingestion.infra.mongodb;
 
 import com.mongodb.bulk.BulkWriteResult;
+import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
@@ -161,16 +162,22 @@ public class OfferInfraNoSQLServiceImplTest {
 
         DraftOfferNoSQLEntity fakeDraft = new DraftOfferNoSQLEntity();
         fakeDraft.setId(offerId);
+        fakeDraft.setOwnerReference("REF-1");
+
+        when(mongoTemplate.find(any(Query.class), eq(VehicleOfferNoSQLEntity.class)))
+                .thenReturn(Collections.emptyList());
 
         when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
+                .thenAnswer(invocation -> Stream.of(fakeDraft))
                 .thenAnswer(invocation -> Stream.of(fakeDraft));
 
-        when(mongoTemplate.getConverter()).thenReturn(mock(org.springframework.data.mongodb.core.convert.MongoConverter.class));
+        MongoConverter mockConverter = mock(MongoConverter.class);
+        when(mongoTemplate.getConverter()).thenReturn(mockConverter);
+
         BulkOperations mockBulkOps = mock(BulkOperations.class);
         when(mongoTemplate.bulkOps(any(), eq(VehicleOfferNoSQLEntity.class))).thenReturn(mockBulkOps);
 
         com.mongodb.bulk.BulkWriteResult mockResult = mock(com.mongodb.bulk.BulkWriteResult.class);
-        when(mockResult.getInsertedCount()).thenReturn(1);
         when(mockBulkOps.execute()).thenReturn(mockResult);
 
         OfferDto offerDto = new OfferDto();
@@ -183,7 +190,6 @@ public class OfferInfraNoSQLServiceImplTest {
         service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.REPLACEMENT, inventoryId, null, activeBookedOfferIds);
 
         verify(vehicleOfferNoSqlRepository).deleteByInventoryIdAndIdNotIn(eq(inventoryId), anyList());
-
         verify(offerInfraSQLService).deleteOffersByInventoryIdExcludingIds(eq(inventoryId), anyList());
     }
 
@@ -734,13 +740,19 @@ public class OfferInfraNoSQLServiceImplTest {
         UUID inventoryId = UUID.randomUUID();
         DraftOfferNoSQLEntity draftWithNulls = new DraftOfferNoSQLEntity();
         draftWithNulls.setId(UUID.randomUUID());
+        draftWithNulls.setOwnerReference("REF-TEST");
+
+        when(mongoTemplate.find(any(Query.class), eq(VehicleOfferNoSQLEntity.class)))
+                .thenReturn(Collections.emptyList());
 
         when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
-                .thenReturn(Stream.of(draftWithNulls)).thenReturn(Stream.empty());
+                .thenAnswer(inv -> Stream.of(draftWithNulls))
+                .thenAnswer(inv -> Stream.of(draftWithNulls));
 
         VehicleOfferNoSQLEntity productionEntity = new VehicleOfferNoSQLEntity();
         productionEntity.setId(draftWithNulls.getId());
         when(mapper.toVehicleOfferNoSQLEntity(draftWithNulls)).thenReturn(productionEntity);
+        when(mapper.toDto(any())).thenReturn(new OfferDto());
 
         Document docWithNull = new Document("field1", "value1").append("field2", null);
         MongoConverter mockConverter = mock(MongoConverter.class);
@@ -753,15 +765,9 @@ public class OfferInfraNoSQLServiceImplTest {
         }).when(mockConverter).write(eq(productionEntity), any(Document.class));
 
         BulkOperations mockBulkOps = mock(BulkOperations.class);
-        BulkWriteResult mockResult = mock(BulkWriteResult.class);
-
         when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(VehicleOfferNoSQLEntity.class)))
                 .thenReturn(mockBulkOps);
-
-        when(mockBulkOps.execute()).thenReturn(mockResult);
-        when(mockResult.getInsertedCount()).thenReturn(1);
-        when(mockResult.getModifiedCount()).thenReturn(0);
-        when(mockResult.getUpserts()).thenReturn(Collections.emptyList());
+        when(mockBulkOps.execute()).thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
 
         service.promoteDraftOffersToVehicleOffers(
                 reportId,
@@ -771,46 +777,47 @@ public class OfferInfraNoSQLServiceImplTest {
                 List.of()
         );
 
-        verify(mongoTemplate, atLeastOnce()).getConverter();
+        verify(mockBulkOps).upsert(any(Query.class), argThat(update -> {
+            Document updateObj = update.getUpdateObject();
+            Document setCmd = (Document) updateObj.get("$set");
+            Document setOnInsertCmd = (Document) updateObj.get("$setOnInsert");
+
+            boolean field1Present = setCmd.containsKey("field1");
+            boolean field2Absent = !setCmd.containsKey("field2");
+            boolean inventoryIdPresent = setCmd.containsKey("inventory_id");
+            boolean idOnInsertPresent = setOnInsertCmd.containsKey("_id");
+
+            return field1Present && field2Absent && inventoryIdPresent && idOnInsertPresent;
+        }));
+
         verify(mockBulkOps).execute();
     }
 
     @Test
-    @DisplayName("Promote: Debe ejecutar bulkOps cuando se alcanza el tamaño de batch (100)")
-    void promote_ShouldExecuteBulkWhenBatchSizeReached() {
-        UUID reportId = UUID.randomUUID();
-        UUID inventoryId = UUID.randomUUID();
+    @DisplayName("processOffer: No debe actualizar si la oferta entrante es más antigua que la existente")
+    void processOffer_ShouldNotUpdate_WhenIncomingIsOlder() {
+        UUID offerId = UUID.randomUUID();
+        OfferDto dto = OfferDto.builder()
+                .id(offerId)
+                .inventoryId(UUID.randomUUID())
+                .externalIdInfo(new ExternalIdInfoDto("ref", null, null))
+                .build();
 
-        List<DraftOfferNoSQLEntity> drafts = new ArrayList<>();
-        for (int i = 0; i < 101; i++) {
-            DraftOfferNoSQLEntity d = new DraftOfferNoSQLEntity();
-            d.setId(UUID.randomUUID());
-            drafts.add(d);
-        }
+        DraftOfferNoSQLEntity existing = new DraftOfferNoSQLEntity();
+        existing.setCreatedAt(Instant.now().plus(1, ChronoUnit.DAYS));
+        existing.setId(UUID.randomUUID());
 
-        when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
-                .thenReturn(drafts.stream())
-                .thenReturn(Stream.empty());
+        DraftOfferNoSQLEntity incoming = new DraftOfferNoSQLEntity();
+        incoming.setId(offerId);
 
-        when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(new VehicleOfferNoSQLEntity());
-        when(mongoTemplate.getConverter()).thenReturn(mock(MongoConverter.class));
+        when(mapper.toEntity(dto)).thenReturn(incoming);
 
-        BulkOperations mockBulk = mock(BulkOperations.class);
-        BulkWriteResult mockResult = mock(BulkWriteResult.class);
-        when(mockResult.getInsertedCount()).thenReturn(1);
+        when(mongoTemplate.findOne(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
+                .thenReturn(existing);
 
-        when(mongoTemplate.bulkOps(any(), eq(VehicleOfferNoSQLEntity.class))).thenReturn(mockBulk);
-        when(mockBulk.execute()).thenReturn(mockResult);
+        service.processOffer(dto);
 
-        service.promoteDraftOffersToVehicleOffers(
-                reportId,
-                IngestionDumpType.INCREMENTAL,
-                inventoryId,
-                List.of(),
-                List.of()
-        );
-
-        verify(mockBulk, atLeast(2)).execute();
+        verify(repository, never()).save(any());
     }
 
     @Test

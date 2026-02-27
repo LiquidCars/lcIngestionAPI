@@ -28,15 +28,12 @@ public class IngestionReportPromoteInfraKafkaConsumerTest {
     @Test
     @DisplayName("Should call promote action successfully when message is valid")
     void consumePromoteOffers_Success() {
-        // Arrange
         UUID reportId = UUID.randomUUID();
         IngestionReportActionMsg message = new IngestionReportActionMsg();
         message.setIngestionReportId(reportId);
 
-        // Act
         assertDoesNotThrow(() -> consumer.consumeIngestionReportActionPromote(message));
 
-        // Assert
         verify(offerInfraKafkaConsumerService, times(1))
                 .processIngestionReportPromoteAction(reportId);
     }
@@ -53,7 +50,6 @@ public class IngestionReportPromoteInfraKafkaConsumerTest {
                 .when(offerInfraKafkaConsumerService)
                 .processIngestionReportPromoteAction(any(UUID.class));
 
-        // Act & Assert
         LCIngestionException exception = assertThrows(LCIngestionException.class,
                 () -> consumer.consumeIngestionReportActionPromote(message));
 
@@ -65,18 +61,20 @@ public class IngestionReportPromoteInfraKafkaConsumerTest {
     }
 
     @Test
-    @DisplayName("Should throw LCIngestionException when UUID format is invalid")
-    void consumePromoteOffers_InvalidUuid_ShouldThrowLCIngestionException() {
-        // Arrange
-        UUID invalidId = UUID.randomUUID();
+    @DisplayName("Should throw LCIngestionException if service fails due to null ID")
+    void consumePromoteOffers_NullId_ShouldThrowLCIngestionException() {
         IngestionReportActionMsg message = new IngestionReportActionMsg();
-        message.setIngestionReportId(invalidId);
+        message.setIngestionReportId(null);
 
-        // Act & Assert
+        doThrow(new IllegalArgumentException("ID cannot be null"))
+                .when(offerInfraKafkaConsumerService)
+                .processIngestionReportPromoteAction(null);
+
         LCIngestionException exception = assertThrows(LCIngestionException.class,
                 () -> consumer.consumeIngestionReportActionPromote(message));
 
         assertEquals(LCTechCauseEnum.DATABASE, exception.getTechCause());
-        verifyNoInteractions(offerInfraKafkaConsumerService);
+        assertTrue(exception.getMessage().contains("Failed to process"));
+        verify(offerInfraKafkaConsumerService, times(1)).processIngestionReportPromoteAction(null);
     }
 }

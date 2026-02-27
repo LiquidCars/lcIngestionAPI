@@ -491,7 +491,7 @@ public class TestDataFactory {
 
     public static IngestionReportResponseActionMsg createIngestionReportResponseActionMsg() {
         return Instancio.of(IngestionReportResponseActionMsg.class)
-                .generate(field(IngestionReportResponseActionMsg::getIngestionReportId), gen -> gen.string().length(10))
+                .set(field(IngestionReportResponseActionMsg::getIngestionReportId), UUID.randomUUID())
                 .create();
     }
 

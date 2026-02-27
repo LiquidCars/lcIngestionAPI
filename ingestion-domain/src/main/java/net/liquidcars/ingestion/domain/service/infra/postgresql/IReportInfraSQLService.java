@@ -5,6 +5,7 @@ import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionReportFilterDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionReportPageDto;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,5 +21,7 @@ public interface IReportInfraSQLService {
     boolean existsByPhysicalInventoryIdAndStatusNotIn(UUID inventoryId, List<IngestionBatchStatus> statuses);
 
     List<IngestionReportDto> getPendingReports();
+
+    List<IngestionReportDto> getPendingPromotionReports(OffsetDateTime time);
 
 }

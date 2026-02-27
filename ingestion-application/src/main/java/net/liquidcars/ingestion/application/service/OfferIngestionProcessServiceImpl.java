@@ -383,6 +383,26 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         }
     }
 
+    @Override
+    @SchedulerLock(
+            name = "PromotionPublicationDate_Lock",
+            lockAtMostFor = "4m",  // If the pod dies, the lock is released in 4 minutes
+            lockAtLeastFor = "1m"  //I hope that if the process is very fast, another replica will catch on right away.
+    )
+    public void executeDeferredPromotions() {
+        OffsetDateTime time = OffsetDateTime.now();
+        log.info("Checking for reports ready to be promoted. Current time: {}", time);
+        List<IngestionReportDto> pendingReports = iReportInfraSQLService.getPendingPromotionReports(time);
+        if (pendingReports.isEmpty()) {
+            log.info("No pending promotions found.");
+            return;
+        }
+        log.info("Found {} reports to promote.", pendingReports.size());
+        for (IngestionReportDto report : pendingReports) {
+            this.promoteDraftOffersToVehicleOffers(report.getId(), true);
+        }
+    }
+
     @Transactional
     @Override
     public void processIngestionReport(IngestionReportDto ingestionReportDto) {
