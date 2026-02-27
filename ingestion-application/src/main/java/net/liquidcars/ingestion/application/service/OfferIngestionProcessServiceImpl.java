@@ -62,6 +62,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                               UUID requesterParticipantId,
                               IngestionDumpType dumpType,
                               String externalPublicationId) {
+        validatePhysicalInventoryExists(inventoryId);
         validateIngestionPayload(ingestionPayloadDto);
         validatePhysicalInventoryHasNotProcessStarted(inventoryId);
         IngestionReportDto ingestionReportDto = createIngestionReportDto(ingestionPayloadDto, inventoryId, requesterParticipantId, dumpType, externalPublicationId);
@@ -84,6 +85,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                                      String externalPublicationId)
     {
         log.info("Triggering remote ingestion from URL: {} with format: {}", url, format);
+        validatePhysicalInventoryExists(inventoryId);
         validatePhysicalInventoryHasNotProcessStarted(inventoryId);
         validateUrl(url);
         IOfferParserService parser = getParser(format);
@@ -160,7 +162,17 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         }
     }
 
-    // TODO se deberia mirar el inventario en vez del participante y comprobar que es físico
+    private void validatePhysicalInventoryExists(UUID inventoryId) {
+        if (!iReportInfraSQLService.existsPhysicalInventory(inventoryId)) {
+            log.warn("Validation failed: Inventory {} not exists.", inventoryId);
+
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.INVALID_REQUEST)
+                    .message(String.format("Inventory [%s] not exists.", inventoryId))
+                    .build();
+        }
+    }
+
     private void validatePhysicalInventoryHasNotProcessStarted(UUID inventoryId) {
         List<IngestionBatchStatus> finalStatuses = List.of(
                 IngestionBatchStatus.COMPLETED,
@@ -227,6 +239,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                                     OffsetDateTime publicationDate,
                                     String externalPublicationId)
     {
+        validatePhysicalInventoryExists(inventoryId);
         validatePhysicalInventoryHasNotProcessStarted(inventoryId);
         IOfferParserService parser = getParser(format);
         this.processOffersStream(format, parser, inputStream, inventoryId, requesterParticipantId, externalPublicationId, dumpType, publicationDate);
@@ -441,8 +454,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     public void promoteDraftOffersToVehicleOffers(UUID ingestionReportId, boolean async) {
         log.debug("Calling for start promotion for jobIdentifier: {}", ingestionReportId);
         IngestionReportDto ingestionReportDto = findIngestionReportById(ingestionReportId);
-        boolean isPromotionValidByDate = validatePromotionByPublishDate(ingestionReportDto, async);
-        if(isPromotionValidByDate) {
+        if(validatePromotion(ingestionReportDto, async)) {
             try {
                 List<UUID> activeBookedOfferIds = offerInfraSQLService.findActiveBookedOfferIds(ingestionReportDto.getInventoryId());
                 offerInfraNoSQLService.promoteDraftOffersToVehicleOffers(ingestionReportId, ingestionReportDto.getDumpType(),
@@ -473,6 +485,64 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                 }
             }
         }
+    }
+
+    private boolean validatePromotion(IngestionReportDto ingestionReportDto, boolean async) {
+        return validatePromotionProcessed(ingestionReportDto, async)
+                && validatePromotionPromoted(ingestionReportDto, async)
+                && validatePromotionByPublishDate(ingestionReportDto, async);
+    }
+
+    private boolean validatePromotionProcessed(IngestionReportDto ingestionReportDto, boolean async) {
+        if(!ingestionReportDto.isProcessed()){
+            String warnMsg = String.format(
+                    "Cannot promote offers with ingestionReportId: %s. The report is not process yet.",
+                    ingestionReportDto.getId());
+            log.warn(warnMsg);
+            if(async) {
+                offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
+                        IngestionReportResponseActionDto.builder()
+                                .ingestionReportId(ingestionReportDto.getId())
+                                .result(IngestionReportResponseActionResult.FAILED)
+                                .techCause(LCTechCauseEnum.INVALID_REQUEST)
+                                .errorMsg(warnMsg)
+                                .build()
+                );
+                return false;
+            } else {
+                throw LCIngestionException.builder()
+                        .techCause(LCTechCauseEnum.INVALID_REQUEST)
+                        .message(warnMsg)
+                        .build();
+            }
+        }
+        return true;
+    }
+
+    private boolean validatePromotionPromoted(IngestionReportDto ingestionReportDto, boolean async) {
+        if(ingestionReportDto.isPromoted()){
+            String warnMsg = String.format(
+                    "Cannot promote offers with ingestionReportId: %s. The report is not process yet.",
+                    ingestionReportDto.getId());
+            log.warn(warnMsg);
+            if(async) {
+                offerInfraKafkaProducerService.sendIngestionReportPromoteActionNotification(
+                        IngestionReportResponseActionDto.builder()
+                                .ingestionReportId(ingestionReportDto.getId())
+                                .result(IngestionReportResponseActionResult.FAILED)
+                                .techCause(LCTechCauseEnum.INVALID_REQUEST)
+                                .errorMsg(warnMsg)
+                                .build()
+                );
+                return false;
+            } else {
+                throw LCIngestionException.builder()
+                        .techCause(LCTechCauseEnum.INVALID_REQUEST)
+                        .message(warnMsg)
+                        .build();
+            }
+        }
+        return true;
     }
 
     private boolean validatePromotionByPublishDate(IngestionReportDto ingestionReportDto, boolean async) {

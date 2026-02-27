@@ -41,4 +41,14 @@ public interface IngestionReportRepository extends JpaRepository<IngestionReport
       AND publication_date <= :time
     """, nativeQuery = true)
     List<IngestionReportEntity> findPendingPromotions(@Param("time") OffsetDateTime time);
+
+    @Query(value = """
+    SELECT EXISTS (
+        SELECT 1 
+        FROM public.inv_nin_namedinventory inn
+        WHERE inn.nin_co_id = :inventoryId 
+          AND inn.nin_bo_physical = true
+    )
+    """, nativeQuery = true)
+    boolean existsPhysicalInventory(@Param("inventoryId") UUID inventoryId);
 }

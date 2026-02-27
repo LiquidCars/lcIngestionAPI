@@ -160,6 +160,21 @@ public class ReportInfraSQLServiceImpl implements IReportInfraSQLService {
     }
 
     @Override
+    public boolean existsPhysicalInventory(UUID inventoryId) {
+        try {
+            return reportRepository.existsPhysicalInventory(inventoryId);
+        } catch (Exception e) {
+            log.error("Database error checking exists physical inventory: {}", inventoryId, e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.DATABASE)
+                    .message(String.format("SQL Failed to check if physical inventory [%s] exists", inventoryId))
+                    .cause(e)
+                    .build();
+        }
+
+    }
+
+    @Override
     public List<IngestionReportDto> getPendingReports() {
         return mapper.toIngestionReportDtoList(reportRepository.findByProcessedFalse());
     }

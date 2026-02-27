@@ -20,6 +20,8 @@ public interface IReportInfraSQLService {
 
     boolean existsByPhysicalInventoryIdAndStatusNotIn(UUID inventoryId, List<IngestionBatchStatus> statuses);
 
+    boolean existsPhysicalInventory(UUID inventoryId);
+
     List<IngestionReportDto> getPendingReports();
 
     List<IngestionReportDto> getPendingPromotionReports(OffsetDateTime time);

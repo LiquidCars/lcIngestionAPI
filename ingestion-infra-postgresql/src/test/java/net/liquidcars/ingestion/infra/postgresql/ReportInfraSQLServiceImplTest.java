@@ -27,6 +27,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -259,20 +260,49 @@ public class ReportInfraSQLServiceImplTest {
     }
 
     @Nested
-    @DisplayName("Tests for existsByRequesterParticipantIdAndStatusNotIn - Edge Cases")
+    @DisplayName("Tests for existsByPhysicalInventoryIdAndStatusNotIn - Edge Cases")
     class ExistsExtraTests {
         @Test
         @DisplayName("Should format log message with status list when statuses are provided and error occurs")
         void existsFailureWithStatuses() {
-            UUID participantId = UUID.randomUUID();
+            UUID inventoryId = UUID.randomUUID();
             List<IngestionBatchStatus> statuses = List.of(IngestionBatchStatus.FAILED, IngestionBatchStatus.COMPLETED);
 
             when(reportRepository.existsByPhysicalInventoryIdAndStatusNotIn(any(), any()))
                     .thenThrow(new RuntimeException("Error"));
 
-            assertThatThrownBy(() -> reportService.existsByPhysicalInventoryIdAndStatusNotIn(participantId, statuses))
+            assertThatThrownBy(() -> reportService.existsByPhysicalInventoryIdAndStatusNotIn(inventoryId, statuses))
                     .isInstanceOf(LCIngestionException.class)
                     .hasMessageContaining("FAILED, COMPLETED");
+        }
+
+    }
+
+    @Nested
+    @DisplayName("Tests for existsByPhysicalInventoryIdAndStatusNotIn - Edge Cases")
+    class ExistsPhysicalInventoryTests {
+        @Test
+        @DisplayName("Should format log message with status list when statuses are provided and error occurs")
+        void existsFailure() {
+            UUID inventoryId = UUID.randomUUID();
+
+            when(reportRepository.existsPhysicalInventory(any()))
+                    .thenThrow(new RuntimeException("Error"));
+
+            assertThatThrownBy(() -> reportService.existsPhysicalInventory(inventoryId))
+                    .isInstanceOf(LCIngestionException.class)
+                    .hasMessageContaining(inventoryId.toString());
+        }
+
+        @Test
+        @DisplayName("Should return true")
+        void existsSuccess() {
+            UUID inventoryId = UUID.randomUUID();
+
+            when(reportRepository.existsPhysicalInventory(any()))
+                    .thenReturn(true);
+
+            assertTrue(() -> reportService.existsPhysicalInventory(inventoryId));
         }
 
     }

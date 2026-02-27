@@ -77,6 +77,7 @@ class OfferIngestionProcessServiceImplTest {
                 .offersToDelete(Collections.emptyList())
                 .build();
 
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         service.processOffers(payload, inventoryId, participantId, IngestionDumpType.REPLACEMENT, "ext-1");
@@ -89,6 +90,7 @@ class OfferIngestionProcessServiceImplTest {
     void shouldTriggerBatchJobOnStream() throws Exception {
         InputStream stream = new ByteArrayInputStream("data".getBytes());
         when(parserService.supports(any())).thenReturn(true);
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         service.processOffersStream(IngestionFormat.xml, stream, inventoryId, participantId,
@@ -219,6 +221,7 @@ class OfferIngestionProcessServiceImplTest {
     void shouldCoverProcessOffersFromUrlLambda() {
         URI uri = URI.create("https://localhost:8080/offers.xml");
         when(parserService.supports(IngestionFormat.xml)).thenReturn(true);
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         service.processOffersFromUrl(IngestionFormat.xml, uri, inventoryId, participantId,
@@ -232,6 +235,7 @@ class OfferIngestionProcessServiceImplTest {
     void shouldCoverProcessOffersStreamLambda() throws Exception {
         InputStream inputStream = new ByteArrayInputStream("<xml></xml>".getBytes());
         when(parserService.supports(any())).thenReturn(true);
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
@@ -258,6 +262,7 @@ class OfferIngestionProcessServiceImplTest {
             URI localUri = URI.create("http://localhost:" + port + "/test");
 
             when(parserService.supports(IngestionFormat.xml)).thenReturn(true);
+            when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
             when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
             service.processOffersFromUrl(IngestionFormat.xml, localUri, inventoryId, participantId,
@@ -279,6 +284,7 @@ class OfferIngestionProcessServiceImplTest {
     void shouldCoverLambdaCatchBlock() throws Exception {
         URI unreachableUri = URI.create("http://localhost:1");
         when(parserService.supports(any())).thenReturn(true);
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         service.processOffersFromUrl(IngestionFormat.xml, unreachableUri, inventoryId, participantId,
@@ -301,13 +307,13 @@ class OfferIngestionProcessServiceImplTest {
     }
 
     @Test
-    @DisplayName("Debe promover ofertas exitosamente cuando el reporte no ha sido procesado")
+    @DisplayName("Debe promover ofertas exitosamente cuando el reporte ha sido procesado")
     void shouldPromoteOffersSuccessfully() {
         UUID jobId = UUID.randomUUID();
         UUID inventoryId = UUID.randomUUID();
         IngestionReportDto report = IngestionReportDto.builder()
                 .id(jobId)
-                .processed(false)
+                .processed(true)
                 .promoted(false)
                 .status(IngestionBatchStatus.COMPLETED)
                 .dumpType(IngestionDumpType.REPLACEMENT)
@@ -331,11 +337,12 @@ class OfferIngestionProcessServiceImplTest {
     }
 
     @Test
-    @DisplayName("Debe promover ofertas incluso si el estado no es COMPLETED (Comportamiento actual)")
-    void shouldNotPromoteOffersWhenStatusIsNotCompleted() {
+    @DisplayName("No debe promover ofertas si el estado del reporte no es COMPLETED y ya fue procesado")
+    void shouldNotPromoteOffersWhenStatusIsNotCompletedAndIsProcessed() {
         UUID jobId = UUID.randomUUID();
         IngestionReportDto report = IngestionReportDto.builder()
                 .id(jobId)
+                .promoted(true) // ya promovido → corte temprano
                 .processed(true)
                 .status(IngestionBatchStatus.STARTED)
                 .dumpType(IngestionDumpType.REPLACEMENT)
@@ -344,16 +351,71 @@ class OfferIngestionProcessServiceImplTest {
 
         when(reportSqlService.findIngestionReportById(jobId)).thenReturn(report);
 
-        service.promoteDraftOffersToVehicleOffers(jobId, false);
 
-        verify(offerNoSqlService, times(1)).promoteDraftOffersToVehicleOffers(
-                eq(jobId),
-                any(),
-                any(),
-                any(),
-                any());
+        LCIngestionException exception = assertThrows(LCIngestionException.class, () ->
+                service.promoteDraftOffersToVehicleOffers(jobId, false)
+        );
 
-        verify(reportSqlService, times(1)).upsertIngestionReport(any());
+        assertThat(exception.getMessage()).contains("Cannot promote offers with ingestionReportId");
+
+        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(
+                any(), any(), any(), any(), any());
+        verify(reportSqlService, never()).upsertIngestionReport(any());
+    }
+
+    @Test
+    @DisplayName("No debe promover ofertas si el estado del reporte no es COMPLETED")
+    void shouldNotPromoteOffersWhenStatusIsNotCompleted() {
+        UUID jobId = UUID.randomUUID();
+        IngestionReportDto report = IngestionReportDto.builder()
+                .id(jobId)
+                .promoted(false)
+                .processed(false) // No esta procesado
+                .status(IngestionBatchStatus.STARTED)
+                .dumpType(IngestionDumpType.REPLACEMENT)
+                .inventoryId(inventoryId)
+                .build();
+
+        when(reportSqlService.findIngestionReportById(jobId)).thenReturn(report);
+
+
+        LCIngestionException exception = assertThrows(LCIngestionException.class, () ->
+                service.promoteDraftOffersToVehicleOffers(jobId, false)
+        );
+
+        assertThat(exception.getMessage()).contains("Cannot promote offers with ingestionReportId");
+
+        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(
+                any(), any(), any(), any(), any());
+        verify(reportSqlService, never()).upsertIngestionReport(any());
+    }
+
+    @Test
+    @DisplayName("No debe promover ofertas si la fecha de publicacion es mayor que el momento actual")
+    void shouldNotPromoteOffersWhenPublishDateIsBefore() {
+        UUID jobId = UUID.randomUUID();
+        IngestionReportDto report = IngestionReportDto.builder()
+                .id(jobId)
+                .promoted(false)
+                .processed(true)
+                .publicationDate(OffsetDateTime.now().plusHours(1))
+                .status(IngestionBatchStatus.STARTED)
+                .dumpType(IngestionDumpType.REPLACEMENT)
+                .inventoryId(inventoryId)
+                .build();
+
+        when(reportSqlService.findIngestionReportById(jobId)).thenReturn(report);
+
+
+        LCIngestionException exception = assertThrows(LCIngestionException.class, () ->
+                service.promoteDraftOffersToVehicleOffers(jobId, false)
+        );
+
+        assertThat(exception.getMessage()).contains("Cannot promote offers with ingestionReportId");
+
+        verify(offerNoSqlService, never()).promoteDraftOffersToVehicleOffers(
+                any(), any(), any(), any(), any());
+        verify(reportSqlService, never()).upsertIngestionReport(any());
     }
 
     @Test
@@ -398,6 +460,7 @@ class OfferIngestionProcessServiceImplTest {
     void shouldCoverStreamLambdaCatchBlock() throws Exception {
         InputStream inputStream = new ByteArrayInputStream("<xml></xml>".getBytes());
         when(parserService.supports(any())).thenReturn(true);
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         doThrow(new RuntimeException("Batch Exception")).when(jobLauncher).run(any(), any());
@@ -416,7 +479,10 @@ class OfferIngestionProcessServiceImplTest {
     @DisplayName("Debe cubrir la rama del else en el catch de la lambda (execution == null)")
     void shouldCoverStreamLambdaCatchWithNullException() throws Exception {
         InputStream inputStream = new ByteArrayInputStream("data".getBytes());
+
         when(parserService.supports(any())).thenReturn(true);
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
                 IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
@@ -429,6 +495,7 @@ class OfferIngestionProcessServiceImplTest {
     void shouldCoverStreamLambdaCatchWithExecutionNotNull() throws Exception {
         InputStream inputStream = new ByteArrayInputStream("data".getBytes());
         lenient().when(parserService.supports(any())).thenReturn(true);
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         lenient().when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         JobExecution mockExecution = mock(JobExecution.class);
@@ -494,6 +561,9 @@ class OfferIngestionProcessServiceImplTest {
     @Test
     @DisplayName("Debe encontrar el parser correcto cuando el formato es soportado")
     void shouldReturnParserWhenFormatIsSupported() {
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(eq(inventoryId), any()))
+                .thenReturn(false);
         when(parserService.supports(IngestionFormat.xml)).thenReturn(true);
 
         service.processOffersStream(
@@ -512,6 +582,9 @@ class OfferIngestionProcessServiceImplTest {
     @Test
     @DisplayName("Debe lanzar LCIngestionException cuando ningún parser soporta el formato")
     void shouldThrowExceptionWhenNoParserSupportsFormat() {
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(eq(inventoryId), any()))
+                .thenReturn(false);
         when(parserService.supports(any())).thenReturn(false);
 
         LCIngestionException exception = assertThrows(LCIngestionException.class, () ->
@@ -544,6 +617,7 @@ class OfferIngestionProcessServiceImplTest {
 
         when(parserService.supports(IngestionFormat.xml)).thenReturn(true);
 
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(eq(inventoryId), any()))
                 .thenReturn(false);
 
@@ -565,6 +639,7 @@ class OfferIngestionProcessServiceImplTest {
     void shouldThrowExceptionWhenActiveProcessExists() {
         UUID requesterId = UUID.randomUUID();
 
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(UUID.class), any()))
                 .thenReturn(true);
 
@@ -590,6 +665,7 @@ class OfferIngestionProcessServiceImplTest {
         URI uriWithInvalidPort = URI.create("http://localhost:999999");
 
         when(parserService.supports(any())).thenReturn(true);
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         service.processOffersFromUrl(
@@ -631,6 +707,7 @@ class OfferIngestionProcessServiceImplTest {
         InputStream inputStream = new ByteArrayInputStream("data".getBytes());
 
         lenient().when(parserService.supports(any())).thenReturn(true);
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         lenient().when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         JobExecution mockExecution = mock(JobExecution.class);
@@ -655,6 +732,8 @@ class OfferIngestionProcessServiceImplTest {
     void shouldCoverCatchWhenExecutionIsNull() throws Exception {
 
         InputStream inputStream = new ByteArrayInputStream("data".getBytes());
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
         lenient().when(parserService.supports(any())).thenReturn(true);
 
         doThrow(new RuntimeException("Direct Launcher Failure"))
@@ -685,16 +764,22 @@ class OfferIngestionProcessServiceImplTest {
             ex.close();
         });
         server.start();
+
         try {
             URI uri = URI.create("http://localhost:" + server.getAddress().getPort() + "/404");
-            lenient().when(parserService.supports(any())).thenReturn(true);
-            lenient().when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
-            service.processOffersFromUrl(IngestionFormat.xml, uri, inventoryId, participantId, IngestionDumpType.REPLACEMENT, null, "ext");
+            when(parserService.supports(any())).thenReturn(true);
+            when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
+            when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
+
+            service.processOffersFromUrl(IngestionFormat.xml, uri, inventoryId, participantId,
+                    IngestionDumpType.REPLACEMENT, null, "ext");
 
             Thread.sleep(1000);
             verify(jobLauncher, never()).run(any(), any());
-        } finally { server.stop(0); }
+        } finally {
+            server.stop(0);
+        }
     }
 
     @Test
@@ -703,6 +788,7 @@ class OfferIngestionProcessServiceImplTest {
         InputStream stream = new ByteArrayInputStream("data".getBytes());
 
         lenient().when(parserService.supports(any())).thenReturn(true);
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         lenient().when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         JobExecution mockExecution = mock(JobExecution.class);
@@ -771,43 +857,6 @@ class OfferIngestionProcessServiceImplTest {
         verify(reportSqlService, never()).upsertIngestionReport(any());
     }
 
-    @Test
-    @DisplayName("Promote: Ejecuta la promoción aunque ya esté promovido (Comportamiento actual del código)")
-    void validatePromotion_ByPublishDate_AlreadyPromoted() {
-        UUID jobId = UUID.randomUUID();
-        IngestionReportDto report = IngestionReportDto.builder()
-                .id(jobId)
-                .promoted(true)
-                .inventoryId(UUID.randomUUID())
-                .status(IngestionBatchStatus.COMPLETED)
-                .build();
-
-        when(reportSqlService.findIngestionReportById(jobId)).thenReturn(report);
-
-        service.promoteDraftOffersToVehicleOffers(jobId, false);
-
-        verify(offerNoSqlService, times(1)).promoteDraftOffersToVehicleOffers(
-                eq(jobId), any(), any(), any(), any());
-    }
-
-    @Test
-    @DisplayName("Promote: Ejecuta la promoción aunque el estado sea FAILED (Comportamiento actual del código)")
-    void validatePromotion_ByPublishDate_NotCompleted() {
-        UUID jobId = UUID.randomUUID();
-        IngestionReportDto report = IngestionReportDto.builder()
-                .id(jobId)
-                .promoted(false)
-                .inventoryId(UUID.randomUUID())
-                .status(IngestionBatchStatus.FAILED)
-                .build();
-
-        when(reportSqlService.findIngestionReportById(jobId)).thenReturn(report);
-
-        service.promoteDraftOffersToVehicleOffers(jobId, false);
-
-        verify(offerNoSqlService, times(1)).promoteDraftOffersToVehicleOffers(
-                eq(jobId), any(), any(), any(), any());
-    }
 
     @Test
     @DisplayName("Promote: Debería relanzar excepción si NO es asíncrono")
@@ -846,8 +895,10 @@ class OfferIngestionProcessServiceImplTest {
     @DisplayName("Lambda Stream: Error cuando execution ES nulo")
     void processOffersStream_ErrorWithNullExecution() throws Exception {
         InputStream inputStream = new ByteArrayInputStream("data".getBytes());
-        lenient().when(parserService.supports(any())).thenReturn(true);
 
+        when(parserService.supports(any())).thenReturn(true);
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
         when(jobLauncher.run(any(), any())).thenThrow(new RuntimeException("Launcher Direct Failure"));
 
         service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
