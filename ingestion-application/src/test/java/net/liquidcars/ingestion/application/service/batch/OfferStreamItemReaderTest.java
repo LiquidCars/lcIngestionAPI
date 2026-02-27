@@ -37,7 +37,7 @@ class OfferStreamItemReaderTest {
 
     @BeforeEach
     void setUp() {
-        reader = new OfferStreamItemReader();
+        reader = new OfferStreamItemReader(5000);
         collector = new JobDeleteExternalIdsCollector();
     }
 
@@ -109,7 +109,7 @@ class OfferStreamItemReaderTest {
             return null;
         }).when(parser).parseAndProcess(any(InputStream.class), any(), any());
 
-        OfferStreamItemReader reader = new OfferStreamItemReader();
+        OfferStreamItemReader reader = new OfferStreamItemReader(5000);
         reader.start(parser, InputStream.nullInputStream(), deleteExternalIdsCollector);
 
         OfferDto first = reader.read();
@@ -127,7 +127,7 @@ class OfferStreamItemReaderTest {
         JobDeleteExternalIdsCollector deleteExternalIdsCollector = new JobDeleteExternalIdsCollector();
         doThrow(new RuntimeException("Crash!")).when(parser).parseAndProcess(any(InputStream.class), any(), any());
 
-        OfferStreamItemReader reader = new OfferStreamItemReader();
+        OfferStreamItemReader reader = new OfferStreamItemReader(5000);
         reader.start(parser, InputStream.nullInputStream(), deleteExternalIdsCollector);
 
         // Como el hilo es asíncrono, hay que esperar un poco hasta que la excepción esté en error

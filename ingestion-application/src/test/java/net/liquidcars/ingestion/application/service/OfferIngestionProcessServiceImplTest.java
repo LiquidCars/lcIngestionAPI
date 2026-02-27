@@ -29,6 +29,8 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.ByteArrayInputStream;
@@ -88,12 +90,13 @@ class OfferIngestionProcessServiceImplTest {
 
     @Test
     void shouldTriggerBatchJobOnStream() throws Exception {
-        InputStream stream = new ByteArrayInputStream("data".getBytes());
+        byte[] content = "<xml>data</xml>".getBytes();
+        Resource resource = new InputStreamResource(new ByteArrayInputStream(content));
         when(parserService.supports(any())).thenReturn(true);
         when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
-        service.processOffersStream(IngestionFormat.xml, stream, inventoryId, participantId,
+        service.processOffersStream(IngestionFormat.xml, resource, inventoryId, participantId,
                 IngestionDumpType.REPLACEMENT, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(2000)).run(eq(offerIngestionJob), any(JobParameters.class));
@@ -233,12 +236,13 @@ class OfferIngestionProcessServiceImplTest {
     @Test
     @DisplayName("Debe cubrir la lambda de processOffersStream (Virtual Thread)")
     void shouldCoverProcessOffersStreamLambda() throws Exception {
-        InputStream inputStream = new ByteArrayInputStream("<xml></xml>".getBytes());
+        byte[] content = "<xml>data</xml>".getBytes();
+        Resource resource = new InputStreamResource(new ByteArrayInputStream(content));
         when(parserService.supports(any())).thenReturn(true);
         when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
-        service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
+        service.processOffersStream(IngestionFormat.xml, resource, inventoryId, participantId,
                 IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(3000)).run(eq(offerIngestionJob), any(JobParameters.class));
@@ -277,23 +281,6 @@ class OfferIngestionProcessServiceImplTest {
             server.stop(0);
             Thread.sleep(100);
         }
-    }
-
-    @Test
-    @DisplayName("Debe cubrir el bloque catch de la lambda (Error de conexión)")
-    void shouldCoverLambdaCatchBlock() throws Exception {
-        URI unreachableUri = URI.create("http://localhost:1");
-        when(parserService.supports(any())).thenReturn(true);
-        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
-        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
-
-        service.processOffersFromUrl(IngestionFormat.xml, unreachableUri, inventoryId, participantId,
-                IngestionDumpType.REPLACEMENT, OffsetDateTime.now(), "ext-1");
-
-        verify(reportSqlService, timeout(2000)).existsByPhysicalInventoryIdAndStatusNotIn(any(), any());
-
-        Thread.sleep(500);
-        verify(jobLauncher, never()).run(any(), any());
     }
 
     @Test
@@ -458,14 +445,15 @@ class OfferIngestionProcessServiceImplTest {
     @Test
     @DisplayName("Debe cubrir el bloque catch de la lambda processOffersStream cuando el JobLauncher falla")
     void shouldCoverStreamLambdaCatchBlock() throws Exception {
-        InputStream inputStream = new ByteArrayInputStream("<xml></xml>".getBytes());
+        byte[] content = "<xml>data</xml>".getBytes();
+        Resource resource = new InputStreamResource(new ByteArrayInputStream(content));
         when(parserService.supports(any())).thenReturn(true);
         when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
         doThrow(new RuntimeException("Batch Exception")).when(jobLauncher).run(any(), any());
 
-        service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
+        service.processOffersStream(IngestionFormat.xml, resource, inventoryId, participantId,
                 IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(3000)).run(any(), any());
@@ -478,13 +466,14 @@ class OfferIngestionProcessServiceImplTest {
     @Test
     @DisplayName("Debe cubrir la rama del else en el catch de la lambda (execution == null)")
     void shouldCoverStreamLambdaCatchWithNullException() throws Exception {
-        InputStream inputStream = new ByteArrayInputStream("data".getBytes());
+        byte[] content = "<xml>data</xml>".getBytes();
+        Resource resource = new InputStreamResource(new ByteArrayInputStream(content));
 
         when(parserService.supports(any())).thenReturn(true);
         when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
-        service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
+        service.processOffersStream(IngestionFormat.xml, resource, inventoryId, participantId,
                 IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(3000)).run(any(), any());
@@ -493,7 +482,8 @@ class OfferIngestionProcessServiceImplTest {
     @Test
     @DisplayName("Debe cubrir la rama execution != null en el catch de processOffersStream")
     void shouldCoverStreamLambdaCatchWithExecutionNotNull() throws Exception {
-        InputStream inputStream = new ByteArrayInputStream("data".getBytes());
+        byte[] content = "<xml>data</xml>".getBytes();
+        Resource resource = new InputStreamResource(new ByteArrayInputStream(content));
         lenient().when(parserService.supports(any())).thenReturn(true);
         when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         lenient().when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
@@ -505,7 +495,7 @@ class OfferIngestionProcessServiceImplTest {
         lenient().when(jobLauncher.run(eq(offerIngestionJob), any(JobParameters.class)))
                 .thenThrow(new RuntimeException("Forced failure"));
 
-        service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
+        service.processOffersStream(IngestionFormat.xml, resource, inventoryId, participantId,
                 IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(3000)).run(any(), any());
@@ -561,6 +551,8 @@ class OfferIngestionProcessServiceImplTest {
     @Test
     @DisplayName("Debe encontrar el parser correcto cuando el formato es soportado")
     void shouldReturnParserWhenFormatIsSupported() {
+        byte[] content = "<xml>data</xml>".getBytes();
+        Resource resource = new InputStreamResource(new ByteArrayInputStream(content));
         when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(eq(inventoryId), any()))
                 .thenReturn(false);
@@ -568,7 +560,7 @@ class OfferIngestionProcessServiceImplTest {
 
         service.processOffersStream(
                 IngestionFormat.xml,
-                new ByteArrayInputStream("data".getBytes()),
+                resource,
                 inventoryId,
                 participantId,
                 IngestionDumpType.INCREMENTAL,
@@ -582,6 +574,8 @@ class OfferIngestionProcessServiceImplTest {
     @Test
     @DisplayName("Debe lanzar LCIngestionException cuando ningún parser soporta el formato")
     void shouldThrowExceptionWhenNoParserSupportsFormat() {
+        byte[] content = "<xml>data</xml>".getBytes();
+        Resource resource = new InputStreamResource(new ByteArrayInputStream(content));
         when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(eq(inventoryId), any()))
                 .thenReturn(false);
@@ -590,7 +584,7 @@ class OfferIngestionProcessServiceImplTest {
         LCIngestionException exception = assertThrows(LCIngestionException.class, () ->
                 service.processOffersStream(
                         IngestionFormat.xml,
-                        new ByteArrayInputStream("data".getBytes()),
+                        resource,
                         inventoryId,
                         participantId,
                         IngestionDumpType.REPLACEMENT,
@@ -607,13 +601,8 @@ class OfferIngestionProcessServiceImplTest {
     void shouldAllowProcessingWhenNoActiveProcessExists() {
         UUID requesterId = UUID.randomUUID();
         UUID inventoryId = UUID.randomUUID();
-
-        List<IngestionBatchStatus> finalStatuses = List.of(
-                IngestionBatchStatus.COMPLETED,
-                IngestionBatchStatus.FAILED,
-                IngestionBatchStatus.ABANDONED,
-                IngestionBatchStatus.STOPPED
-        );
+        byte[] content = "<xml>data</xml>".getBytes();
+        Resource resource = new InputStreamResource(new ByteArrayInputStream(content));
 
         when(parserService.supports(IngestionFormat.xml)).thenReturn(true);
 
@@ -623,7 +612,7 @@ class OfferIngestionProcessServiceImplTest {
 
         service.processOffersStream(
                 IngestionFormat.xml,
-                new ByteArrayInputStream("".getBytes()),
+                resource,
                 inventoryId,
                 requesterId,
                 IngestionDumpType.INCREMENTAL,
@@ -638,6 +627,8 @@ class OfferIngestionProcessServiceImplTest {
     @DisplayName("Debe lanzar LCIngestionException si el participante ya tiene un proceso en curso")
     void shouldThrowExceptionWhenActiveProcessExists() {
         UUID requesterId = UUID.randomUUID();
+        byte[] content = "<xml>data</xml>".getBytes();
+        Resource resource = new InputStreamResource(new ByteArrayInputStream(content));
 
         when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(UUID.class), any()))
@@ -646,7 +637,7 @@ class OfferIngestionProcessServiceImplTest {
         LCIngestionException exception = assertThrows(LCIngestionException.class, () ->
                 service.processOffersStream(
                         IngestionFormat.xml,
-                        new ByteArrayInputStream("".getBytes()),
+                        resource,
                         UUID.randomUUID(),
                         requesterId,
                         IngestionDumpType.INCREMENTAL,
@@ -704,7 +695,8 @@ class OfferIngestionProcessServiceImplTest {
     @Test
     @DisplayName("Rama Catch: execution != null (Error después de iniciar el Job)")
     void shouldCoverCatchWhenExecutionIsNotNull() throws Exception {
-        InputStream inputStream = new ByteArrayInputStream("data".getBytes());
+        byte[] content = "<xml>data</xml>".getBytes();
+        Resource resource = new InputStreamResource(new ByteArrayInputStream(content));
 
         lenient().when(parserService.supports(any())).thenReturn(true);
         when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
@@ -719,7 +711,7 @@ class OfferIngestionProcessServiceImplTest {
                     throw new RuntimeException("Simulated Failure with Execution Object");
                 });
 
-        service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
+        service.processOffersStream(IngestionFormat.xml, resource, inventoryId, participantId,
                 IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(3000)).run(any(), any());
@@ -730,8 +722,8 @@ class OfferIngestionProcessServiceImplTest {
     @Test
     @DisplayName("Rama Catch: execution == null (Error directo en el Launcher)")
     void shouldCoverCatchWhenExecutionIsNull() throws Exception {
-
-        InputStream inputStream = new ByteArrayInputStream("data".getBytes());
+        byte[] content = "<xml>data</xml>".getBytes();
+        Resource resource = new InputStreamResource(new ByteArrayInputStream(content));
         when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
         lenient().when(parserService.supports(any())).thenReturn(true);
@@ -739,7 +731,7 @@ class OfferIngestionProcessServiceImplTest {
         doThrow(new RuntimeException("Direct Launcher Failure"))
                 .when(jobLauncher).run(any(), any());
 
-        service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
+        service.processOffersStream(IngestionFormat.xml, resource, inventoryId, participantId,
                 IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(3000)).run(any(), any());
@@ -753,6 +745,27 @@ class OfferIngestionProcessServiceImplTest {
         assertThrows(LCIngestionException.class, () ->
                 service.processOffers(payload, inventoryId, participantId, IngestionDumpType.INCREMENTAL, "ext")
         );
+    }
+
+    @Test
+    @DisplayName("Debe cubrir el bloque catch de la lambda (Error de conexión)")
+    void shouldCoverLambdaCatchBlock() throws Exception {
+        URI unreachableUri = URI.create("http://localhost:1");
+        when(parserService.supports(any())).thenReturn(true);
+        when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
+        when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
+
+        // Mock del JobExecution que devuelve el launcher
+        JobExecution mockExecution = mock(JobExecution.class);
+        when(jobLauncher.run(any(), any())).thenReturn(mockExecution);
+
+        service.processOffersFromUrl(IngestionFormat.xml, unreachableUri, inventoryId, participantId,
+                IngestionDumpType.REPLACEMENT, OffsetDateTime.now(), "ext-1");
+
+        // El batch SÍ se llama pero con stream vacío (error de conexión cierra el pipe sin datos)
+        verify(jobLauncher, timeout(3000)).run(any(), any());
+        // El report se guarda con status STARTED
+        verify(reportSqlService, timeout(3000)).upsertIngestionReport(any());
     }
 
     @Test
@@ -772,11 +785,16 @@ class OfferIngestionProcessServiceImplTest {
             when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
             when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
 
+            JobExecution mockExecution = mock(JobExecution.class);
+            when(jobLauncher.run(any(), any())).thenReturn(mockExecution);
+
             service.processOffersFromUrl(IngestionFormat.xml, uri, inventoryId, participantId,
                     IngestionDumpType.REPLACEMENT, null, "ext");
 
-            Thread.sleep(1000);
-            verify(jobLauncher, never()).run(any(), any());
+            // El batch SÍ se llama pero lee 0 registros porque el pipe se cierra sin datos (404)
+            verify(jobLauncher, timeout(3000)).run(any(), any());
+            // Verificamos que se intentó crear el report
+            verify(reportSqlService, timeout(3000)).upsertIngestionReport(any());
         } finally {
             server.stop(0);
         }
@@ -785,7 +803,8 @@ class OfferIngestionProcessServiceImplTest {
     @Test
     @DisplayName("Debe loguear error de batch cuando execution NO es nula")
     void shouldLogErrorWhenBatchFailsWithExecutionNotNull() throws Exception {
-        InputStream stream = new ByteArrayInputStream("data".getBytes());
+        byte[] content = "<xml>data</xml>".getBytes();
+        Resource resource = new InputStreamResource(new ByteArrayInputStream(content));
 
         lenient().when(parserService.supports(any())).thenReturn(true);
         when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
@@ -799,7 +818,7 @@ class OfferIngestionProcessServiceImplTest {
             throw new RuntimeException("Simulated Failure");
         });
 
-        service.processOffersStream(IngestionFormat.xml, stream, inventoryId, participantId, IngestionDumpType.REPLACEMENT, OffsetDateTime.now(), "ext-1");
+        service.processOffersStream(IngestionFormat.xml, resource, inventoryId, participantId, IngestionDumpType.REPLACEMENT, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(3000)).run(any(), any());
         Thread.sleep(500);
@@ -894,14 +913,15 @@ class OfferIngestionProcessServiceImplTest {
     @Test
     @DisplayName("Lambda Stream: Error cuando execution ES nulo")
     void processOffersStream_ErrorWithNullExecution() throws Exception {
-        InputStream inputStream = new ByteArrayInputStream("data".getBytes());
+        byte[] content = "<xml>data</xml>".getBytes();
+        Resource resource = new InputStreamResource(new ByteArrayInputStream(content));
 
         when(parserService.supports(any())).thenReturn(true);
         when(reportSqlService.existsPhysicalInventory(any())).thenReturn(true);
         when(reportSqlService.existsByPhysicalInventoryIdAndStatusNotIn(any(), any())).thenReturn(false);
         when(jobLauncher.run(any(), any())).thenThrow(new RuntimeException("Launcher Direct Failure"));
 
-        service.processOffersStream(IngestionFormat.xml, inputStream, inventoryId, participantId,
+        service.processOffersStream(IngestionFormat.xml, resource, inventoryId, participantId,
                 IngestionDumpType.INCREMENTAL, OffsetDateTime.now(), "ext-1");
 
         verify(jobLauncher, timeout(2000)).run(any(), any());

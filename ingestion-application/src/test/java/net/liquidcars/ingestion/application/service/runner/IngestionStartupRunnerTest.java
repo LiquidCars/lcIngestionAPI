@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 
@@ -47,7 +48,7 @@ public class IngestionStartupRunnerTest {
 
             verify(ingestionProcessService).processOffersStream(
                     eq(IngestionFormat.xml),
-                    any(InputStream.class),
+                    any(Resource.class),
                     eq(expectedInventoryId),
                     eq(expectedParticipantId),
                     eq(IngestionDumpType.REPLACEMENT),
