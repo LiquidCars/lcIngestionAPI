@@ -100,7 +100,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
             try (var pipedOut = new PipedOutputStream();
                  var pipedIn  = new PipedInputStream(pipedOut, 8 * 1024 * 1024)) {
 
-                // Productor: descarga en hilo separado
+                // Producer: Download in separate thread
                 Thread downloadThread = Thread.ofVirtual().start(() -> {
                     try (var httpClient = java.net.http.HttpClient.newBuilder()
                             .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
@@ -120,16 +120,18 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                     } catch (Exception e) {
                         log.error("Error downloading from {}", url, e);
                     } finally {
-                        try { pipedOut.close(); } catch (Exception ignored) {}
+                        try {
+                            pipedOut.close();
+                        } catch (Exception ignored) {}
                     }
                 });
 
-                // Consumidor: batch corre AQUÍ, síncrono, leyendo del pipe
-                // mientras el downloadThread escribe en él en paralelo
+                // Consumer: batch runs HERE, synchronously, reading from the pipe
+                // while the downloadThread writes to it in parallel
                 runBatchSync(format, parser, pipedIn, inventoryId,
                         requesterParticipantId, externalPublicationId, dumpType, publicationDate);
 
-                // El batch terminó de leer — esperamos que el productor termine también
+                // The batch has finished reading — we hope the producer finishes as well
                 downloadThread.join();
 
             } catch (Exception e) {
@@ -266,12 +268,12 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         validatePhysicalInventoryExists(inventoryId);
         validatePhysicalInventoryHasNotProcessStarted(inventoryId);
         IOfferParserService parser = getParser(format);
-        // El hilo orquestador gestiona el ciclo de vida del pipe completo
+        //The orchestrator thread manages the entire pipe lifecycle
         Thread.ofVirtual().start(() -> {
             try (var pipedOut = new PipedOutputStream();
                  var pipedIn  = new PipedInputStream(pipedOut, 8 * 1024 * 1024)) {
 
-                // Productor: lee del HTTP request en paralelo
+                // Producer: reads from the HTTP request in parallel
                 Thread producerThread = Thread.ofVirtual().start(() -> {
                     try (InputStream inputStream = resource.getInputStream()) {
                         inputStream.transferTo(pipedOut);
@@ -282,11 +284,11 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                     }
                 });
 
-                // Consumidor: batch síncrono AQUÍ — bloquea hasta terminar
+                // Consumer: Synchronous batch HERE — blocks until completion
                 runBatchSync(format, parser, pipedIn, inventoryId,
                         requesterParticipantId, externalPublicationId, dumpType, publicationDate);
 
-                // Batch terminó — esperamos al productor
+                // Batch is over — we're waiting for the producer
                 producerThread.join();
 
             } catch (Exception e) {
@@ -325,7 +327,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                 .addLong("time", System.currentTimeMillis())
                 .toJobParameters();
 
-        // syncJobLauncher bloquea hasta que el job termina
+        // syncJobLauncher blocks until the job finishes
         JobExecution execution = jobLauncher.run(offerIngestionJob, params);
         log.info("Batch finished. Status: {}", execution.getStatus());
         return execution;

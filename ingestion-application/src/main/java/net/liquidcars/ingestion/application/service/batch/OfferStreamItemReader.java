@@ -24,8 +24,7 @@ public class OfferStreamItemReader implements ItemReader<OfferDto>, StepExecutio
     private volatile boolean isParsingFinished = false;
     private volatile Throwable fatalError = null;
     private JobDeleteExternalIdsCollector deleteExternalIdsCollector;
-    @Value("${ingestion.batch.queue-size:5000}")
-    private int queueCapacity;
+    private final int queueCapacity;
 
     public OfferStreamItemReader(@Value("${ingestion.batch.queue-size:5000}") int queueCapacity) {
         this.queueCapacity = queueCapacity;
