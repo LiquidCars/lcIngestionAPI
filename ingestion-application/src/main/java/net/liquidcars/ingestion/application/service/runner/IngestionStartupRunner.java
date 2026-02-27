@@ -43,12 +43,10 @@ public class IngestionStartupRunner {
                 return;
             }
 
-            InputStream inputStream = resource.getInputStream();
-
             // 2. Trigger ingestion process (this launches an internal Virtual Thread)
             ingestionProcessService.processOffersStream(
                     IngestionFormat.xml,
-                    inputStream,
+                    resource,
                     TEST_INVENTORY_ID,
                     TEST_PARTICIPANT_ID,
                     IngestionDumpType.REPLACEMENT,

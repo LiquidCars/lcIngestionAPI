@@ -217,7 +217,7 @@ ingestion:
     enabled: true
     cron: "*/30 * * * * *" # Every 30 seconds
   startUpRunner:
-    enabled: false
+    enabled: true
   promotionScheduler:
     enabled: true
     cron: "0 * * * * *"

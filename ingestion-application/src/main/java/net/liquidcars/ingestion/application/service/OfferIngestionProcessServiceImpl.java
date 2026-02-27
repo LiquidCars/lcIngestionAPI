@@ -25,6 +25,7 @@ import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -259,38 +260,41 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
 
     @Transactional
     @Override
-    public void processOffersStream(IngestionFormat format,
-                                    InputStream inputStream,
-                                    UUID inventoryId,
-                                    UUID requesterParticipantId,
-                                    IngestionDumpType dumpType,
-                                    OffsetDateTime publicationDate,
-                                    String externalPublicationId)
-    {
+    public void processOffersStream(IngestionFormat format, Resource resource, UUID inventoryId,
+                                    UUID requesterParticipantId, IngestionDumpType dumpType,
+                                    OffsetDateTime publicationDate, String externalPublicationId) {
         validatePhysicalInventoryExists(inventoryId);
         validatePhysicalInventoryHasNotProcessStarted(inventoryId);
         IOfferParserService parser = getParser(format);
-        this.processOffersStream(format, parser, inputStream, inventoryId, requesterParticipantId, externalPublicationId, dumpType, publicationDate);
-    }
-
-    private void processOffersStream(IngestionFormat format,
-                                     IOfferParserService parser,
-                                     InputStream inputStream,
-                                     UUID inventoryId,
-                                     UUID requesterParticipantId,
-                                     String externalPublicationId,
-                                     IngestionDumpType dumpType,
-                                     OffsetDateTime publicationDate
-    ) {
+        // El hilo orquestador gestiona el ciclo de vida del pipe completo
         Thread.ofVirtual().start(() -> {
-            try {
-                runBatchSync(format, parser, inputStream, inventoryId,
+            try (var pipedOut = new PipedOutputStream();
+                 var pipedIn  = new PipedInputStream(pipedOut, 8 * 1024 * 1024)) {
+
+                // Productor: lee del HTTP request en paralelo
+                Thread producerThread = Thread.ofVirtual().start(() -> {
+                    try (InputStream inputStream = resource.getInputStream()) {
+                        inputStream.transferTo(pipedOut);
+                    } catch (Exception e) {
+                        log.error("Error transferring HTTP stream to pipe", e);
+                    } finally {
+                        try { pipedOut.close(); } catch (Exception ignored) {}
+                    }
+                });
+
+                // Consumidor: batch síncrono AQUÍ — bloquea hasta terminar
+                runBatchSync(format, parser, pipedIn, inventoryId,
                         requesterParticipantId, externalPublicationId, dumpType, publicationDate);
+
+                // Batch terminó — esperamos al productor
+                producerThread.join();
+
             } catch (Exception e) {
-                log.error("Failed to execute batch.", e);
+                log.error("Critical error during stream ingestion", e);
             }
         });
     }
+
     private JobExecution runBatchSync(IngestionFormat format,
                                       IOfferParserService parser,
                                       InputStream inputStream,
