@@ -135,7 +135,7 @@ public class IngestionControllerTest {
 
         verify(ingestionService).processOffersStream(
                 eq(IngestionFormat.xml),
-                any(InputStream.class),
+                any(Resource.class),
                 eq(TEST_INVENTORY_ID),
                 eq(TEST_PARTICIPANT_ID),
                 eq(IngestionDumpType.INCREMENTAL),
@@ -153,7 +153,7 @@ public class IngestionControllerTest {
                 .build())
                 .when(ingestionService)
                 .processOffersStream(
-                        any(), any(InputStream.class), any(), any(), any(), any(), any());
+                        any(), any(Resource.class), any(), any(), any(), any(), any());
 
         mockMvc.perform(post("/v1/ingestion/stream")
                         .param("format", "xml")
@@ -261,36 +261,4 @@ public class IngestionControllerTest {
         // Este test asegura que el stream se abre y se cierra correctamente.
     }
 
-    @Test
-    @DisplayName("ingestStream - Should cover catch block and throw LCIngestionException")
-    void ingestStream_CatchBlockCoverage() throws Exception {
-        // GIVEN
-        // Creamos un Resource que explote al llamar a getInputStream()
-        org.springframework.core.io.Resource bodyMock = mock(org.springframework.core.io.Resource.class);
-        when(bodyMock.getInputStream()).thenThrow(new IOException("Forced IO Exception"));
-
-        // Mockeamos el contexto para que pase el primer paso
-        LCContext mockContext = mock(LCContext.class);
-        when(mockContext.getParticipantId()).thenReturn(UUID.randomUUID().toString());
-        when(contextService.getContext()).thenReturn(mockContext);
-
-        // IMPORTANTE: Como MockMvc standalone no inyecta automáticamente el bodyMock
-        // en el parámetro Resource por arte de magia desde el .content(),
-        // la forma más limpia es llamar al método del controlador directamente
-        // o usar un Custom Argument Resolver.
-
-        // OPCIÓN DIRECTA (Garantiza 100% cobertura de la lógica del método):
-        org.junit.jupiter.api.Assertions.assertThrows(net.liquidcars.ingestion.domain.model.exception.LCIngestionException.class, () -> {
-            ingestionController.ingestStream(
-                    IngestionFormat.json,
-                    UUID.randomUUID(),
-                    IngestionDumpType.INCREMENTAL,
-                    bodyMock, // Pasamos el mock que lanza la excepción
-                    null,
-                    "ext-id"
-            );
-        });
-
-        verify(bodyMock).getInputStream();
-    }
 }
