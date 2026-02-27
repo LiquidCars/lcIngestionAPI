@@ -23,15 +23,19 @@ import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Application service for offer ingestion orchestration.
@@ -44,6 +48,7 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
 
     private final List<IOfferParserService> parsers;
     private final IOfferInfraKafkaProducerService offerInfraKafkaProducerService;
+    @Qualifier("syncJobLauncher")
     private final JobLauncher jobLauncher;
     private final Job offerIngestionJob;
     private final OfferStreamItemReader offerReader;
@@ -89,22 +94,45 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
         validatePhysicalInventoryHasNotProcessStarted(inventoryId);
         validateUrl(url);
         IOfferParserService parser = getParser(format);
+
         Thread.ofVirtual().start(() -> {
-            try (var httpClient = java.net.http.HttpClient.newBuilder()
-                    .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
-                    .connectTimeout(java.time.Duration.ofSeconds(10))
-                    .build()) {
-                var request = buildRequest(url);
+            try (var pipedOut = new PipedOutputStream();
+                 var pipedIn  = new PipedInputStream(pipedOut, 8 * 1024 * 1024)) {
 
-                var response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofInputStream());
+                // Productor: descarga en hilo separado
+                Thread downloadThread = Thread.ofVirtual().start(() -> {
+                    try (var httpClient = java.net.http.HttpClient.newBuilder()
+                            .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
+                            .connectTimeout(java.time.Duration.ofSeconds(10))
+                            .build()) {
 
-                if (response.statusCode() == 200) {
-                    this.processOffersStream(format, parser, response.body(), inventoryId, requesterParticipantId, externalPublicationId, dumpType, publicationDate);
-                } else {
-                    log.error("Failed to download file from URL: {}. Status code: {}", url, response.statusCode());
-                }
+                        var response = httpClient.send(buildRequest(url),
+                                java.net.http.HttpResponse.BodyHandlers.ofInputStream());
+
+                        if (response.statusCode() == 200) {
+                            log.info("Download started from URL: {}", url);
+                            response.body().transferTo(pipedOut);
+                            log.info("Download completed from URL: {}", url);
+                        } else {
+                            log.error("Failed to download. Status: {}", response.statusCode());
+                        }
+                    } catch (Exception e) {
+                        log.error("Error downloading from {}", url, e);
+                    } finally {
+                        try { pipedOut.close(); } catch (Exception ignored) {}
+                    }
+                });
+
+                // Consumidor: batch corre AQUÍ, síncrono, leyendo del pipe
+                // mientras el downloadThread escribe en él en paralelo
+                runBatchSync(format, parser, pipedIn, inventoryId,
+                        requesterParticipantId, externalPublicationId, dumpType, publicationDate);
+
+                // El batch terminó de leer — esperamos que el productor termine también
+                downloadThread.join();
+
             } catch (Exception e) {
-                log.error("Critical error during remote URL ingestion from {}", url, e);
+                log.error("Critical error during piped ingestion from {}", url, e);
             }
         });
     }
@@ -255,38 +283,50 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
                                      OffsetDateTime publicationDate
     ) {
         Thread.ofVirtual().start(() -> {
-            JobExecution execution = null;
             try {
-                UUID ingestionId = UUID.randomUUID();
-                IngestionReportDto ingestionReportDto = createIngestionReportDto(inventoryId, requesterParticipantId,
-                        dumpType, IngestionProcessType.FILE, externalPublicationId, ingestionId, publicationDate);
-                iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
-                offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
-
-                JobDeleteExternalIdsCollector deleteExternalIdsCollector = new JobDeleteExternalIdsCollector();
-
-                offerReader.start(parser, inputStream, deleteExternalIdsCollector);
-                JobParameters params = new JobParametersBuilder()
-                        .addString("ingestionId", ingestionId.toString())
-                        .addString("ingestionReportId", ingestionReportDto.getId().toString())
-                        .addString("requesterParticipantId", requesterParticipantId.toString())
-                        .addString("inventoryId", inventoryId.toString())
-                        .addString("format", format.name())
-                        .addLong("time", System.currentTimeMillis())
-                        .toJobParameters();
-
-                execution = jobLauncher.run(offerIngestionJob, params);
-
-                log.info("Batch job started successfully for format: {}", format);
+                runBatchSync(format, parser, inputStream, inventoryId,
+                        requesterParticipantId, externalPublicationId, dumpType, publicationDate);
             } catch (Exception e) {
-               if(execution!=null){
-                   log.error("Failed to execute batch job: {} . Status: {}", execution.getJobId(), execution.getStatus() , e);
-               } else {
-                   log.error("Failed to execute batch.", e);
-               }
+                log.error("Failed to execute batch.", e);
             }
         });
     }
+    private JobExecution runBatchSync(IngestionFormat format,
+                                      IOfferParserService parser,
+                                      InputStream inputStream,
+                                      UUID inventoryId,
+                                      UUID requesterParticipantId,
+                                      String externalPublicationId,
+                                      IngestionDumpType dumpType,
+                                      OffsetDateTime publicationDate) throws Exception {
+
+        UUID ingestionId = UUID.randomUUID();
+        IngestionReportDto ingestionReportDto = createIngestionReportDto(
+                inventoryId, requesterParticipantId,
+                dumpType, IngestionProcessType.FILE,
+                externalPublicationId, ingestionId, publicationDate);
+
+        iReportInfraSQLService.upsertIngestionReport(ingestionReportDto);
+        offerInfraKafkaProducerService.sendIngestionJobReport(ingestionReportDto);
+
+        JobDeleteExternalIdsCollector deleteExternalIdsCollector = new JobDeleteExternalIdsCollector();
+        offerReader.start(parser, inputStream, deleteExternalIdsCollector);
+
+        JobParameters params = new JobParametersBuilder()
+                .addString("ingestionId", ingestionId.toString())
+                .addString("ingestionReportId", ingestionReportDto.getId().toString())
+                .addString("requesterParticipantId", requesterParticipantId.toString())
+                .addString("inventoryId", inventoryId.toString())
+                .addString("format", format.name())
+                .addLong("time", System.currentTimeMillis())
+                .toJobParameters();
+
+        // syncJobLauncher bloquea hasta que el job termina
+        JobExecution execution = jobLauncher.run(offerIngestionJob, params);
+        log.info("Batch finished. Status: {}", execution.getStatus());
+        return execution;
+    }
+
     private void processOffer(OfferDto offerDto){
         offerInfraKafkaProducerService.sendOffer(offerDto);
     }

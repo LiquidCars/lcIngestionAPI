@@ -136,6 +136,8 @@ server:
     enabled: true
   tomcat:
     max-swallow-size: -1
+    connection-timeout: 600000      # 10 minutes
+    keep-alive-timeout: 600000      # 10 minutes
 
 # Server security Configuration
 security:
@@ -203,6 +205,7 @@ ingestion:
   batch:
     chunk-size: 10
     skip-limit: 2
+    queue-size: 5000
   purgeScheduler:
     enabled: true
     cron: "0 0 3 * * SUN" # Every Sunday at 3 AM
@@ -214,7 +217,7 @@ ingestion:
     enabled: true
     cron: "*/30 * * * * *" # Every 30 seconds
   startUpRunner:
-    enabled: true
+    enabled: false
   promotionScheduler:
     enabled: true
     cron: "0 * * * * *"
