@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -102,8 +101,6 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         carInstanceEquipmentEntityRepository.deleteByVehicleInstanceId(vehicleInstance.getId());
         List<CarInstanceEquipmentEntity> entities = mapper.toCarInstanceEquipmentEntityList(equipments);
         entities.forEach(entity -> {
-            int id = ThreadLocalRandom.current().nextInt(100_000_000, Integer.MAX_VALUE);
-            entity.setId(id);
             entity.setVehicleInstance(vehicleInstance);
             if(entity.getType() == null){
                 entity.setType(EquipmentTypeEntity.builder()
@@ -114,28 +111,17 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         carInstanceEquipmentEntityRepository.saveAll(entities);
     }
 
-    private void saveOrUpdateResources(List<CarOfferResourceDto> resources, OfferEntity offer) {
-        if (resources == null || resources.isEmpty()) return;
-        carOfferResourceRepository.deleteByOfferId(offer.getId());
-        List<CarOfferResourceEntity> resourceEntities = resources.stream()
-                .map(dto -> buildCarOfferResourceEntity(dto, offer))
-                .toList();
-        carOfferResourceRepository.saveAll(resourceEntities);
-    }
 
     private CarOfferResourceEntity buildCarOfferResourceEntity(CarOfferResourceDto dto, OfferEntity offer) {
         ResourceTypeEntity type = ResourceTypeEntity.builder()
                 .id("UrlImage")
                 .build();
         byte[] image = convertUrlToBytes(dto.getResource());
-        int id = ThreadLocalRandom.current().nextInt(100_000_000, Integer.MAX_VALUE);
-        CarOfferResourceEntity resourceEntity = CarOfferResourceEntity.builder()
-                .id(id)
+        return CarOfferResourceEntity.builder()
                 .offer(offer)
                 .resourceType(type)
                 .resource(image)
                 .build();
-        return resourceEntity;
     }
 
     private byte[] convertUrlToBytes(String url) {
@@ -170,8 +156,6 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                         dto.getBrand(), dto.getModel(), dto.getVersion())
                 .orElseGet(() -> {
                     VehicleModelEntity model = mapper.toVehicleModelEntity(dto);
-                    long id = ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999_999L);
-                    model.setId(id);
                     model.setEnabled(true); // Asegúrate de habilitarlo
                     return vehicleModelRepository.save(model);
                 });
@@ -186,7 +170,6 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                     VehicleInstanceEntity entity = mapper.toVehicleInstanceEntity(dto);
                     entity.setPlate(plate);
                     entity.setChassisNumber(chassis);
-                    entity.setId(ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L));
                     entity.setEnabled(true);
                     return vehicleInstanceRepository.saveAndFlush(entity);
                 });
@@ -223,8 +206,9 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                     : findExternalRefsByOfferIds(activeBookedOfferIds);
 
             // 3. Load all existing offers in ONE query instead of one per offer
-            List<String> allRefs = extractAllRefs(offers);
-            Map<String, OfferEntity> existingByRef = loadExistingOffers(inventoryId, allRefs);
+            Map<String, OfferEntity> existingByRef = loadExistingOffers(inventoryId, offers);
+            Map<UUID, OfferEntity> existingById = existingByRef.values().stream()
+                    .collect(Collectors.toMap(OfferEntity::getId, e -> e, (a, b) -> a));
 
             List<OfferEntity> toInsert = new ArrayList<>();
             List<OfferEntity> toUpdate = new ArrayList<>();
@@ -238,6 +222,10 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                     VehicleModelEntity model = modelCache.get(modelKeyModel(offer.getVehicleInstance().getVehicleModel()));
                     VehicleInstanceEntity instance = instanceCache.get(modelKeyInstance(offer.getVehicleInstance()));
                     OfferEntity existing = existingByRef.get(ref);
+
+                    if (existing == null) {
+                        existing = existingById.get(offer.getId());
+                    }
 
                     if (existing != null) {
                         // BOOKING PROTECTION: if the offer has an active booking, skip update
@@ -280,11 +268,6 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                         mapper.updateVehicleInstanceFromDto(offer.getVehicleInstance(), instance);
                         instance.setVehicleModel(model);
                         newEntity.setVehicleInstance(instance);
-                        if (newEntity.getVehicleInstance().getId() == null || newEntity.getVehicleInstance().getId() == 0) {
-                            newEntity.getVehicleInstance().setId(
-                                    ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L)
-                            );
-                        }
                         newEntity.setJsonCarOffer(buildJsonEntity(offer));
                         toInsert.add(newEntity);
                         insertDtos.add(offer);
@@ -359,33 +342,33 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         return (dto.getPlate() + "|" + dto.getChassisNumber()).toLowerCase();
     }
 
-    private List<String> extractAllRefs(List<OfferDto> offers) {
-        return offers.stream()
-                .filter(o -> o.getExternalIdInfo() != null)
-                .map(o -> extractRef(o.getExternalIdInfo()))
-                .filter(r -> r != null && !r.isEmpty())
-                .distinct()
-                .toList();
-    }
 
     private String extractRef(ExternalIdInfoDto info) {
-        if (info == null) return null;
+        if (info == null) return buildCompositeKey(null, null, null);
         return buildCompositeKey(info.getOwnerReference(), info.getDealerReference(), info.getChannelReference());
     }
 
-    private Map<String, OfferEntity> loadExistingOffers(UUID inventoryId, List<String> refs) {
-        if (refs.isEmpty()) return Map.of();
-        return offerSqlRepository.findByInventoryIdAndOwnerRefs(inventoryId, refs)
+
+    private Map<String, OfferEntity> loadExistingOffers(UUID inventoryId, List<OfferDto> offers) {
+        List<String> owners = offers.stream().map(o -> o.getExternalIdInfo().getOwnerReference()).filter(Objects::nonNull).toList();
+        List<String> dealers = offers.stream().map(o -> o.getExternalIdInfo().getDealerReference()).filter(Objects::nonNull).toList();
+        List<String> channels = offers.stream().map(o -> o.getExternalIdInfo().getChannelReference()).filter(Objects::nonNull).toList();
+
+        if (owners.isEmpty() && dealers.isEmpty() && channels.isEmpty()) return Map.of();
+
+        return offerSqlRepository.findExistingByAnyRef(inventoryId, owners, dealers, channels)
                 .stream()
                 .collect(Collectors.toMap(
                         e -> buildCompositeKey(e.getOwnerReference(), e.getDealerReference(), e.getChannelReference()),
                         e -> e,
-                        (a, b) -> a
+                        (existing, replacement) -> existing
                 ));
     }
 
     private String buildCompositeKey(String owner, String dealer, String channel) {
-        return String.format("%s|%s|%s", owner, dealer, channel);
+        return Stream.of(owner, dealer, channel)
+                .map(s -> s != null ?  s.trim() : "")
+                .collect(Collectors.joining("|"));
     }
 
     private void saveResourcesBatch(List<OfferEntity> offers, List<OfferDto> dtos) {
@@ -428,7 +411,6 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                         dto.getVehicleInstance().getEquipments()
                 );
                 entities.forEach(eq -> {
-                    eq.setId(ThreadLocalRandom.current().nextInt(100_000_000, Integer.MAX_VALUE));
                     eq.setVehicleInstance(entity.getVehicleInstance());
                     if (eq.getType() == null) {
                         eq.setType(EquipmentTypeEntity.builder().id("Other").build());

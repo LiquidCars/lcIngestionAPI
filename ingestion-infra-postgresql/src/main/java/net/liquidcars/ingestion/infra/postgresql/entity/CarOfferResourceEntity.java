@@ -17,6 +17,7 @@ import java.util.UUID;
 public class CarOfferResourceEntity {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "cr_co_id")
     private Integer id;
 

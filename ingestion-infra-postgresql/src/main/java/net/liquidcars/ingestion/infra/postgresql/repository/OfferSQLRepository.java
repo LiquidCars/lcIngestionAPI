@@ -15,22 +15,6 @@ import java.util.UUID;
 @Repository
 public interface OfferSQLRepository extends JpaRepository<OfferEntity, UUID> {
 
-    @Query(value = """
-        SELECT o.* FROM inv_ofr_offer o
-        JOIN inv_ninof_inventoryoffers ni ON ni.ofr_co_id = o.ofr_co_id
-        WHERE ni.nin_co_id = :inventoryId
-          AND (:ownerRef IS NULL OR o.ofr_ownerref = :ownerRef)
-          AND (:dealerRef IS NULL OR o.ofr_dealerref = :dealerRef)
-          AND (:channelRef IS NULL OR o.ofr_channelref = :channelRef)
-        LIMIT 1
-        """, nativeQuery = true)
-    Optional<OfferEntity> findByInventoryIdAndReferences(
-            @Param("inventoryId") UUID inventoryId,
-            @Param("ownerRef") String ownerRef,
-            @Param("dealerRef") String dealerRef,
-            @Param("channelRef") String channelRef
-    );
-
     // --- RECURSOS ---
     @Modifying
     @Query(value = "DELETE FROM inv_cr_carresources WHERE ofr_co_id IN (SELECT ofr_co_id FROM inv_ninof_inventoryoffers WHERE nin_co_id = :invId)", nativeQuery = true)
@@ -162,11 +146,17 @@ public interface OfferSQLRepository extends JpaRepository<OfferEntity, UUID> {
     SELECT o.* FROM inv_ofr_offer o
     JOIN inv_ninof_inventoryoffers ni ON ni.ofr_co_id = o.ofr_co_id
     WHERE ni.nin_co_id = :inventoryId
-    AND o.ofr_ownerref IN (:ownerRefs)
+    AND (
+        o.ofr_ownerref IN (:ownerRefs) OR 
+        o.ofr_dealerref IN (:dealerRefs) OR 
+        o.ofr_channelref IN (:channelRefs)
+    )
     """, nativeQuery = true)
-    List<OfferEntity> findByInventoryIdAndOwnerRefs(
+    List<OfferEntity> findExistingByAnyRef(
             @Param("inventoryId") UUID inventoryId,
-            @Param("ownerRefs") List<String> ownerRefs
+            @Param("ownerRefs") List<String> ownerRefs,
+            @Param("dealerRefs") List<String> dealerRefs,
+            @Param("channelRefs") List<String> channelRefs
     );
 
     @Query(value = """
