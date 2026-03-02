@@ -8,18 +8,16 @@ spring:
     multipart:
       max-file-size: -1
       max-request-size: -1
-  
+
   # MongoDB Configuration
   data:
     mongodb:
-      host: localhost
-      port: 27017
-      database: ingestion_db
-      auto-index-creation: true
-  
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://ingestion_service:mongo@mongodb:27017/ingestion_service?authSource=admin}
+      database: ingestion_service
+
   # PostgreSQL Configuration
   datasource:
-    url: jdbc:postgresql://localhost:5432/ingestion_db
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/liquidcars?charSet=UTF8}
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
@@ -27,7 +25,7 @@ spring:
       maximum-pool-size: 10
       minimum-idle: 5
       connection-timeout: 30000
-  
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -37,74 +35,168 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         jdbc:
-          batch_size: 25
-        order_inserts: true
-        order_updates: true
-  
+          jdbc.batch_size: 100
+          order_inserts: true
+          order_updates: true
+          batch_versioned_data: true
+
   # Kafka Configuration
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      # 'all' ensures the highest durability, waiting for full replication
       acks: all
       retries: 3
       properties:
-        linger.ms: 10
+        # 'linger.ms: 0' forces immediate sending, crucial for our "flush" strategy
+        linger.ms: 0
         batch.size: 16384
+        delivery.timeout.ms: 120000  # 2 minutes
+        request.timeout.ms: 30000     # 30 seconds
+        max.block.ms: 6000
+
     consumer:
-      group-id: ingestion-consumer-group
+      group-id: liquidcars-ingestion-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      # 'read_uncommitted' is default (allows reading offers before the report)
       auto-offset-reset: earliest
       enable-auto-commit: false
       properties:
         spring.json.trusted.packages: "*"
-  
+        spring.json.type.mapping: >-
+          net.liquidcars.lcAPI.entities.ingestion.IngestionReportActionMsg:net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportActionMsg
+      # --- NON-BLOCKING RETRY CONFIGURATION ---
+      # This section manages how the consumer behaves when your Service
+      # throws the LCIngestionException during the cleanup process.
+      retry:
+        # How long to wait before the first retry (5 seconds)
+        initial-interval: 5000
+        # Maximum number of delivery attempts for the same report message
+        max-attempts: 5
+        # Multiplier for the wait time (1.0 means always wait 2s, 2.0 would double it)
+        multiplier: 2.0
+        max-interval: 30000  # 30 seconds
+
+    listener:
+      # 'record' mode allows each message to be acknowledged individually
+      ack-mode: record
+      # Ensures the error handler defined in YAML is active
+      type: single
+
   # Spring Batch Configuration
   batch:
     job:
       enabled: false # Don't auto-start jobs on application startup
+      name: "NONE"
     jdbc:
-      initialize-schema: always
+      initialize-schema: never
       table-prefix: BATCH_
-  
-  # Flyway Migration
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-  
+
+  # Liquibase Migration
+  liquibase:
+    enabled: false
+  # change-log: classpath:db/changelog/postgresql/db.changelog-master.xml
   # File Upload Configuration
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${security.security-profile-issuer}
+net:
+  liquidcars:
+    ingestion:
+      infra:
+        output:
+          kafka:
+            model:
+              IngestionReportActionMsg:net:
+                liquidcars:
+                  lcAPI:
+                    entities:
+                      ingestion:
+                        IngestionReportActionMsg:
+#Liquibase Mongo config
+liquibase:
+  mongodb:
+    enabled: true
+    change-log: classpath:db/changelog/mongodb/db.changelog-master.xml
+    url: ${LIQUIBASE_MONGO_URL:mongodb://mongodb:27017/ingestion_service?authSource=admin}
+    user: ingestion_service
+    password: mongo
 
 # Server Configuration
 server:
-  port: 8090
+  port: 8890
   compression:
     enabled: true
   tomcat:
     max-swallow-size: -1
+    connection-timeout: 600000      # 10 minutes
+    keep-alive-timeout: 600000      # 10 minutes
 
-  
+# Server security Configuration
+security:
+  # Base URL for Keycloak realms
+  security-profile-issuer: ${KEYCLOAK_ISSUER:http://keycloak:8080/realms/}
+  # CORS Configuration
+  allowed-origins-pattern: ${CORS_ALLOWED_ORIGINS:*}
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS,PATCH
+  allowed-headers: Authorization,Cache-Control,Content-Type,X-Requested-With
+  exposed-headers: Authorization
+  allow-credentials: true
+  max-age-seconds: 3600
+  # List of paths to monitor size
+  size-restricted-paths:
+    - /batch
+    - /url
+  max-batch-size: ${SECURITY_MAX_BATCH_SIZE:10MB}
+
 # Management & Actuator
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus
+    health:
+      show-details: always  # Esto permite ver qué falla exactamente (db, kafka, mongo)
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
   metrics:
     export:
       prometheus:
         enabled: true
 
+# Swagger / OpenAPI
+springdoc:
+  swagger-ui:
+    # Root of static api resource
+    url: /api/ingestion-api.yml
+    path: /swagger-ui.html
+    use-root-path: true
+
 # Logging Configuration
 logging:
   level:
     root: INFO
-    com.orbyn.ingestion: DEBUG
+    com.orbyn.ingestion: WARN
+    com.orbyn.ingestion.consumer: WARN
+    com.orbyn.ingestion.kafka: WARN
     org.springframework.batch: INFO
-    org.springframework.kafka: INFO
+    org.springframework.kafka: WARN
+    liquibase: INFO
+    org.liquibase: INFO
+    org.springframework.orm.jpa: INFO
+    org.springframework.transaction: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 
@@ -112,11 +204,20 @@ logging:
 ingestion:
   batch:
     chunk-size: 10
-    skip-limit: 100
-  kafka:
-    topics:
-      offers: vehicle-offers
-  scheduler:
+    skip-limit: 2
+    queue-size: 5000
+  purgeScheduler:
     enabled: true
-    watch-directory: /data/ingestion
-    cron: "0 */15 * * * *" # Every 15 minutes
+    cron: "0 0 3 * * SUN" # Every Sunday at 3 AM
+    days: 7
+  syncScheduler:
+    enabled: true
+    cron: "*/30 * * * * *" # Every 30 seconds
+  batchSyncScheduler:
+    enabled: true
+    cron: "*/30 * * * * *" # Every 30 seconds
+  startUpRunner:
+    enabled: true
+  promotionScheduler:
+    enabled: true
+    cron: "0 * * * * *"

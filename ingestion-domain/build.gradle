@@ -9,4 +9,8 @@ dependencies {
     
     // Optional: if you need value objects with validation
     implementation 'org.apache.commons:commons-lang3:3.17.0'
+
+    //Shedlock
+    implementation 'net.javacrumbs.shedlock:shedlock-spring:5.10.0'
+    implementation 'net.javacrumbs.shedlock:shedlock-provider-jdbc-template:5.10.0'
 }

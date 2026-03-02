@@ -1,0 +1,334 @@
+{
+  "info": {
+    "_postman_id": "152221c1-a8cd-457c-842c-add1c7840f2a",
+    "name": "lcApi: Ingestion New v1.2",
+    "description": "API for bulk vehicle offer ingestion (LiquidCars).\nIncluye operaciones de Ingestión y Gestión de Reports con paginación.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "2813570",
+    "_collection_link": "https://go.postman.co/collection/2813570-152221c1-a8cd-457c-842c-add1c7840f2a?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Ingestion Operations",
+      "item": [
+        {
+          "name": "Ingest JSON Batches",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offers\": [\n    {\n      \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n      \"sellerType\": \"usedCar_ProfessionalSeller\",\n      \"vehicleInstance\": {\n        \"brand\": \"BMW\",\n        \"model\": \"530D\",\n        \"plate\": \"1234XJV\"\n      },\n      \"price\": {\n        \"amount\": 32500.0,\n        \"currency\": \"EUR\"\n      }\n    }\n  ],\n  \"offersToDelete\": []\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8890/v1/ingestion/batch?inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=UPDATE",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8890",
+              "path": [
+                "v1",
+                "ingestion",
+                "batch"
+              ],
+              "query": [
+                {
+                  "key": "inventoryId",
+                  "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b"
+                },
+                {
+                  "key": "dumpType",
+                  "value": "UPDATE"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ingest via Binary Stream",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/octet-stream"
+              }
+            ],
+            "body": {
+              "mode": "file",
+              "file": {
+                "src": "/C:/wksLiquidcars/lcIngestionAPI/offersGenerators/motorflash_export.xml"
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8890/v1/ingestion/stream?format=xml&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=INCREMENTAL",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8890",
+              "path": [
+                "v1",
+                "ingestion",
+                "stream"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "xml"
+                },
+                {
+                  "key": "inventoryId",
+                  "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b"
+                },
+                {
+                  "key": "dumpType",
+                  "value": "INCREMENTAL"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ingest via URL (Pull)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8890/v1/ingestion/url?format=xml&url=http://localhost:8890/testFiles/motorflash_export.xml&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=REPLACEMENT&externalPublicationId=localPub1%23&publicationDate=2026-02-27T08:00:00Z",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8890",
+              "path": [
+                "v1",
+                "ingestion",
+                "url"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "xml"
+                },
+                {
+                  "key": "url",
+                  "value": "http://localhost:8890/testFiles/motorflash_export.xml"
+                },
+                {
+                  "key": "inventoryId",
+                  "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b",
+                  "description": "Canalcar estándar"
+                },
+                {
+                  "key": "dumpType",
+                  "value": "REPLACEMENT"
+                },
+                {
+                  "key": "externalPublicationId",
+                  "value": "localPub1%23"
+                },
+                {
+                  "key": "publicationDate",
+                  "value": "2026-02-27T08:00:00Z"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Management Operations",
+      "item": [
+        {
+          "name": "List Reports (Paginated & Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8890/v1/ingestion/reports?page=0&size=20&sortBy=createdAt&sortDirection=DESC",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8890",
+              "path": [
+                "v1",
+                "ingestion",
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Número de página"
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": "Tamaño de página"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt",
+                  "description": "Campo: id, status, createdAt, etc."
+                },
+                {
+                  "key": "sortDirection",
+                  "value": "DESC",
+                  "description": "ASC o DESC"
+                },
+                {
+                  "key": "status",
+                  "value": "COMPLETED",
+                  "description": "Filtrar por estado",
+                  "disabled": true
+                },
+                {
+                  "key": "inventoryId",
+                  "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b",
+                  "disabled": true
+                },
+                {
+                  "key": "createdFrom",
+                  "value": "2024-01-01T00:00:00Z",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Report By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8890/v1/ingestion/reports/:ingestionReportId",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8890",
+              "path": [
+                "v1",
+                "ingestion",
+                "reports",
+                ":ingestionReportId"
+              ],
+              "variable": [
+                {
+                  "key": "ingestionReportId",
+                  "value": "43427b33-ff59-484b-8e9b-f69cccb9342f"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Promote draft offers",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8890/v1/ingestion/promote/:ingestionReportId",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8890",
+              "path": [
+                "v1",
+                "ingestion",
+                "promote",
+                ":ingestionReportId"
+              ],
+              "variable": [
+                {
+                  "key": "ingestionReportId",
+                  "value": "d895e0d6-89cb-45ae-93d8-a2473cb0213c"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete draft offers",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8890/v1/ingestion/draft/:ingestionReportId",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8890",
+              "path": [
+                "v1",
+                "ingestion",
+                "draft",
+                ":ingestionReportId"
+              ],
+              "variable": [
+                {
+                  "key": "ingestionReportId",
+                  "value": "5f781312-6d5b-4e60-9646-c69bd7140447"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{AccessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8890"
+    },
+    {
+      "key": "inventoryId",
+      "value": "856b7d9a-cabd-4e86-aaca-b7a9641a9d0b"
+    },
+    {
+      "key": "AccessToken",
+      "value": "tu-token-aqui"
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 plugins {
     id 'org.springframework.boot'
-}
+    id 'com.google.cloud.tools.jib' version '3.5.3'
+    }
 
 dependencies {
     // All infrastructure modules
@@ -16,6 +17,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     
     // Spring Batch
     implementation "org.springframework.batch:spring-batch-core:${springBatchVersion}"
@@ -29,12 +32,22 @@ dependencies {
     // PostgreSQL
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly "org.postgresql:postgresql:${postgresqlVersion}"
+
+    //Liquibase
+    implementation "org.liquibase:liquibase-core:4.23.1"
+    implementation "org.liquibase.ext:liquibase-mongodb:4.23.1"
     
     // Monitoring and Observability
     implementation 'io.micrometer:micrometer-registry-prometheus'
     
     // Logging
     implementation 'net.logstash.logback:logstash-logback-encoder:8.0'
+
+    //Shedlock
+    implementation 'net.javacrumbs.shedlock:shedlock-spring:5.10.0'
+    implementation 'net.javacrumbs.shedlock:shedlock-provider-jdbc-template:5.10.0'
+
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
     
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -54,4 +67,37 @@ tasks.named('bootJar') {
 
 tasks.named('test') {
     maxHeapSize = '1G'
+}
+
+jib {
+
+    //dependsOn 'updateVersion', 'build'
+    // updated by incrementVersion
+    def imageVersion = getVersionFromFile()
+
+    //println "Version for image ${imageVersion}"
+
+    // This is usually set in the deploy.sh script.
+    def ENV_VAR = System.getenv('ENV')
+
+    from {
+        // See https://mcr.microsoft.com/en-us/artifact/mar/openjdk/jdk/tags
+        image = 'mcr.microsoft.com/openjdk/jdk:21-distroless@sha256:ed2544cbbf0fd6476c1c4d158c570f1a0606a67f85a439ffddfad6d6b3f72084'
+    }
+    to {
+        image = 'liquidcars.azurecr.io/liquidcars/' + ENV_VAR + '/ingestion'
+        // tags = ['latest', imageVersion]
+        project.gradle.projectsEvaluated {
+            tags = [imageVersion]
+            }
+        auth {
+            // from .env or from CI/CD pipeline
+            username = "$System.env.ACR_CREDENTIALS_USR"
+            password = "$System.env.ACR_CREDENTIALS_PWD"
+        }
+    }
+    container {
+        //jvmFlags = ['-Xms512m', '-Xmx512m']
+        //mainClass = 'net.liquidcars.ingestion.IngestionApiApplication'
+    }
 }

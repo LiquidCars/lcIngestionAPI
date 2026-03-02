@@ -10,8 +10,8 @@ CURRENT_DIR=$(pwd)
 PARENT_DIR=$(dirname "$CURRENT_DIR")
 PROJECT_ROOT_DOCKER_FILE="$PARENT_DIR/dockerfiles"
 PROJECT_ROOT="$PARENT_DIR/.."
-IMAGE_NAME="lcapi-service-app"
-IMAGE_NAME_RUN="lcapi-service-app-running"
+IMAGE_NAME="lcingestionapi-service-app"
+IMAGE_NAME_RUN="lcingestionapi-service-app-running"
 
 # Step 1: Build the Docker image
 echo "Building Docker image..."

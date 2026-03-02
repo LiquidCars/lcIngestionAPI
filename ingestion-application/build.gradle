@@ -3,8 +3,7 @@ dependencies {
     implementation project(':ingestion-domain')
     
     // Spring Context for dependency injection
-    implementation 'org.springframework:spring-context'
-    implementation 'org.springframework:spring-tx'
+    implementation 'org.springframework.boot:spring-boot-starter'
     
     // Spring Batch for batch processing
     implementation "org.springframework.batch:spring-batch-core:${springBatchVersion}"
@@ -20,8 +19,16 @@ dependencies {
     // MapStruct
     implementation "org.mapstruct:mapstruct:${mapstructVersion}"
     annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+
+    //Shedlock
+    implementation 'net.javacrumbs.shedlock:shedlock-spring:5.10.0'
+    implementation 'net.javacrumbs.shedlock:shedlock-provider-jdbc-template:5.10.0'
     
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation "org.springframework.batch:spring-batch-test:${springBatchVersion}"
+    testImplementation "org.testcontainers:junit-jupiter:${testcontainersVersion}"
+    testImplementation project(':ingestion-factory-data-test')
+
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 }

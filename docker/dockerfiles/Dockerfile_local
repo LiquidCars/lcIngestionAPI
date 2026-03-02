@@ -10,10 +10,10 @@ RUN apk update && apk upgrade
 RUN apk add --no-cache curl bash
 
 EXPOSE 8890
-EXPOSE 5005
+EXPOSE 5006
 
-COPY ./../../build/libs/lcAPI*.jar /app/lcAPI.jar
-COPY ./../../src/main/resources/ /app/resources/
+COPY ./../../ingestion-boot/build/libs/ingestion-api*.jar /app/lcIngestionAPI.jar
+COPY ./../../ingestion-boot/src/main/resources/ /app/resources/
 
 USER java_app
-ENTRYPOINT ["java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "-jar", "/app/lcIngestionAPI.jar", "--spring.config.additional-location=file:/app/resources/"]
+ENTRYPOINT ["java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5006", "-jar", "/app/lcIngestionAPI.jar", "--spring.config.additional-location=file:/app/resources/"]

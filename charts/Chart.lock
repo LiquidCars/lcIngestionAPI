@@ -1,0 +1,9 @@
+dependencies:
+- name: strimzi-kafka-operator
+  repository: https://strimzi.io/charts/
+  version: 0.50.1
+- name: community-operator
+  repository: https://mongodb.github.io/helm-charts
+  version: 0.13.0
+digest: sha256:62d7e6bef86f82bb01b6b778eaa46d77bddf41bc842aec4a6312fba97e03ff62
+generated: "2026-02-23T14:24:32.72266488+01:00"

@@ -1,0 +1,40 @@
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: {{ .Release.Name }}-kafka
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:
+  kafka:
+    version: 3.7.0
+    metadataVersion: 3.7-IV4
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+  entityOperator:
+    topicOperator:
+      resources:
+        requests:
+          memory: {{ .Values.kafka.entityOperator.resources.requests.memory }}
+          cpu: {{ .Values.kafka.entityOperator.resources.requests.cpu }}
+        limits:
+          memory: {{ .Values.kafka.entityOperator.resources.limits.memory }}
+          cpu: {{ .Values.kafka.entityOperator.resources.limits.cpu }}
+    userOperator:
+      resources:
+        requests:
+          memory: {{ .Values.kafka.entityOperator.resources.requests.memory }}
+          cpu: {{ .Values.kafka.entityOperator.resources.requests.cpu }}
+        limits:
+          memory: {{ .Values.kafka.entityOperator.resources.limits.memory }}
+          cpu: {{ .Values.kafka.entityOperator.resources.limits.cpu }}

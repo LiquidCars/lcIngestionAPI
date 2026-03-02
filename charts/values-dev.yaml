@@ -1,0 +1,19 @@
+image:
+  repository: liquidcars.azurecr.io/liquidcars/dev/ingestion
+  pullPolicy: "Always"
+
+configData:
+  SPRING_DATASOURCE_URL: jdbc:postgresql://db-lc-dev-eu.postgres.database.azure.com:5432/liquidcars-dev?sslmode=require
+  SPRING_PROFILES_ACTIVE: "DEV"
+  DUMMY_DEV_ENV_MODE: "Y"
+  SPRING_RABBITMQ_HOST: shared-rmq.rabbitmq-system.svc.cluster.local
+  SPRING_RABBITMQ_VIRTUAL_HOST: "/liquidcars-dev"
+# kg secret -n rabbitmq-system user-liquidcar-dev-user-credentials -o yaml
+# TODO:  user-liquidcar-dev, fix permissions
+  SPRING_RABBITMQ_USERNAME: default_user_75bypzf15tXzx4368Cg
+  SPRING_RABBITMQ_PASSWORD: n0aCgqAyKRvjj7HcWr57oZcYGV-FxVJS
+  PASSWORD_RECOVERY_ALLOWED_DOMAINS: admin-dev.liquidcars.net,landing.liquidcars.net
+  PASSWORD_RECOVERY_DEFAULT: admin-dev.liquidcars.net/password-reset
+  LANDING_USER_ONBOARDING_DEFAULT: landing-dev.liquidcars.net/password-reset
+
+

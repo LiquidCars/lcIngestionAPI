@@ -1,3 +1,9 @@
+import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
+
+plugins {
+    id 'org.openapi.generator' version '7.5.0'
+}
+
 dependencies {
     implementation project(':ingestion-domain')
     implementation project(':ingestion-application')
@@ -15,7 +21,8 @@ dependencies {
     // Jackson
     implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-xml:${jacksonVersion}"
-    
+    implementation "org.openapitools:jackson-databind-nullable:0.2.6"
+
     // MapStruct
     implementation "org.mapstruct:mapstruct:${mapstructVersion}"
     annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
@@ -23,4 +30,62 @@ dependencies {
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'io.rest-assured:rest-assured:5.5.0'
+    testImplementation project(':ingestion-boot')
+    testImplementation project(':ingestion-factory-data-test')
+    testImplementation 'org.springframework.security:spring-security-test'
+}
+
+sourceSets {
+    main {
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+        java {
+            //EXTERNAL API
+            srcDir(layout.buildDirectory.dir("generated/openapi/ingestion/src/main/java"))
+        }
+    }
+}
+
+tasks.register('openApiIngestion', GenerateTask) {
+    generatorName = "spring"
+    inputSpec = "$projectDir/src/main/resources/api/ingestion-api.yml"
+    outputDir = layout.buildDirectory
+            .dir("generated/openapi/ingestion")
+            .get()
+            .asFile
+            .absolutePath
+    apiPackage = "net.liquidcars.ingestion.infra.input.rest"
+    modelPackage = "net.liquidcars.ingestion.infra.input.rest.model"
+    invokerPackage = "net.liquidcars.ingestion.infra.input.rest.invoker"
+
+    generateApiTests = false
+    generateModelTests = false
+    additionalProperties = [
+            dateLibrary  : "java8",
+            useTags      : "true",
+            interfaceOnly: "true",
+            useJakartaEe : "true",
+            java8LocalDateTime: "true",
+            skipFormModel      : "true",
+            useSpringBoot3    : "true",
+            modelNameSuffix   : "",
+            enumNameSuffix    : ""
+    ]
+    typeMappings = [
+            DateTime: "java.time.OffsetDateTime"
+    ]
+    schemaMappings = [
+            IngestionFormat: "net.liquidcars.ingestion.domain.model.batch.IngestionFormat",
+            IngestionDumpType: "net.liquidcars.ingestion.domain.model.batch.IngestionDumpType",
+            IngestionProcessType: "net.liquidcars.ingestion.domain.model.batch.IngestionProcessType",
+            IngestionBatchStatus: "net.liquidcars.ingestion.domain.model.batch.IngestionBatchStatus",
+            IngestionReportSortField: "net.liquidcars.ingestion.domain.model.batch.IngestionReportSortField",
+            SortDirection: "net.liquidcars.ingestion.domain.model.SortDirection",
+            LCIngestionExceptionApiResponse: "net.liquidcars.ingestion.infra.input.rest.model.LCIngestionExceptionApiResponse"
+    ]
+}
+
+tasks.named("compileJava") {
+    dependsOn tasks.named("openApiIngestion")
 }

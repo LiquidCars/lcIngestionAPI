@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.23.xsd
+        http://www.liquibase.org/xml/ns/dbchangelog-ext
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <changeSet id="1-create-vehicleoffersdraft-collection" author="liquidcars">
+        <ext:createCollection collectionName="vehicleoffers_ingestion_draft"/>
+    </changeSet>
+    <changeSet id="2-create-vehicleoffers-collection" author="liquidcars">
+        <ext:createCollection collectionName="vehicleoffers"/>
+    </changeSet>
+    <changeSet id="3-create-indices-draft" author="liquidcars">
+        <ext:createIndex collectionName="vehicleoffers_ingestion_draft">
+            <ext:keys>{hash: 1}</ext:keys>
+            <ext:options>{unique: true, name: "ui_draft_hash"}</ext:options>
+        </ext:createIndex>
+    </changeSet>
+
+    <changeSet id="4-create-indices-production" author="liquidcars">
+        <ext:createIndex collectionName="vehicleoffers">
+            <ext:keys>{hash: 1, inventory_id: 1}</ext:keys>
+            <ext:options>{unique: true, name: "ui_prod_inventory_hash"}</ext:options>
+        </ext:createIndex>
+    </changeSet>
+</databaseChangeLog>

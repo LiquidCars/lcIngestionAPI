@@ -1,14 +1,10 @@
 dependencies {
     implementation project(':ingestion-domain')
-    
-    // Test Data Factories
-    implementation 'net.datafaker:datafaker:2.4.2'
-    
-    // Jackson for test data generation
-    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
-    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-xml:${jacksonVersion}"
-    
-    // Testing frameworks
-    implementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
-    implementation "org.assertj:assertj-core:${assertjVersion}"
+    implementation project(':ingestion-application')
+    implementation project(':ingestion-infra-postgresql')
+    implementation project(':ingestion-infra-mongodb')
+    implementation project(':ingestion-infra-input-rest')
+    implementation project(':ingestion-infra-output-kafka')
+    implementation('org.instancio:instancio-junit:4.0.0')
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 }

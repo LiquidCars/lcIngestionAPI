@@ -44,14 +44,14 @@ This guide explains how to run the different scripts to build, run, and manage t
 ## 3. Run Full lcIngestionApi Docker Setup
 
 - **Windows:**  
-  Run `run_lcIngestionApi_full.bat` to start the full lcIngestionApi Docker environment, including all required services.
+  Run `run_lcIngestionApi_full.bat` to start the full lcIngestionApi Docker environment, including all required services and application.
 
   ```bat
   run_lcIngestionApi_full.bat
   ```
 
 - **Linux/macOS:**  
-  Run `run_lcIngestionApi_full.sh` to start the full lcIngestionApi Docker environment, including all required services.
+  Run `run_lcIngestionApi_full.sh` to start the full lcIngestionApi Docker environment, including all required services and application.
 
   ```bash
   ./run_lcIngestionApi_full.sh
@@ -59,21 +59,13 @@ This guide explains how to run the different scripts to build, run, and manage t
 
 ---
 
-## 4. Run Keycloak
+## 4. Run Full lcIngestionApi with compiling, images and run Services (if applicable)
 
 - **Windows:**  
-  Run `run_keycloak.bat` to start the Keycloak server.
-
-  ```bat
-  run_keycloak.bat
-  ```
+  - `run_lcIngestionApi_Docker.bat` — Compile, image generation and runs liquidcars ingestion service db
 
 - **Linux/macOS:**  
-  Run `run_keycloak.sh` to start the Keycloak server.
-
-  ```bash
-  ./run_keycloak.sh
-  ```
+  - `run_lcIngestionApi_Docker.sh` — Compile, image generation and runs liquidcars ingestion service db
 
 ---
 
@@ -95,21 +87,9 @@ This guide explains how to run the different scripts to build, run, and manage t
 
 ---
 
-## 6. Run Liquidcars Services (if applicable)
-
-- **Windows:**  
-  - `run_liquidcars.bat` — Runs liquidcars service db and rabbit
-  - `run_liquidcars_full.bat` — Runs full liquidcars environment complete db, rabbit, redis and keycloak for local setup and debug with local server
-
-- **Linux/macOS:**  
-  - `run_liquidcars.sh` — Runs liquidcars service  db and rabbit
-  - `run_liquidcars_full.sh` — Runs full liquidcars environment complete db, rabbit, redis and keycloak for local setup and debug with local server
-
----
-
 ## Notes
 
-- If you like to run lcIngestionApi independent in your code editor and you wants to connect to keycloak, you should have to have an entry in your hosts file of your OS like this 127.0.0.1 keycloak.
+- If you like to run lcIngestionApi independent in your code editor and you wants to connect to keycloak, you should have to have an entry in your hosts file of your OS like this 127.0.0.1 keycloak. Also is advisable add mongodb to host.
 
 - Make sure all `.sh` scripts have execution permission on Linux/macOS:
 

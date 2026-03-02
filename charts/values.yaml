@@ -1,0 +1,241 @@
+replicaCount: 1
+
+image:
+  repository: liquidcars.azurecr.io/liquidcars/dev/ingestion
+  pullPolicy: "IfNotPresent"
+  # deploy.sh changes this with an override: --set image.tag=1.2.3
+  tag: "0.0.3"
+
+# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecret:
+  create: true
+  # the name of the registry secret will be generated. See image-pull-secret.yaml
+  # Only used when create=true and secret does not already exist in the namespace:
+  registry: liquidcars.azurecr.io
+  username: liquidcars # acr-username-or-spn-id
+  password: 'wpXdKUJPs5HCbYe0NaZPUxrKSgIT0ZGlEIru4FzSUB+ACRAQBSFR'  #acr-password-or-spn-secret
+  email: "devops@liquidcars.com"
+
+
+configData:
+  SPRING_PROFILES_ACTIVE: DEV
+  # Mapeo de variables del .env a Spring Boot
+  SERVER_PORT: "8890"
+  APP_SERVER_PORT: "8890"
+  LIQUIBASE_MONGO_URL: mongodb://mongodb:27017/ingestion_service?authSource=admin
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "{{ .Release.Name }}-kafka-kafka-bootstrap:9092"
+  SPRING_DATA_MONGODB_URI: "mongodb://myuser:mypassword@{{ .Release.Name }}-mongodb-svc:27017/ingestion_service?replicaSet=mongodb&authSource=admin"
+  ##SPRING_DATA_MONGODB_URI: mongodb://ingestion_service:mongo@mongodb:27017/ingestion_service?authSource=admin
+  ##KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+  KEYCLOAK_ISSUER: "https://auth-dev.liquidcars.net/realms/"
+  CORS_ALLOWED_ORIGINS: "*"
+  OFFERS_TEST_URL: http://localhost:8083/offers.json
+  SECURITY_MAX_BATCH_SIZE: 10MB
+  # Postgresql
+  SPRING_DATASOURCE_URL: jdbc:postgresql://db-lc-dev-eu.postgres.database.azure.com:5432/liquidcars-dev?sslmode=require
+  SPRING_DATASOURCE_USERNAME: postgreslc
+  SPRING_DATASOURCE_PASSWORD: a147b060-Fe68-446B-a27b-db4c0079fca9
+  # RabbitMQ
+  SPRING_RABBITMQ_HOST: shared-rmq.rabbitmq-system.svc.cluster.local
+  SPRING_RABBITMQ_USERNAME: default_user_75bypzf15tXzx4368Cg
+  SPRING_RABBITMQ_PASSWORD: n0aCgqAyKRvjj7HcWr57oZcYGV-FxVJS
+  SPRING_RABBITMQ_VIRTUAL_HOST: /liquidcars-dev
+
+# Kafka (Strimzi)
+kafka:
+  replicas: 1
+  storage:
+    size: 8Gi
+    storageClass: "managed-csi"
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  entityOperator:
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
+
+# MongoDB (Community Operator)
+mongodb:
+  replicas: 1
+  version: "7.0.4"
+  auth:
+    username: myuser
+    password: mypassword    # use Azure Key Vault in production
+    database: mydb
+  storage:
+    size: 8Gi
+    storageClass: "managed-csi"
+  # Reduce memory requirements on dev
+  statefulSet:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: mongod
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "500m"
+  additionalMongodConfig:
+    storage.wiredTiger.engineConfig.cacheSizeGB: 0.25
+
+
+tls:
+  # Let tls-secrets.yaml generate the name.
+  # secretName: liquidcars-tls-secret
+  servercrt: |
+    -----BEGIN CERTIFICATE-----
+    MIIGIjCCBQqgAwIBAgIRANftQi6hRC+L2RSeniUCenAwDQYJKoZIhvcNAQELBQAw
+    TDELMAkGA1UEBhMCTFYxDTALBgNVBAcTBFJpZ2ExETAPBgNVBAoTCEdvR2V0U1NM
+    MRswGQYDVQQDExJHb0dldFNTTCBSU0EgRFYgQ0EwHhcNMjUwNzA5MDAwMDAwWhcN
+    MjYwODA5MjM1OTU5WjAbMRkwFwYDVQQDDBAqLmxpcXVpZGNhcnMubmV0MIIBIjAN
+    BgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvXuOxY8d1SA7hmcR4cyDxTX78W5X
+    tkY4QJWGy7Y3H35w/zLirnPlRdkKHRssUc63jfHKbiBlsmti0QM/eYo6T4Yb5GiV
+    3Y43eQp7XsyHahp3TMGfpFJVLRyHmF22T1On995zsxGNZD2oIrlNsBlvYnNpAQSC
+    2AsvcGS3EEFb5FLnaFfOzG8pnsqt6ry+y4gFioa0olhAChF/dDdF/g0OnkG1rmG2
+    xBw08ypS5/vBfZCNLnpG1m4b1TREsH2i/TkI7/EckR/Gg9J1zglyFOq4CwAlFZm/
+    bI5tlyb2kuuSse46qXFaTKCddfARu/Ml1Ia5sFccjdwRmwRwwN+mwpuFIQIDAQAB
+    o4IDLjCCAyowHwYDVR0jBBgwFoAU+ftQxItnu2dk/oMhpqnOP1WEk5kwHQYDVR0O
+    BBYEFBgl+FdKE4+wONVjJC0UJXtSYLXiMA4GA1UdDwEB/wQEAwIFoDAMBgNVHRMB
+    Af8EAjAAMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjBLBgNVHSAERDBC
+    MDYGCysGAQQBsjEBAgJAMCcwJQYIKwYBBQUHAgEWGWh0dHBzOi8vY3BzLnVzZXJ0
+    cnVzdC5jb20wCAYGZ4EMAQIBMD0GA1UdHwQ2MDQwMqAwoC6GLGh0dHA6Ly9jcmwu
+    dXNlcnRydXN0LmNvbS9Hb0dldFNTTFJTQURWQ0EuY3JsMG8GCCsGAQUFBwEBBGMw
+    YTA4BggrBgEFBQcwAoYsaHR0cDovL2NydC51c2VydHJ1c3QuY29tL0dvR2V0U1NM
+    UlNBRFZDQS5jcnQwJQYIKwYBBQUHMAGGGWh0dHA6Ly9vY3NwLnVzZXJ0cnVzdC5j
+    b20wKwYDVR0RBCQwIoIQKi5saXF1aWRjYXJzLm5ldIIObGlxdWlkY2Fycy5uZXQw
+    ggF/BgorBgEEAdZ5AgQCBIIBbwSCAWsBaQB3ANgJVTuUT3r/yBYZb5RPhauw+Pxe
+    h1UmDxXRLnK7RUsUAAABl+5PbpsAAAQDAEgwRgIhAPT9j9vKfDiNd23Rn61M/a5b
+    GXVDDZKU1tPglVB8C34dAiEA7cwQm/xNH/5ZynB+dqdozsrC/L7cx+PN6CZSG2f7
+    7XcAdwCsqzBwbOvshDH0E9L0kV8RHkIkQ7HypoxPPCs7px4CwwAAAZfuT250AAAE
+    AwBIMEYCIQDgdG76+JqnvjnewGjVz8j1+xxYYI1SPzcYenb3ihDAaQIhAPlCvZ8Z
+    hJ3Gw7SmXq9XZMRlc0Shs7Owce9QpsJ2wJwHAHUA1219ENGn9XfCx+lf1wC/+YLJ
+    M1pl4dCzAXMXwMjFaXcAAAGX7k9ubwAABAMARjBEAiB8OL5eQU6wq3pZY/dJK11f
+    IJnIO6bNBJV8tUCnkJMbLwIgD0ZPVjyAsdZRirwzStl20CPetU2bdGMqDAr2VfEZ
+    VBkwDQYJKoZIhvcNAQELBQADggEBAHewl5Pii1Ch+nN7zUSxa78EnMhxUhrO3wsx
+    j1cgdNMa45+6LK9DjXxYGYIukNsd9Na4beZNLa2wQ0pQXrgQBKblXXhZBjeJJOQX
+    xrP8uEYvGmwAbE8eM8Hfw47kPEAPAPpQtmQdtjX0KbMX/nWnOCyc+XpXBNrRsgZ1
+    b1q0iSfHNAU3vZDw50Rw3ObbEsMKXXLThlf4e920W+17lnXXGxG2yAxptXWCdGSF
+    crkl5iepsBLhyGDdccCdjKfcVKAYvW+3ao7NX0URHJ/fNku/QBZMjv4WFnYzcIA4
+    o27djIBY+4yN10Fdl2MtTA26Jaap5+zUrahKngOZdsJt5dDZKD4=
+    -----END CERTIFICATE-----
+    -----BEGIN CERTIFICATE-----
+    MIIF1zCCA7+gAwIBAgIRAJOLsI5imHtPdfmMtqUEXJYwDQYJKoZIhvcNAQEMBQAw
+    gYgxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpOZXcgSmVyc2V5MRQwEgYDVQQHEwtK
+    ZXJzZXkgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMS4wLAYD
+    VQQDEyVVU0VSVHJ1c3QgUlNBIENlcnRpZmljYXRpb24gQXV0aG9yaXR5MB4XDTE4
+    MDkwNjAwMDAwMFoXDTI4MDkwNTIzNTk1OVowTDELMAkGA1UEBhMCTFYxDTALBgNV
+    BAcTBFJpZ2ExETAPBgNVBAoTCEdvR2V0U1NMMRswGQYDVQQDExJHb0dldFNTTCBS
+    U0EgRFYgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCfwF4hD6E1
+    kLglXs1n2fH5vMQukCGyyD4LqLsc3pSzeh8we7njU4TB85BH5YXqcfwiH1Sf78aB
+    hk1FgXoAZ3EQrF49We8mnTtTPFRnMwEHLJRpY9I/+peKeAZNL0MJG5zM+9gmcSpI
+    OTI6p7MPela72g0pBQjwcExYLqFFVsnroEPTRRlmfTBTRi9r7rYcXwIct2VUCRmj
+    jR1GX13op370YjYwgGv/TeYqUWkNiEjWNskFDEfxSc0YfoBwwKdPNfp6t/5+RsFn
+    lgQKstmFLQbbENsdUEpzWEvZUpDC4qPvRrxEKcF0uLoZhEnxhskwXSTC64BNtc+l
+    VEk7/g/be8svAgMBAAGjggF1MIIBcTAfBgNVHSMEGDAWgBRTeb9aqitKz1SA4dib
+    wJ3ysgNmyzAdBgNVHQ4EFgQU+ftQxItnu2dk/oMhpqnOP1WEk5kwDgYDVR0PAQH/
+    BAQDAgGGMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0lBBYwFAYIKwYBBQUHAwEG
+    CCsGAQUFBwMCMCIGA1UdIAQbMBkwDQYLKwYBBAGyMQECAkAwCAYGZ4EMAQIBMFAG
+    A1UdHwRJMEcwRaBDoEGGP2h0dHA6Ly9jcmwudXNlcnRydXN0LmNvbS9VU0VSVHJ1
+    c3RSU0FDZXJ0aWZpY2F0aW9uQXV0aG9yaXR5LmNybDB2BggrBgEFBQcBAQRqMGgw
+    PwYIKwYBBQUHMAKGM2h0dHA6Ly9jcnQudXNlcnRydXN0LmNvbS9VU0VSVHJ1c3RS
+    U0FBZGRUcnVzdENBLmNydDAlBggrBgEFBQcwAYYZaHR0cDovL29jc3AudXNlcnRy
+    dXN0LmNvbTANBgkqhkiG9w0BAQwFAAOCAgEAXXRDKHiA5DOhNKsztwayc8qtlK4q
+    Vt2XNdlzXn4RyZIsC9+SBi0Xd4vGDhFx6XX4N/fnxlUjdzNN/BYY1gS1xK66Uy3p
+    rw9qI8X12J4er9lNNhrsvOcjB8CT8FyvFu94j3Bs427uxcSukhYbERBAIN7MpWKl
+    VWxT3q8GIqiEYVKa/tfWAvnOMDDSKgRwMUtggr/IE77hekQm20p7e1BuJODf1Q7c
+    FPt7T74m3chg+qu0xheLI6HsUFuOxc7R5SQlkFvaVY5tmswfWpY+rwhyJW+FWNbT
+    uNXkxR4v5KOQPWrY100/QN68/j17paKuSXNcsr56snuB/Dx+MACLBdsF35HxPadx
+    78vkfQ37WcVmKZtHrHJQ/QUyjxdG8fezMsh0f+puUln/O+NlsFtipve8qYa9h/K5
+    yD0oZN93ChWve78XrV4vCpjO75Nk5B8O9CWQqGTHbhkgvjyb9v/B+sYJqB22/NLl
+    R4RPvbmqDJGeEI+4u6NJ5YiLIVVsX+dyfFP8zUbSsj6J34RyCYKBbQ4L+r7k8Srs
+    LY51WUFP292wkFDPSDmV7XsUNTDOZoQcBh2Fycf7xFfxeA+6ERx2d8MpPPND7yS2
+    1dkf+SY5SdpSbAKtYmbqb9q8cZUDEImNWJFUVHBLDOrnYhGwJudE3OBXRTxNhMDm
+    IXnjEeWrFvAZQhk=
+    -----END CERTIFICATE-----
+  serverkey: |
+    -----BEGIN PRIVATE KEY-----
+    MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC9e47Fjx3VIDuG
+    ZxHhzIPFNfvxble2RjhAlYbLtjcffnD/MuKuc+VF2QodGyxRzreN8cpuIGWya2LR
+    Az95ijpPhhvkaJXdjjd5CntezIdqGndMwZ+kUlUtHIeYXbZPU6f33nOzEY1kPagi
+    uU2wGW9ic2kBBILYCy9wZLcQQVvkUudoV87Mbymeyq3qvL7LiAWKhrSiWEAKEX90
+    N0X+DQ6eQbWuYbbEHDTzKlLn+8F9kI0uekbWbhvVNESwfaL9OQjv8RyRH8aD0nXO
+    CXIU6rgLACUVmb9sjm2XJvaS65Kx7jqpcVpMoJ118BG78yXUhrmwVxyN3BGbBHDA
+    36bCm4UhAgMBAAECggEAB33doLuuWxwETnrqbuo2TDNSC/MoE6RbcAOZdJohPCUJ
+    1FqPh4SR4ZJEae8w8DvDRSD0tyhKbQ9S37Rdq5wGqdiXEg+n2+krZ0/ondBqCuIT
+    VR0TXJyxZ8Wzf2zhGuonVM+zn7Zcx+7/eVP97thVROgO6Zk4j9CCu9JiQd8brNTK
+    u4Gp4YyA5mzbZmUYP6Tm8dn67roQ1I7vBgovmz550/MvCHeWw9Yc7E3RCn+zFpEL
+    JZoHp2F6BlN8K8D/uesToaU2Tk1WZy/JZRkn88CWcLrIGunMBBaEnzSRam+yeU6B
+    v8b2hfcK53kOthtDtJwDm5MAyc32ZlPREhKZQFT/kwKBgQD7aNbP7FjyOgwH0BNQ
+    aCaC6CO6LgoHJInLBWwPOugNuk/fBPAd5IsAxlGLuDcUD2Vf04PAfk6eUy7QHnJn
+    jU3R6yM8l6OGZJDXRTIKFIX2zS7LYkAQwUaCU6jOE8ddPktEAs79CziGLzEjQxcl
+    9h0YefxrvG1aMa/RCiI3lRIZpwKBgQDA8UEiY26+Y/Y9UkCTpOKQRrXTHNIgmMFL
+    pP8NMSne0A1nlRzF9xOXKWXs2Lh736xy3HwwSMN8iha6i3DMMyDsOUwkfS8vUv2n
+    u+ofk2ZdsDxlosMW5R+SkjLtunU/ckFc4MFjzLh5sXvH17k5mGSir4BpcI2zvmgQ
+    ZyiY5MOz9wKBgQCRixvwuu6zLA+S5k6IGgNRfXpRah28DNcIhVcNahi0+csLXRx0
+    8b3W8Ph8XmTkZBVX6Gc5pOV2mslbCoVIlXEbuXhot5CfWNDRDuntE/yJ6DbS30of
+    aQScpjnvM1wTCuEfulCCBWDvrZpQw6I/A7/MT7Jl3Guh72nNJoSwkMgtuQKBgGpl
+    n/GCu5MqNKPkM9A3YOkG1UWx4v4uvokkV7HCpsBEIuA4DkHs2lTFc3uEl1dYJRTC
+    GYnW1lZbH+WG95DjsQgTILYOgnKqZU6WBamb8xs/EE9LziFWAG8nSAZoiDeQnhLF
+    rl+GiUQyZ3vwrifgrb444atDciDooyJIgM6veGxJAoGAX4a2Zdt0pBtVrxM1MCTh
+    0VPaBSdCa6MGWI/c2BLgBVcbpuqB9eNQPRMFrh+8gfMAln+AHkfTlyXEZqsvl835
+    RvEaxgAtYkHIxRX2hMPfMwPFxGlyWjQSLMEzZup54592BWnQVW8fIsiZdg7cCnrC
+    W2Qgt2tgsmVL1z0+9mImYpc=
+    -----END PRIVATE KEY-----
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+
+ingress:
+  enabled: false
+  className: nginx
+  hosts:
+    - host: api-dev.liquidcars.net
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: be-liquidcars-tls
+      hosts:
+        - api-dev.liquidcars.net
+
+serviceAccount:
+  create: true
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "500m"
+  limits:
+    memory: "1024Mi"
+    cpu: "800m"
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 80
+
+
+nodeSelector: { }
+
+tolerations: [ ]
+
+affinity: { }
+

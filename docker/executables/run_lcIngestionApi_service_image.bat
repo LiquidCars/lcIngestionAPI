@@ -10,8 +10,8 @@ set PROJECT_ROOT=%CD% ..\..
 popd
 
 set DOCKERFILE_PATH=%CURRENT_DIR%
-set IMAGE_NAME=lcapi-service-app
-set IMAGE_NAME_RUN=lcapi-service-app-running
+set IMAGE_NAME=lcingestionapi-service-app
+set IMAGE_NAME_RUN=lcingestionapirun    -service-app-running
 
 REM Step 1: Build the Docker image
 echo Building Docker image...
