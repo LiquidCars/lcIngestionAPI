@@ -299,13 +299,17 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     }
 
     private VehicleInstanceEntity ensureVehicleInstanceExists(VehicleInstanceDto dto) {
-        return vehicleInstanceRepository.findFirstByPlateIgnoreCaseAndChassisNumberIgnoreCase(dto.getPlate(), dto.getChassisNumber())
+        String plate = dto.getPlate();
+        String chassis = dto.getChassisNumber();
+        return vehicleInstanceRepository.findFirstByPlateIgnoreCaseAndChassisNumberIgnoreCase(plate, chassis)
                 .orElseGet(() -> {
-                    VehicleInstanceEntity model = mapper.toVehicleInstanceEntity(dto);
-                    long id = ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999_999L);
-                    model.setId(id);
-                    model.setEnabled(true); // Asegúrate de habilitarlo
-                    return vehicleInstanceRepository.save(model);
+                    log.info("Coche no encontrado, creando: {}", plate);
+                    VehicleInstanceEntity entity = mapper.toVehicleInstanceEntity(dto);
+                    entity.setPlate(plate);
+                    entity.setChassisNumber(chassis);
+                    entity.setId(ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L));
+                    entity.setEnabled(true);
+                    return vehicleInstanceRepository.saveAndFlush(entity);
                 });
     }
 
@@ -371,20 +375,15 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                                 ? existing.getLastUpdated() : existing.getCreatedAt();
 
                         if (incomingDate.isAfter(existingDate)) {
-                            Long existingVehicleInstanceId = existing.getVehicleInstance() != null
-                                    ? existing.getVehicleInstance().getId() : null;
-
                             mapper.updateEntityFromDto(offer, existing);
                             existing.setLastUpdated(incomingDate);
 
-                            // Restore the ID on the (possibly re-mapped) vehicleInstance
                             if (existing.getVehicleInstance() != null) {
-                                existing.getVehicleInstance().setVehicleModel(model);
-                                if (existingVehicleInstanceId != null) {
-                                    mapper.updateVehicleInstanceFromDto(offer.getVehicleInstance(), instance);
-                                    existing.setVehicleInstance(instance);
-                                }
+                                mapper.updateVehicleInstanceFromDto(offer.getVehicleInstance(), instance);
+                                instance.setVehicleModel(model);
+                                existing.setVehicleInstance(instance);
                             }
+
                             if (existing.getJsonCarOffer() != null) {
                                 existing.getJsonCarOffer().setTexto(
                                         objectMapper.convertValue(offer.getUICarOffer(), Map.class)
@@ -399,7 +398,9 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                     } else {
                         // Create logic - new offers are always inserted, even if a booking exists for a new ref
                         OfferEntity newEntity = mapper.toEntity(offer);
-                        newEntity.getVehicleInstance().setVehicleModel(model);
+                        mapper.updateVehicleInstanceFromDto(offer.getVehicleInstance(), instance);
+                        instance.setVehicleModel(model);
+                        newEntity.setVehicleInstance(instance);
                         if (newEntity.getVehicleInstance().getId() == null || newEntity.getVehicleInstance().getId() == 0) {
                             newEntity.getVehicleInstance().setId(
                                     ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L)
@@ -466,7 +467,8 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         Map<String, VehicleInstanceEntity> cache = new HashMap<>();
         for (OfferDto offer : offers) {
             VehicleInstanceDto dto = offer.getVehicleInstance();
-            String key = modelKeyInstance(dto);
+            String key = (dto.getPlate() + "|" + dto.getChassisNumber()).toLowerCase().trim();
+
             if (!cache.containsKey(key)) {
                 cache.put(key, ensureVehicleInstanceExists(dto));
             }
