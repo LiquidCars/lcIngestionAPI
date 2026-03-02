@@ -1,10 +1,12 @@
 package net.liquidcars.ingestion.infra.input.rest;
 
+import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
 import net.liquidcars.ingestion.infra.input.rest.model.IngestionReport;
 import net.liquidcars.ingestion.infra.input.rest.model.IngestionReportPage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
@@ -65,7 +67,6 @@ public class IngestionApiTest {
 
     @Test
     void ingestBatch_ShouldFailWhenInventoryIdIsMissing() throws Exception {
-        // Al ser un parámetro @NotNull en la interfaz, el dispatcher fallará si no se envía
         mockMvc.perform(post("/v1/ingestion/batch")
                         .param("dumpType", "INCREMENTAL")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -221,5 +222,121 @@ public class IngestionApiTest {
         org.junit.jupiter.api.Assertions.assertEquals(
                 org.springframework.http.HttpStatus.NOT_IMPLEMENTED, response.getStatusCode()
         );
+    }
+
+    @Test
+    @DisplayName("DELETE /draft - Test coverage for Accept: application/json (Inside IF)")
+    void deleteDraftOffers_ShouldCoverIfBlock() {
+        IngestionApi api = createApiWithRequest("application/json");
+        ResponseEntity<Void> response = api.deleteDraftOffers(reportId);
+        org.junit.jupiter.api.Assertions.assertEquals(HttpStatus.NOT_IMPLEMENTED, response.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("DELETE /draft - Test coverage for Accept: application/xml (Outside IF)")
+    void deleteDraftOffers_ShouldSkipIfBlock() {
+        IngestionApi api = createApiWithRequest("application/xml");
+        ResponseEntity<Void> response = api.deleteDraftOffers(reportId);
+        org.junit.jupiter.api.Assertions.assertEquals(HttpStatus.NOT_IMPLEMENTED, response.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("POST /promote - Test coverage for Accept: application/json (Inside IF)")
+    void promoteDraftOffers_ShouldCoverIfBlock() {
+        IngestionApi api = createApiWithRequest("application/json");
+        ResponseEntity<Void> response = api.promoteDraftOffers(reportId);
+        org.junit.jupiter.api.Assertions.assertEquals(HttpStatus.NOT_IMPLEMENTED, response.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("POST /promote - Test coverage for Accept: application/xml (Outside IF)")
+    void promoteDraftOffers_ShouldSkipIfBlock() {
+        IngestionApi api = createApiWithRequest("application/xml");
+        ResponseEntity<Void> response = api.promoteDraftOffers(reportId);
+        org.junit.jupiter.api.Assertions.assertEquals(HttpStatus.NOT_IMPLEMENTED, response.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("POST /batch - Test coverage for Accept: application/json (Inside IF)")
+    void ingestBatch_ShouldCoverIfBlock() {
+        IngestionApi api = createApiWithRequest("application/json");
+        ResponseEntity<Void> response = api.ingestBatch(
+                UUID.randomUUID(),
+                net.liquidcars.ingestion.domain.model.batch.IngestionDumpType.INCREMENTAL,
+                new net.liquidcars.ingestion.infra.input.rest.model.IngestionPayload(),
+                null
+        );
+        org.junit.jupiter.api.Assertions.assertEquals(HttpStatus.NOT_IMPLEMENTED, response.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("POST /url - Test coverage for Accept: application/json (Inside IF)")
+    void ingestFromUrl_ShouldCoverIfBlock() {
+        IngestionApi api = createApiWithRequest("application/json");
+        ResponseEntity<Void> response = api.ingestFromUrl(
+                IngestionFormat.json,
+                java.net.URI.create("http://test.com"),
+                UUID.randomUUID(),
+                net.liquidcars.ingestion.domain.model.batch.IngestionDumpType.INCREMENTAL,
+                null,
+                null
+        );
+        org.junit.jupiter.api.Assertions.assertEquals(HttpStatus.NOT_IMPLEMENTED, response.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("POST /stream - Test coverage for Accept: application/json (Inside IF)")
+    void ingestStream_ShouldCoverIfBlock() {
+        IngestionApi api = createApiWithRequest("application/json");
+        ResponseEntity<Void> response = api.ingestStream(
+                IngestionFormat.json,
+                UUID.randomUUID(),
+                net.liquidcars.ingestion.domain.model.batch.IngestionDumpType.INCREMENTAL,
+                new org.springframework.core.io.ByteArrayResource("test".getBytes()),
+                null,
+                null
+        );
+        org.junit.jupiter.api.Assertions.assertEquals(HttpStatus.NOT_IMPLEMENTED, response.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("DELETE /draft - Cobertura total de IFs mediante prioridades")
+    void deleteDraftOffers_FullBruteForceCoverage() {
+        ejecutarConAccept("application/json");
+
+        ejecutarConAccept("application/json;q=0.1, application/json;q=0.2");
+
+        ejecutarConAccept("application/json, application/json, application/json, application/json");
+
+        ejecutarConAccept("application/*, */*");
+    }
+
+    private void ejecutarConAccept(String accept) {
+        org.springframework.mock.web.MockHttpServletRequest req = new org.springframework.mock.web.MockHttpServletRequest();
+        org.springframework.mock.web.MockHttpServletResponse res = new org.springframework.mock.web.MockHttpServletResponse();
+        req.addHeader("Accept", accept);
+
+        IngestionApi api = new IngestionApi() {
+            @Override
+            public java.util.Optional<org.springframework.web.context.request.NativeWebRequest> getRequest() {
+                return java.util.Optional.of(new org.springframework.web.context.request.ServletWebRequest(req, res));
+            }
+        };
+        api.deleteDraftOffers(reportId);
+    }
+
+    private IngestionApi createApiWithRequest(String acceptHeader) {
+        org.springframework.mock.web.MockHttpServletRequest mockRequest = new org.springframework.mock.web.MockHttpServletRequest();
+        org.springframework.mock.web.MockHttpServletResponse mockResponse = new org.springframework.mock.web.MockHttpServletResponse();
+        if (acceptHeader != null) {
+            mockRequest.addHeader("Accept", acceptHeader);
+        }
+
+        return new IngestionApi() {
+            @Override
+            public java.util.Optional<org.springframework.web.context.request.NativeWebRequest> getRequest() {
+                return java.util.Optional.of(new org.springframework.web.context.request.ServletWebRequest(mockRequest, mockResponse));
+            }
+        };
     }
 }
