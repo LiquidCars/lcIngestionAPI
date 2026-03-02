@@ -1,10 +1,7 @@
 package net.liquidcars.ingestion.infra.postgresql;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.liquidcars.ingestion.domain.model.CarOfferResourceDto;
-import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.domain.model.VehicleInstanceDto;
-import net.liquidcars.ingestion.domain.model.VehicleModelDto;
+import net.liquidcars.ingestion.domain.model.*;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.factory.OfferDtoFactory;
@@ -38,6 +35,7 @@ class OfferInfraSQLServiceImplTest {
     @Mock private CarOfferResourceRepository carOfferResourceRepository;
     @Mock private ParticipantAddressEntityRepository participantAddressEntityRepository;
     @Mock private CarInstanceEquipmentEntityRepository carInstanceEquipmentEntityRepository;
+    @Mock private  VehicleInstanceRepository vehicleInstanceRepository;
     @Mock private OfferInfraSQLMapper mapper;
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -419,23 +417,18 @@ class OfferInfraSQLServiceImplTest {
     @Test
     @DisplayName("deleteOffersByInventoryIdExcludingIds: Cobertura del bloque catch y handleDeletionError")
     void deleteOffersByInventoryIdExcludingIds_Catch_Coverage() {
-        // GIVEN
         UUID inventoryId = UUID.randomUUID();
         List<UUID> idsToKeep = List.of(UUID.randomUUID());
 
-        // Forzamos que la primera llamada del bloque try lance una excepción
         doThrow(new RuntimeException("SQL Execution Error"))
                 .when(offerSqlRepository).deleteCarloanPreviewByInventoryExcluding(any(), any());
 
-        // WHEN & THEN
-        // Verificamos que se lanza la excepción de dominio envuelta por el handler
         org.assertj.core.api.Assertions.assertThatThrownBy(() ->
                         offerService.deleteOffersByInventoryIdExcludingIds(inventoryId, idsToKeep))
                 .isInstanceOf(LCIngestionException.class)
                 .hasFieldOrPropertyWithValue("techCause", LCTechCauseEnum.DATABASE)
                 .hasMessageContaining("Database error during offer deletion");
 
-        // Verificamos que el log de error en handleDeletionError fue invocado (opcional)
         verify(offerSqlRepository, times(1)).deleteCarloanPreviewByInventoryExcluding(any(), any());
     }
 
@@ -526,5 +519,457 @@ class OfferInfraSQLServiceImplTest {
 
         verify(offerSqlRepository).save(existingEntity);
         assertThat(existingEntity.getLastUpdated()).isEqualTo(incomingDate);
+    }
+
+    @Test
+    @DisplayName("findExternalRefsByOfferIds: Cobertura de flattening de referencias")
+    void findExternalRefsByOfferIds_Coverage() {
+        UUID id = UUID.randomUUID();
+        ExternalIdInfoProjection proj = mock(ExternalIdInfoProjection.class);
+        when(proj.getOwnerReference()).thenReturn("OWN");
+        when(proj.getDealerReference()).thenReturn("DLR");
+        when(proj.getChannelReference()).thenReturn(null);
+
+        when(offerSqlRepository.findExternalRefsByOfferIds(anyList())).thenReturn(List.of(proj));
+
+        Set<String> refs = offerService.findExternalRefsByOfferIds(List.of(id));
+
+        assertThat(refs).containsExactlyInAnyOrder("OWN", "DLR");
+    }
+
+    @Test
+    @DisplayName("deleteOffersByInventoryIdAndReferences: Cobertura de retorno temprano")
+    void deleteOffersByReferences_Empty_Coverage() {
+        long result = offerService.deleteOffersByInventoryIdAndReferences(UUID.randomUUID(), List.of());
+        assertThat(result).isZero();
+        verifyNoInteractions(offerSqlRepository);
+    }
+
+    @Test
+    @DisplayName("extractRef: Cobertura de casos null")
+    void extractRef_Null_Coverage() {
+        String result = (String) org.springframework.test.util.ReflectionTestUtils.invokeMethod(
+                offerService, "extractRef", (Object) null);
+        assertThat(result).isNull();
+    }
+
+    @Test
+    @DisplayName("processBatch: Should return empty list when offers list is empty")
+    void processBatch_EmptyOffers_ReturnsEmptyList() {
+        List<UUID> result = offerService.processBatch(List.of(), List.of());
+        assertThat(result).isEmpty();
+        verifyNoInteractions(offerSqlRepository);
+    }
+
+    @Test
+    @DisplayName("processBatch: Should insert new offer when no existing entity found")
+    void processBatch_NewOffer_ShouldInsert() {
+        OfferDto offer = OfferDtoFactory.getOfferDto();
+        offer.setInventoryId(inventoryId);
+
+        VehicleModelEntity model = new VehicleModelEntity();
+        VehicleInstanceEntity instance = new VehicleInstanceEntity();
+        instance.setId(100_000_001L);
+
+        when(vehicleModelRepository.findFirstByBrandIgnoreCaseAndModelIgnoreCaseAndVersionIgnoreCase(any(), any(), any()))
+                .thenReturn(Optional.of(model));
+        when(vehicleInstanceRepository.findFirstByPlateIgnoreCaseAndChassisNumberIgnoreCase(any(), any()))
+                .thenReturn(Optional.of(instance));
+
+        when(offerSqlRepository.findByInventoryIdAndOwnerRefs(eq(inventoryId), anyList()))
+                .thenReturn(List.of());
+
+        OfferEntity newEntity = new OfferEntity();
+        newEntity.setVehicleInstance(instance);
+        when(mapper.toEntity(any())).thenReturn(newEntity);
+        when(offerSqlRepository.saveAll(anyList())).thenReturn(List.of(newEntity));
+
+        List<UUID> result = offerService.processBatch(List.of(offer), List.of());
+
+        assertThat(result).contains(offer.getId());
+        verify(offerSqlRepository, atLeastOnce()).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("processBatch: Should update existing offer when incoming date is newer")
+    void processBatch_ExistingOffer_NewerDate_ShouldUpdate() {
+        OfferDto offer = OfferDtoFactory.getOfferDto();
+        offer.setInventoryId(inventoryId);
+
+        OffsetDateTime oldDate = OffsetDateTime.now().minusDays(1);
+        OffsetDateTime newDate = OffsetDateTime.now();
+
+        OfferEntity existing = new OfferEntity();
+        existing.setId(UUID.randomUUID());
+        existing.setCreatedAt(oldDate);
+        existing.setOwnerReference(offer.getExternalIdInfo().getOwnerReference());
+        existing.setDealerReference(offer.getExternalIdInfo().getDealerReference());
+        existing.setChannelReference(offer.getExternalIdInfo().getChannelReference());
+        VehicleInstanceEntity existingVehicle = new VehicleInstanceEntity();
+        existingVehicle.setId(555L);
+        existing.setVehicleInstance(existingVehicle);
+
+        VehicleModelEntity model = new VehicleModelEntity();
+        VehicleInstanceEntity instance = new VehicleInstanceEntity();
+        instance.setId(555L);
+
+        when(vehicleModelRepository.findFirstByBrandIgnoreCaseAndModelIgnoreCaseAndVersionIgnoreCase(any(), any(), any()))
+                .thenReturn(Optional.of(model));
+        when(vehicleInstanceRepository.findFirstByPlateIgnoreCaseAndChassisNumberIgnoreCase(any(), any()))
+                .thenReturn(Optional.of(instance));
+
+        when(offerSqlRepository.findByInventoryIdAndOwnerRefs(eq(inventoryId), anyList()))
+                .thenReturn(List.of(existing));
+
+        when(mapper.mapEpoch(anyLong())).thenReturn(newDate);
+        when(offerSqlRepository.saveAll(anyList())).thenReturn(List.of());
+
+        List<UUID> result = offerService.processBatch(List.of(offer), List.of());
+
+        assertThat(result).contains(existing.getId());
+        verify(mapper).updateEntityFromDto(eq(offer), eq(existing));
+    }
+
+    @Test
+    @DisplayName("processBatch: Should NOT update existing offer when incoming date is older")
+    void processBatch_ExistingOffer_OlderDate_ShouldSkipUpdate() {
+        OfferDto offer = OfferDtoFactory.getOfferDto();
+        offer.setInventoryId(inventoryId);
+
+        OffsetDateTime futureDate = OffsetDateTime.now().plusDays(1);
+        OffsetDateTime incomingDate = OffsetDateTime.now();
+
+        OfferEntity existing = new OfferEntity();
+        existing.setId(UUID.randomUUID());
+        existing.setCreatedAt(futureDate);
+        existing.setOwnerReference(offer.getExternalIdInfo().getOwnerReference());
+        existing.setDealerReference(offer.getExternalIdInfo().getDealerReference());
+        existing.setChannelReference(offer.getExternalIdInfo().getChannelReference());
+        existing.setVehicleInstance(new VehicleInstanceEntity());
+
+        VehicleModelEntity model = new VehicleModelEntity();
+        VehicleInstanceEntity instance = new VehicleInstanceEntity();
+        instance.setId(100_000_001L);
+
+        when(vehicleModelRepository.findFirstByBrandIgnoreCaseAndModelIgnoreCaseAndVersionIgnoreCase(any(), any(), any()))
+                .thenReturn(Optional.of(model));
+        when(vehicleInstanceRepository.findFirstByPlateIgnoreCaseAndChassisNumberIgnoreCase(any(), any()))
+                .thenReturn(Optional.of(instance));
+        when(offerSqlRepository.findByInventoryIdAndOwnerRefs(eq(inventoryId), anyList()))
+                .thenReturn(List.of(existing));
+        when(mapper.mapEpoch(anyLong())).thenReturn(incomingDate);
+        when(offerSqlRepository.saveAll(anyList())).thenReturn(List.of());
+
+        offerService.processBatch(List.of(offer), List.of());
+
+        verify(mapper, never()).updateEntityFromDto(any(), any());
+    }
+
+    @Test
+    @DisplayName("processBatch: Cobertura total de lambdas de caché y resolución de colisiones")
+    void processBatch_LambdasAndCollision_Coverage() {
+        KeyValueDto<String, String> safeKV = new KeyValueDto<>("KEY", "VALUE");
+        OfferDto offerDto = TestDataFactory.createOfferDto();
+
+        offerDto.setParticipantId(UUID.randomUUID());
+        offerDto.setLastUpdated(System.currentTimeMillis());
+        offerDto.setResources(List.of(TestDataFactory.createCarOfferResourceDto()));
+        offerDto.getVehicleInstance().setEquipments(List.of(new CarInstanceEquipmentDto()));
+
+        VehicleModelDto modelDto = offerDto.getVehicleInstance().getVehicleModel();
+        modelDto.setBodyType(safeKV);
+        modelDto.setChangeType(safeKV);
+        modelDto.setFuelType(safeKV);
+
+        OfferEntity mockedOfferEntity = new OfferEntity();
+        mockedOfferEntity.setId(UUID.randomUUID());
+        VehicleInstanceEntity mockedInstanceEntity = new VehicleInstanceEntity();
+        mockedInstanceEntity.setId(999L);
+        mockedOfferEntity.setVehicleInstance(mockedInstanceEntity);
+
+        OfferEntity existing1 = new OfferEntity();
+        existing1.setId(UUID.randomUUID());
+        existing1.setOwnerReference("REF");
+        existing1.setDealerReference("DLR");
+        existing1.setChannelReference("CH");
+        existing1.setCreatedAt(OffsetDateTime.now().minusDays(1));
+
+        OfferEntity existing2 = new OfferEntity();
+        existing2.setId(UUID.randomUUID());
+        existing2.setOwnerReference("REF");
+        existing2.setDealerReference("DLR");
+        existing2.setChannelReference("CH");
+
+        when(mapper.toEntity(any())).thenReturn(mockedOfferEntity);
+
+        lenient().when(mapper.toParticipantAddressEntity(any())).thenReturn(new ParticipantAddressEntity());
+        lenient().when(mapper.toCarInstanceEquipmentEntityList(any())).thenReturn(List.of(new CarInstanceEquipmentEntity()));
+
+        when(offerSqlRepository.findByInventoryIdAndOwnerRefs(any(), anyList()))
+                .thenReturn(List.of(existing1, existing2));
+
+        when(vehicleModelRepository.findFirstByBrandIgnoreCaseAndModelIgnoreCaseAndVersionIgnoreCase(any(), any(), any()))
+                .thenReturn(Optional.of(new VehicleModelEntity()));
+
+        when(vehicleInstanceRepository.findFirstByPlateIgnoreCaseAndChassisNumberIgnoreCase(any(), any()))
+                .thenReturn(Optional.of(mockedInstanceEntity));
+
+        when(offerSqlRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        offerService.processBatch(List.of(offerDto), List.of());
+
+        verify(offerSqlRepository, atLeastOnce()).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("processBatch: Should throw LCIngestionException when a fatal error occurs")
+    void processBatch_ShouldThrowException_WhenFatalError() {
+        OfferDto offer = OfferDtoFactory.getOfferDto();
+        offer.setInventoryId(inventoryId);
+
+        when(vehicleModelRepository.findFirstByBrandIgnoreCaseAndModelIgnoreCaseAndVersionIgnoreCase(any(), any(), any()))
+                .thenThrow(new RuntimeException("DB down"));
+
+        assertThatThrownBy(() -> offerService.processBatch(List.of(offer), List.of()))
+                .isInstanceOf(LCIngestionException.class)
+                .hasFieldOrPropertyWithValue("techCause", LCTechCauseEnum.DATABASE)
+                .hasMessageContaining("Error processing SQL batch");
+    }
+
+    @Test
+    @DisplayName("processBatch: Should update JSON offer if existing jsonCarOffer is not null")
+    void processBatch_ShouldUpdateJson_WhenJsonCarOfferExists() {
+        OfferDto offer = OfferDtoFactory.getOfferDto();
+        offer.setInventoryId(inventoryId);
+
+        OffsetDateTime oldDate = OffsetDateTime.now().minusDays(1);
+        OffsetDateTime newDate = OffsetDateTime.now();
+
+        JsonOfferEntity existingJson = new JsonOfferEntity();
+        OfferEntity existing = new OfferEntity();
+        existing.setId(UUID.randomUUID());
+        existing.setCreatedAt(oldDate);
+        existing.setOwnerReference(offer.getExternalIdInfo().getOwnerReference());
+        existing.setDealerReference(offer.getExternalIdInfo().getDealerReference());
+        existing.setChannelReference(offer.getExternalIdInfo().getChannelReference());
+        existing.setVehicleInstance(new VehicleInstanceEntity());
+        existing.setJsonCarOffer(existingJson);
+
+        VehicleInstanceEntity instance = new VehicleInstanceEntity();
+        instance.setId(100_000_001L);
+
+        when(vehicleModelRepository.findFirstByBrandIgnoreCaseAndModelIgnoreCaseAndVersionIgnoreCase(any(), any(), any()))
+                .thenReturn(Optional.of(new VehicleModelEntity()));
+        when(vehicleInstanceRepository.findFirstByPlateIgnoreCaseAndChassisNumberIgnoreCase(any(), any()))
+                .thenReturn(Optional.of(instance));
+        when(offerSqlRepository.findByInventoryIdAndOwnerRefs(eq(inventoryId), anyList()))
+                .thenReturn(List.of(existing));
+        when(mapper.mapEpoch(anyLong())).thenReturn(newDate);
+        when(offerSqlRepository.saveAll(anyList())).thenReturn(List.of());
+
+        Map<String, Object> jsonMap = Map.of("field", "value");
+        doReturn(jsonMap).when(objectMapper).convertValue(any(), eq(Map.class));
+
+        offerService.processBatch(List.of(offer), List.of());
+
+        assertThat(existingJson.getTexto()).isEqualTo(jsonMap);
+        assertThat(existingJson.getCreatedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("processBatch: New offer with null vehicleInstance ID should generate random ID")
+    void processBatch_NewOffer_ShouldGenerateRandomVehicleInstanceId() {
+        OfferDto offer = OfferDtoFactory.getOfferDto();
+        offer.setInventoryId(inventoryId);
+
+        VehicleInstanceEntity instance = new VehicleInstanceEntity();
+        instance.setId(null);
+
+        when(vehicleModelRepository.findFirstByBrandIgnoreCaseAndModelIgnoreCaseAndVersionIgnoreCase(any(), any(), any()))
+                .thenReturn(Optional.of(new VehicleModelEntity()));
+        when(vehicleInstanceRepository.findFirstByPlateIgnoreCaseAndChassisNumberIgnoreCase(any(), any()))
+                .thenReturn(Optional.of(instance));
+        when(offerSqlRepository.findByInventoryIdAndOwnerRefs(eq(inventoryId), anyList()))
+                .thenReturn(List.of());
+
+        OfferEntity newEntity = new OfferEntity();
+        newEntity.setVehicleInstance(instance);
+        when(mapper.toEntity(any())).thenReturn(newEntity);
+        when(offerSqlRepository.saveAll(anyList())).thenReturn(List.of(newEntity));
+
+        offerService.processBatch(List.of(offer), List.of());
+
+        assertThat(newEntity.getVehicleInstance().getId())
+                .isNotNull()
+                .isBetween(100_000_000L, 999_999_999L);
+    }
+
+    @Test
+    @DisplayName("ensureVehicleInstanceExists: Should return existing instance if found")
+    void ensureVehicleInstanceExists_Found_ShouldReturnExisting() {
+        OfferDto offer = OfferDtoFactory.getOfferDto();
+        offer.setInventoryId(inventoryId);
+
+        VehicleInstanceEntity existingInstance = new VehicleInstanceEntity();
+        existingInstance.setId(777L);
+
+        when(vehicleModelRepository.findFirstByBrandIgnoreCaseAndModelIgnoreCaseAndVersionIgnoreCase(any(), any(), any()))
+                .thenReturn(Optional.of(new VehicleModelEntity()));
+        when(vehicleInstanceRepository.findFirstByPlateIgnoreCaseAndChassisNumberIgnoreCase(any(), any()))
+                .thenReturn(Optional.of(existingInstance));
+        when(offerSqlRepository.findByInventoryIdAndOwnerRefs(any(), anyList())).thenReturn(List.of());
+
+        OfferEntity newEntity = new OfferEntity();
+        newEntity.setVehicleInstance(existingInstance);
+        when(mapper.toEntity(any())).thenReturn(newEntity);
+        when(offerSqlRepository.saveAll(anyList())).thenReturn(List.of(newEntity));
+
+        offerService.processBatch(List.of(offer), List.of());
+
+        verify(vehicleInstanceRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("ensureVehicleInstanceExists: Should create and save instance if not found")
+    void ensureVehicleInstanceExists_NotFound_ShouldCreate() {
+        OfferDto offer = OfferDtoFactory.getOfferDto();
+        offer.setInventoryId(inventoryId);
+
+        VehicleInstanceEntity newInstance = new VehicleInstanceEntity();
+
+        when(vehicleModelRepository.findFirstByBrandIgnoreCaseAndModelIgnoreCaseAndVersionIgnoreCase(any(), any(), any()))
+                .thenReturn(Optional.of(new VehicleModelEntity()));
+        when(vehicleInstanceRepository.findFirstByPlateIgnoreCaseAndChassisNumberIgnoreCase(any(), any()))
+                .thenReturn(Optional.empty());
+        when(mapper.toVehicleInstanceEntity(any())).thenReturn(newInstance);
+        when(vehicleInstanceRepository.saveAndFlush(any())).thenReturn(newInstance);
+
+        when(offerSqlRepository.findByInventoryIdAndOwnerRefs(any(), anyList())).thenReturn(List.of());
+        OfferEntity newEntity = new OfferEntity();
+        newEntity.setVehicleInstance(newInstance);
+        when(mapper.toEntity(any())).thenReturn(newEntity);
+        when(offerSqlRepository.saveAll(anyList())).thenReturn(List.of(newEntity));
+
+        offerService.processBatch(List.of(offer), List.of());
+
+        verify(vehicleInstanceRepository).saveAndFlush(any(VehicleInstanceEntity.class));
+        assertThat(newInstance.isEnabled()).isTrue();
+        assertThat(newInstance.getId()).isBetween(100_000_000L, 999_999_999L);
+    }
+
+    @Test
+    @DisplayName("modelKeyModel: Should produce lowercase pipe-separated key")
+    void modelKeyModel_ShouldReturnCorrectKey() {
+        VehicleModelDto dto = new VehicleModelDto();
+        dto.setBrand("Toyota");
+        dto.setModel("Corolla");
+        dto.setVersion("1.8 Hybrid");
+
+        String key = (String) org.springframework.test.util.ReflectionTestUtils
+                .invokeMethod(offerService, "modelKeyModel", dto);
+
+        assertThat(key).isEqualTo("toyota|corolla|1.8 hybrid");
+    }
+
+    @Test
+    @DisplayName("modelKeyInstance: Should produce lowercase pipe-separated key from plate and chassis")
+    void modelKeyInstance_ShouldReturnCorrectKey() {
+        VehicleInstanceDto dto = new VehicleInstanceDto();
+        dto.setPlate("AB1234CD");
+        dto.setChassisNumber("VIN123456789");
+
+        String key = (String) org.springframework.test.util.ReflectionTestUtils
+                .invokeMethod(offerService, "modelKeyInstance", dto);
+
+        assertThat(key).isEqualTo("ab1234cd|vin123456789");
+    }
+
+    @Test
+    @DisplayName("buildModelCache: Should only call ensureVehicleModelExists once per unique model key")
+    void buildModelCache_ShouldDeduplicateModels() {
+        VehicleModelDto sharedModel = new VehicleModelDto();
+        sharedModel.setBrand("BMW");
+        sharedModel.setModel("Serie 3");
+        sharedModel.setVersion("320d");
+
+        OfferDto offer1 = OfferDtoFactory.getOfferDto();
+        offer1.getVehicleInstance().setVehicleModel(sharedModel);
+        offer1.setInventoryId(inventoryId);
+
+        OfferDto offer2 = OfferDtoFactory.getOfferDto();
+        offer2.getVehicleInstance().setVehicleModel(sharedModel);
+        offer2.setInventoryId(inventoryId);
+
+        VehicleModelEntity modelEntity = new VehicleModelEntity();
+        VehicleInstanceEntity instanceEntity = new VehicleInstanceEntity();
+        instanceEntity.setId(100_000_001L);
+
+        when(vehicleModelRepository.findFirstByBrandIgnoreCaseAndModelIgnoreCaseAndVersionIgnoreCase(
+                eq("BMW"), eq("Serie 3"), eq("320d")))
+                .thenReturn(Optional.of(modelEntity));
+        when(vehicleInstanceRepository.findFirstByPlateIgnoreCaseAndChassisNumberIgnoreCase(any(), any()))
+                .thenReturn(Optional.of(instanceEntity));
+        when(offerSqlRepository.findByInventoryIdAndOwnerRefs(any(), anyList())).thenReturn(List.of());
+
+        OfferEntity e1 = new OfferEntity();
+        e1.setVehicleInstance(instanceEntity);
+        OfferEntity e2 = new OfferEntity();
+        e2.setVehicleInstance(instanceEntity);
+        when(mapper.toEntity(any())).thenReturn(e1).thenReturn(e2);
+        when(offerSqlRepository.saveAll(anyList())).thenReturn(List.of(e1, e2));
+
+        offerService.processBatch(List.of(offer1, offer2), List.of());
+
+        verify(vehicleModelRepository, times(1))
+                .findFirstByBrandIgnoreCaseAndModelIgnoreCaseAndVersionIgnoreCase("BMW", "Serie 3", "320d");
+    }
+
+    @Test
+    @DisplayName("findActiveBookedOfferIds: Debe retornar la lista de IDs cuando la consulta es exitosa")
+    void findActiveBookedOfferIds_Success_Coverage() {
+        UUID inventoryId = UUID.randomUUID();
+        List<UUID> expectedIds = List.of(UUID.randomUUID(), UUID.randomUUID());
+
+        when(offerSqlRepository.findActiveBookedOfferIds(inventoryId))
+                .thenReturn(expectedIds);
+
+        List<UUID> result = offerService.findActiveBookedOfferIds(inventoryId);
+
+        assertThat(result).hasSize(2).containsAll(expectedIds);
+        verify(offerSqlRepository).findActiveBookedOfferIds(inventoryId);
+    }
+
+    @Test
+    @DisplayName("findActiveBookedOfferIds: Debe lanzar LCIngestionException si el repositorio falla")
+    void findActiveBookedOfferIds_Exception_Coverage() {
+        UUID inventoryId = UUID.randomUUID();
+        when(offerSqlRepository.findActiveBookedOfferIds(inventoryId))
+                .thenThrow(new RuntimeException("DB Connection Timeout"));
+
+        assertThatThrownBy(() -> offerService.findActiveBookedOfferIds(inventoryId))
+                .isInstanceOf(LCIngestionException.class)
+                .hasMessageContaining("Error finding active bookings for inventoryId")
+                .extracting("techCause")
+                .isEqualTo(LCTechCauseEnum.DATABASE);
+    }
+
+    @Test
+    @DisplayName("findExternalRefsByOfferIds: Debe capturar error del repo y relanzar LCIngestionException")
+    void findExternalRefsByOfferIds_ShouldThrowExceptionOnRepositoryFailure() {
+        List<UUID> offerIds = List.of(UUID.randomUUID());
+
+        when(offerSqlRepository.findExternalRefsByOfferIds(anyList()))
+                .thenThrow(new RuntimeException("Data access error"));
+
+        assertThatThrownBy(() -> offerService.findExternalRefsByOfferIds(offerIds))
+                .isInstanceOf(LCIngestionException.class)
+                .hasMessageContaining("Error finding external references for offer ids:")
+                .satisfies(ex -> {
+                    LCIngestionException lce = (LCIngestionException) ex;
+                    assertThat(lce.getTechCause()).isEqualTo(LCTechCauseEnum.DATABASE);
+                    assertThat(lce.getCause()).isInstanceOf(RuntimeException.class);
+                });
+
+        verify(offerSqlRepository).findExternalRefsByOfferIds(offerIds);
     }
 }

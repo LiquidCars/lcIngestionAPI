@@ -1167,4 +1167,5 @@ public class OfferInfraNoSQLServiceImplTest {
 
         verify(mongoTemplate, times(2)).bulkOps(eq(BulkOperations.BulkMode.UNORDERED), eq(VehicleOfferNoSQLEntity.class));
     }
+
 }
