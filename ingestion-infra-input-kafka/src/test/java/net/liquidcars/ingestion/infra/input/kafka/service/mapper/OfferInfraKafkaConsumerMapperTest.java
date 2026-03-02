@@ -7,6 +7,7 @@ import net.liquidcars.ingestion.factory.OfferMsgFactory;
 import net.liquidcars.ingestion.infra.output.kafka.model.BatchIngestionReportMsg;
 import net.liquidcars.ingestion.infra.output.kafka.model.ExternalIdInfoMsg;
 import net.liquidcars.ingestion.infra.output.kafka.model.OfferMsg;
+import net.liquidcars.ingestion.infra.output.kafka.model.ParticipantAddressMsg;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -49,7 +50,6 @@ public class OfferInfraKafkaConsumerMapperTest {
 
     @Test
     void shouldHandleMissingNestedObjects() {
-        // Test manual para asegurar que el mapper no rompe si falta una rama del árbol
         OfferMsg msg = OfferMsgFactory.getOfferMsg();
         msg.setExternalIdInfo(null);
 
@@ -62,12 +62,10 @@ public class OfferInfraKafkaConsumerMapperTest {
     @Test
     @DisplayName("Should map BatchIngestionReportMsg to IngestionBatchReportDto correctly including dates and lists")
     void toIngestionReportDto_ShouldMapAllFields() {
-        // Arrange
         UUID jobId = UUID.randomUUID();
         String startTimeStr = "2026-02-18T10:00:00.000+01:00";
         String endTimeStr = "2026-02-18T11:00:00.000+01:00";
 
-        // Ajustado a los campos reales de tu ExternalIdInfoMsg
         ExternalIdInfoMsg externalIdMsg = ExternalIdInfoMsg.builder()
                 .ownerReference("OWN-123")
                 .dealerReference("DLR-456")
@@ -82,19 +80,15 @@ public class OfferInfraKafkaConsumerMapperTest {
         message.setEndTime(endTimeStr);
         message.setFailedExternalIds(List.of(externalIdMsg));
 
-        // Act
         IngestionBatchReportDto result = mapper.toIngestionReportDto(message);
 
-        // Assert
         assertThat(result).isNotNull();
         assertThat(result.getJobId()).isEqualTo(jobId);
         assertThat(result.getReadCount()).isEqualTo(100L);
 
-        // Verificación de mapeo de fechas con tu OFFSET_FORMATTER
         assertThat(result.getStartTime()).isEqualTo(OffsetDateTime.parse(startTimeStr));
         assertThat(result.getEndTime()).isEqualTo(OffsetDateTime.parse(endTimeStr));
 
-        // Verificación de mapeo de listas
         assertThat(result.getFailedExternalIds()).hasSize(1);
         ExternalIdInfoDto listResult = result.getFailedExternalIds().get(0);
         assertThat(listResult.getOwnerReference()).isEqualTo("OWN-123");
@@ -104,20 +98,59 @@ public class OfferInfraKafkaConsumerMapperTest {
     @Test
     @DisplayName("Should return null and handle empty lists when source message is null")
     void toIngestionReportDto_ShouldHandleNullSource() {
-        // Act
         IngestionBatchReportDto result = mapper.toIngestionReportDto(null);
 
-        // Assert
         assertNull(result);
     }
 
     @Test
     @DisplayName("Should handle null date strings gracefully")
     void map_ShouldReturnNull_WhenDateStringIsNull() {
-        // Act
         OffsetDateTime result = mapper.map((String) null);
 
-        // Assert
         assertNull(result);
+    }
+
+    @Test
+    @DisplayName("Debe cubrir el mapeo nulo de AddressTypeMsg para llegar al 100%")
+    void shouldHandleNullAddressTypeMapping() {
+        ParticipantAddressMsg addressMsg = new ParticipantAddressMsg();
+        addressMsg.setType(null);
+
+        OfferMsg msg = OfferMsgFactory.getOfferMsg();
+        msg.setPickUpAddress(addressMsg);
+
+        OfferDto result = mapper.toOfferDto(msg);
+
+        assertThat(result.getPickUpAddress()).isNotNull();
+        assertThat(result.getPickUpAddress().getAddress()).isNull();
+    }
+
+    @Test
+    @DisplayName("Debe cubrir el mapeo nulo de CarOfferSellerTypeEnumMsg para llegar al 100%")
+    void shouldHandleNullSellerTypeMapping() {
+        OfferMsg msg = OfferMsgFactory.getOfferMsg();
+        msg.setSellerType(null);
+
+        OfferDto result = mapper.toOfferDto(msg);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getSellerType()).isNull();
+    }
+
+    @Test
+    @DisplayName("Debe cubrir ramas de listas y fechas nulas en toIngestionReportDto para llegar al 100%")
+    void toIngestionReportDto_ShouldHandleNullFieldsInMessage() {
+        BatchIngestionReportMsg message = new BatchIngestionReportMsg();
+        message.setJobId(UUID.randomUUID().toString());
+        message.setStartTime(null);
+        message.setEndTime(null);
+        message.setFailedExternalIds(null);
+
+        IngestionBatchReportDto result = mapper.toIngestionReportDto(message);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getStartTime()).isNull();
+        assertThat(result.getFailedExternalIds()).isNull();
     }
 }

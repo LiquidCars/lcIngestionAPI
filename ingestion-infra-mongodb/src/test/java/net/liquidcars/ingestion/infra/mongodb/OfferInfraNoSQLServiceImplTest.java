@@ -1,6 +1,5 @@
 package net.liquidcars.ingestion.infra.mongodb;
 
-import com.mongodb.bulk.BulkWriteResult;
 import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
@@ -897,5 +896,275 @@ public class OfferInfraNoSQLServiceImplTest {
                 .hasMessageContaining("Error during NoSQL promotion for report: " + reportId)
                 .extracting("techCause")
                 .isEqualTo(LCTechCauseEnum.DATABASE);
+    }
+
+    @Test
+    @DisplayName("findProductionIdByRefs: Debe encontrar y proteger el ID de producción de una oferta reservada")
+    void shouldFindAndProtectProductionIdForBookedOffer() {
+        UUID reportId = UUID.randomUUID();
+        UUID inventoryId = UUID.randomUUID();
+        UUID productionId = UUID.randomUUID();
+
+        DraftOfferNoSQLEntity bookedDraft = new DraftOfferNoSQLEntity();
+        bookedDraft.setOwnerReference("BOOKED-REF-001");
+        bookedDraft.setInventoryId(inventoryId);
+
+        when(offerInfraSQLService.findExternalRefsByOfferIds(anyList()))
+                .thenReturn(Set.of("BOOKED-REF-001"));
+
+        when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
+                .thenAnswer(inv -> Stream.of(bookedDraft));
+
+        VehicleOfferNoSQLEntity existingProduction = new VehicleOfferNoSQLEntity();
+        existingProduction.setId(productionId);
+
+        when(mongoTemplate.findOne(any(Query.class), eq(VehicleOfferNoSQLEntity.class)))
+                .thenReturn(existingProduction);
+
+        when(offerInfraSQLService.processBatch(anyList(), anyList())).thenReturn(List.of());
+
+        service.promoteDraftOffersToVehicleOffers(
+                reportId,
+                IngestionDumpType.INCREMENTAL,
+                inventoryId,
+                List.of(),
+                List.of(UUID.randomUUID())
+        );
+
+        verify(mongoTemplate).findOne(argThat(query -> {
+            Document queryObject = query.getQueryObject();
+            return queryObject.toString().contains("BOOKED-REF-001") &&
+                    queryObject.toString().contains(inventoryId.toString());
+        }), eq(VehicleOfferNoSQLEntity.class));
+
+        verify(mapper, never()).toVehicleOfferNoSQLEntity(any());
+    }
+
+    @Test
+    @DisplayName("findProductionIdByRefs: Debe manejar correctamente cuando una oferta reservada no existe en producción")
+    void shouldHandleBookedOfferNotFoundInProduction() {
+        UUID inventoryId = UUID.randomUUID();
+        UUID reportId = UUID.randomUUID();
+
+        java.util.function.Supplier<Stream<DraftOfferNoSQLEntity>> streamSupplier = () -> {
+            DraftOfferNoSQLEntity bookedDraft = new DraftOfferNoSQLEntity();
+            bookedDraft.setOwnerReference("BOOKED-BUT-NEW");
+            bookedDraft.setInventoryId(inventoryId);
+            return Stream.of(bookedDraft);
+        };
+
+        when(offerInfraSQLService.findExternalRefsByOfferIds(anyList())).thenReturn(Set.of("BOOKED-BUT-NEW"));
+
+        when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
+                .thenAnswer(invocation -> streamSupplier.get());
+
+        when(mongoTemplate.findOne(any(Query.class), eq(VehicleOfferNoSQLEntity.class))).thenReturn(null);
+
+        when(offerInfraSQLService.processBatch(anyList(), anyList())).thenReturn(List.of());
+
+        service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, inventoryId, List.of(), List.of(UUID.randomUUID()));
+
+        verify(mongoTemplate, atLeastOnce()).findOne(any(Query.class), eq(VehicleOfferNoSQLEntity.class));
+    }
+
+    @Test
+    @DisplayName("findProductionIdByRefs: Debe incluir todas las referencias externas en la consulta de búsqueda")
+    void findProductionIdByRefs_ShouldIncludeAllCriteria() {
+        DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
+        draft.setOwnerReference("OWNER");
+        draft.setDealerReference("DEALER");
+        draft.setChannelReference("CHANNEL");
+        UUID inventoryId = UUID.randomUUID();
+
+        Optional<UUID> result = (Optional<UUID>) org.springframework.test.util.ReflectionTestUtils.invokeMethod(
+                service, "findProductionIdByRefs", inventoryId, draft);
+
+        verify(mongoTemplate).findOne(argThat(query -> {
+            String q = query.getQueryObject().toString();
+            return q.contains("OWNER") && q.contains("DEALER") && q.contains("CHANNEL");
+        }), eq(VehicleOfferNoSQLEntity.class));
+    }
+
+    @Test
+    @DisplayName("loadAllProductionIdsByInventory: Debe cubrir el mapeo y la resolución de colisiones en el mapa de IDs")
+    void shouldCoverLoadProductionIdsMappingAndCollision() {
+        UUID inventoryId = UUID.randomUUID();
+        UUID reportId = UUID.randomUUID();
+        UUID id1 = UUID.randomUUID();
+        UUID id2 = UUID.randomUUID();
+
+        VehicleOfferNoSQLEntity entity1 = new VehicleOfferNoSQLEntity();
+        entity1.setId(id1);
+        entity1.setOwnerReference("REF-DUPLICADA");
+        entity1.setDealerReference("DLR");
+        entity1.setChannelReference("CH");
+
+        VehicleOfferNoSQLEntity entity2 = new VehicleOfferNoSQLEntity();
+        entity2.setId(id2);
+        entity2.setOwnerReference("REF-DUPLICADA");
+        entity2.setDealerReference("DLR");
+        entity2.setChannelReference("CH");
+
+        when(mongoTemplate.find(any(Query.class), eq(VehicleOfferNoSQLEntity.class)))
+                .thenReturn(List.of(entity1, entity2));
+
+        java.util.function.Supplier<Stream<DraftOfferNoSQLEntity>> streamSupplier = () -> {
+            DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
+            draft.setId(UUID.randomUUID());
+            draft.setOwnerReference("REF-DRAFT");
+            return Stream.of(draft);
+        };
+
+        when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
+                .thenAnswer(invocation -> streamSupplier.get());
+
+        BulkOperations bulkOps = mock(BulkOperations.class);
+        when(mongoTemplate.bulkOps(any(), eq(VehicleOfferNoSQLEntity.class))).thenReturn(bulkOps);
+        when(mongoTemplate.getConverter()).thenReturn(mock(org.springframework.data.mongodb.core.convert.MongoConverter.class));
+        when(bulkOps.execute()).thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
+
+        when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(new VehicleOfferNoSQLEntity());
+        when(mapper.toDto(any())).thenReturn(new OfferDto());
+        when(offerInfraSQLService.processBatch(anyList(), anyList())).thenReturn(List.of());
+
+        service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, inventoryId, List.of(), List.of());
+
+        verify(mongoTemplate, atLeastOnce()).find(any(Query.class), eq(VehicleOfferNoSQLEntity.class));
+    }
+
+    @Test
+    @DisplayName("isBooked: Cobertura de la rama DealerReference")
+    void isBooked_ShouldCoverDealerReferenceBranch() {
+        UUID inventoryId = UUID.randomUUID();
+        DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
+        draft.setOwnerReference("NOT-BOOKED");
+        draft.setDealerReference("BOOKED-DEALER");
+        draft.setInventoryId(inventoryId);
+
+        when(offerInfraSQLService.findExternalRefsByOfferIds(anyList())).thenReturn(Set.of("BOOKED-DEALER"));
+
+        java.util.function.Supplier<Stream<DraftOfferNoSQLEntity>> streamSupplier = () -> Stream.of(draft);
+        lenient().when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
+                .thenAnswer(inv -> streamSupplier.get());
+
+        lenient().when(mongoTemplate.find(any(), any())).thenReturn(List.of());
+        when(mongoTemplate.findOne(any(), eq(VehicleOfferNoSQLEntity.class))).thenReturn(new VehicleOfferNoSQLEntity());
+
+        lenient().when(mapper.toDto(any())).thenReturn(new OfferDto());
+
+        service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.INCREMENTAL, inventoryId, List.of(), List.of(UUID.randomUUID()));
+
+        verify(mapper, never()).toVehicleOfferNoSQLEntity(any());
+
+        verify(mapper, atLeastOnce()).toDto(any());
+
+        verify(mongoTemplate).findOne(any(Query.class), eq(VehicleOfferNoSQLEntity.class));
+    }
+
+    @Test
+    @DisplayName("isBooked: Cobertura de la rama ChannelReference")
+    void isBooked_ShouldCoverChannelReferenceBranch() {
+        UUID inventoryId = UUID.randomUUID();
+        DraftOfferNoSQLEntity draft = new DraftOfferNoSQLEntity();
+        draft.setOwnerReference(null);
+        draft.setDealerReference("NOT-BOOKED");
+        draft.setChannelReference("BOOKED-CHANNEL");
+        draft.setInventoryId(inventoryId);
+
+        when(offerInfraSQLService.findExternalRefsByOfferIds(anyList())).thenReturn(Set.of("BOOKED-CHANNEL"));
+
+        java.util.function.Supplier<Stream<DraftOfferNoSQLEntity>> streamSupplier = () -> Stream.of(draft);
+        lenient().when(mongoTemplate.stream(any(), any())).thenAnswer(inv -> streamSupplier.get());
+        lenient().when(mongoTemplate.find(any(), any())).thenReturn(List.of());
+        when(mongoTemplate.findOne(any(), eq(VehicleOfferNoSQLEntity.class))).thenReturn(new VehicleOfferNoSQLEntity());
+
+        service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.INCREMENTAL, inventoryId, List.of(), List.of(UUID.randomUUID()));
+
+        verify(mongoTemplate).findOne(any(Query.class), eq(VehicleOfferNoSQLEntity.class));
+    }
+
+    @Test
+    @DisplayName("deleteOffersInPromotion: Debe filtrar referencias reservadas y borrar solo las seguras")
+    void deleteOffersInPromotion_ShouldFilterBookedRefsAndLogSkipped() {
+        UUID inventoryId = UUID.randomUUID();
+        UUID reportId = UUID.randomUUID();
+        List<String> externalIdsToDelete = List.of("REF-SAFE", "REF-BOOKED");
+        List<UUID> activeBookedOfferIds = List.of(UUID.randomUUID());
+
+        java.util.function.Supplier<Stream<DraftOfferNoSQLEntity>> streamSupplier = () -> Stream.empty();
+
+        when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
+                .thenAnswer(invocation -> streamSupplier.get());
+
+        when(offerInfraSQLService.findExternalRefsByOfferIds(activeBookedOfferIds))
+                .thenReturn(Set.of("REF-BOOKED"));
+
+        when(mongoTemplate.find(any(Query.class), eq(VehicleOfferNoSQLEntity.class)))
+                .thenReturn(Collections.emptyList());
+
+        BulkOperations mockBulkOps = mock(BulkOperations.class);
+        when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(VehicleOfferNoSQLEntity.class)))
+                .thenReturn(mockBulkOps);
+
+        com.mongodb.client.result.DeleteResult mockDeleteResult = mock(com.mongodb.client.result.DeleteResult.class);
+        when(mockDeleteResult.getDeletedCount()).thenReturn(1L);
+        when(mongoTemplate.remove(any(Query.class), eq(VehicleOfferNoSQLEntity.class)))
+                .thenReturn(mockDeleteResult);
+
+        service.promoteDraftOffersToVehicleOffers(
+                reportId,
+                IngestionDumpType.INCREMENTAL,
+                inventoryId,
+                externalIdsToDelete,
+                activeBookedOfferIds
+        );
+
+        verify(offerInfraSQLService).deleteOffersByInventoryIdAndReferences(
+                eq(inventoryId),
+                argThat(list -> list.size() == 1 && list.contains("REF-SAFE"))
+        );
+
+        verify(mongoTemplate).remove(any(Query.class), eq(VehicleOfferNoSQLEntity.class));
+    }
+
+    @Test
+    @DisplayName("promoteDraftOffers: Debe cubrir la ejecución por lotes (batchSize) y el reset de bulkOps")
+    void shouldCoverBulkBatchExecutionAndReset() {
+        UUID reportId = UUID.randomUUID();
+        UUID inventoryId = UUID.randomUUID();
+
+        int totalElements = 101;
+        List<DraftOfferNoSQLEntity> largeDraftList = new ArrayList<>();
+        for (int i = 0; i < totalElements; i++) {
+            DraftOfferNoSQLEntity d = new DraftOfferNoSQLEntity();
+            d.setId(UUID.randomUUID());
+            d.setOwnerReference("REF-" + i);
+            largeDraftList.add(d);
+        }
+
+        java.util.function.Supplier<Stream<DraftOfferNoSQLEntity>> streamSupplier = largeDraftList::stream;
+        when(mongoTemplate.stream(any(Query.class), eq(DraftOfferNoSQLEntity.class)))
+                .thenAnswer(inv -> streamSupplier.get());
+
+        when(mongoTemplate.find(any(), any())).thenReturn(List.of());
+        when(mongoTemplate.getConverter()).thenReturn(mock(org.springframework.data.mongodb.core.convert.MongoConverter.class));
+
+        BulkOperations bulkOpsMock = mock(BulkOperations.class);
+        com.mongodb.bulk.BulkWriteResult mockResult = mock(com.mongodb.bulk.BulkWriteResult.class);
+        when(mockResult.getModifiedCount()).thenReturn(100);
+        when(mockResult.getUpserts()).thenReturn(Collections.emptyList());
+
+        when(mongoTemplate.bulkOps(any(), eq(VehicleOfferNoSQLEntity.class))).thenReturn(bulkOpsMock);
+        when(bulkOpsMock.execute()).thenReturn(mockResult);
+
+        when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(new VehicleOfferNoSQLEntity());
+        when(mapper.toDto(any())).thenReturn(new OfferDto());
+        when(offerInfraSQLService.processBatch(anyList(), anyList())).thenReturn(List.of());
+
+        service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, inventoryId, List.of(), List.of());
+
+        verify(bulkOpsMock, times(2)).execute();
+
+        verify(mongoTemplate, times(2)).bulkOps(eq(BulkOperations.BulkMode.UNORDERED), eq(VehicleOfferNoSQLEntity.class));
     }
 }
