@@ -83,6 +83,12 @@ public interface OfferInfraSQLMapper {
     @Mapping(target = "hash", expression = "java(offer.hashCode())")
     OfferEntity toEntity(OfferDto offer);
 
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "vehicleModel", ignore = true) // Se gestiona manualmente en el Service
+    @Mapping(target = "color", source = "color", qualifiedByName = "colorReference")
+    @Mapping(target = "state", source = "state", qualifiedByName = "stateReference")
+    void updateVehicleInstanceFromDto(VehicleInstanceDto dto, @MappingTarget VehicleInstanceEntity entity);
+
     @Named("uuidToSet")
     default Set<UUID> uuidToSet(UUID inventoryId) {
         if (inventoryId == null) return null;

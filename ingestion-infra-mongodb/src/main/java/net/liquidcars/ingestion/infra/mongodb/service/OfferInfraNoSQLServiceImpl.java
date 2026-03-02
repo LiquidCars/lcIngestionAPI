@@ -229,9 +229,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
 
                     VehicleOfferNoSQLEntity productionEntity = offerInfraNoSQLMapper.toVehicleOfferNoSQLEntity(draft);
 
-                    String ref = draft.getOwnerReference() != null ? draft.getOwnerReference()
-                            : draft.getDealerReference() != null ? draft.getDealerReference()
-                            : draft.getChannelReference();
+                    String ref = buildCompositeKey(draft.getOwnerReference(), draft.getDealerReference(), draft.getChannelReference());
 
                     UUID productionEntityId = existingProductionIds.getOrDefault(ref, productionEntity.getId());
                     promotedIds.add(productionEntityId);
@@ -335,12 +333,13 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         return mongoTemplate.find(q, VehicleOfferNoSQLEntity.class)
                 .stream()
                 .collect(Collectors.toMap(
-                        e -> e.getOwnerReference() != null ? e.getOwnerReference()
-                                : e.getDealerReference() != null ? e.getDealerReference()
-                                : e.getChannelReference(),
+                        e -> buildCompositeKey(e.getOwnerReference(), e.getDealerReference(), e.getChannelReference()),
                         VehicleOfferNoSQLEntity::getId,
                         (a, b) -> a
                 ));
+    }
+    private String buildCompositeKey(String owner, String dealer, String channel) {
+        return String.format("%s|%s|%s", owner, dealer, channel);
     }
 
     /**

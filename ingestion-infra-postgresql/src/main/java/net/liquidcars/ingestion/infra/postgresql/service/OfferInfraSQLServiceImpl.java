@@ -32,6 +32,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     private final CarInstanceEquipmentEntityRepository carInstanceEquipmentEntityRepository;
     private final OfferInfraSQLMapper mapper;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final VehicleInstanceRepository vehicleInstanceRepository;
 
     @Transactional
     @Override
@@ -297,6 +298,21 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                 });
     }
 
+    private VehicleInstanceEntity ensureVehicleInstanceExists(VehicleInstanceDto dto) {
+        String plate = dto.getPlate();
+        String chassis = dto.getChassisNumber();
+        return vehicleInstanceRepository.findFirstByPlateIgnoreCaseAndChassisNumberIgnoreCase(plate, chassis)
+                .orElseGet(() -> {
+                    log.info("Coche no encontrado, creando: {}", plate);
+                    VehicleInstanceEntity entity = mapper.toVehicleInstanceEntity(dto);
+                    entity.setPlate(plate);
+                    entity.setChassisNumber(chassis);
+                    entity.setId(ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L));
+                    entity.setEnabled(true);
+                    return vehicleInstanceRepository.saveAndFlush(entity);
+                });
+    }
+
 
     /**
      * Optimized batch processing for promotion flow.
@@ -320,6 +336,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         try {
             // 1. Build vehicle model cache to avoid N queries to vehicle_model table
             Map<String, VehicleModelEntity> modelCache = buildModelCache(offers);
+            Map<String, VehicleInstanceEntity> instanceCache = buildVehicleInstanceCache(offers);
 
             // 2. Resolve booked refs upfront to protect offers with active bookings
             Set<String> bookedRefs = activeBookedOfferIds.isEmpty()
@@ -339,7 +356,8 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
             for (OfferDto offer : offers) {
                 try {
                     String ref = extractRef(offer.getExternalIdInfo());
-                    VehicleModelEntity model = modelCache.get(modelKey(offer.getVehicleInstance().getVehicleModel()));
+                    VehicleModelEntity model = modelCache.get(modelKeyModel(offer.getVehicleInstance().getVehicleModel()));
+                    VehicleInstanceEntity instance = instanceCache.get(modelKeyInstance(offer.getVehicleInstance()));
                     OfferEntity existing = existingByRef.get(ref);
 
                     if (existing != null) {
@@ -357,19 +375,15 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                                 ? existing.getLastUpdated() : existing.getCreatedAt();
 
                         if (incomingDate.isAfter(existingDate)) {
-                            Long existingVehicleInstanceId = existing.getVehicleInstance() != null
-                                    ? existing.getVehicleInstance().getId() : null;
-
                             mapper.updateEntityFromDto(offer, existing);
                             existing.setLastUpdated(incomingDate);
 
-                            // Restore the ID on the (possibly re-mapped) vehicleInstance
                             if (existing.getVehicleInstance() != null) {
-                                existing.getVehicleInstance().setVehicleModel(model);
-                                if (existingVehicleInstanceId != null) {
-                                    existing.getVehicleInstance().setId(existingVehicleInstanceId);
-                                }
+                                mapper.updateVehicleInstanceFromDto(offer.getVehicleInstance(), instance);
+                                instance.setVehicleModel(model);
+                                existing.setVehicleInstance(instance);
                             }
+
                             if (existing.getJsonCarOffer() != null) {
                                 existing.getJsonCarOffer().setTexto(
                                         objectMapper.convertValue(offer.getUICarOffer(), Map.class)
@@ -384,7 +398,9 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                     } else {
                         // Create logic - new offers are always inserted, even if a booking exists for a new ref
                         OfferEntity newEntity = mapper.toEntity(offer);
-                        newEntity.getVehicleInstance().setVehicleModel(model);
+                        mapper.updateVehicleInstanceFromDto(offer.getVehicleInstance(), instance);
+                        instance.setVehicleModel(model);
+                        newEntity.setVehicleInstance(instance);
                         if (newEntity.getVehicleInstance().getId() == null || newEntity.getVehicleInstance().getId() == 0) {
                             newEntity.getVehicleInstance().setId(
                                     ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L)
@@ -437,14 +453,31 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         Map<String, VehicleModelEntity> cache = new HashMap<>();
         for (OfferDto offer : offers) {
             VehicleModelDto dto = offer.getVehicleInstance().getVehicleModel();
-            String key = modelKey(dto);
+            String key = modelKeyModel(dto);
             cache.computeIfAbsent(key, k -> ensureVehicleModelExists(dto));
         }
         return cache;
     }
 
-    private String modelKey(VehicleModelDto dto) {
+    private String modelKeyModel(VehicleModelDto dto) {
         return (dto.getBrand() + "|" + dto.getModel() + "|" + dto.getVersion()).toLowerCase();
+    }
+
+    private Map<String, VehicleInstanceEntity> buildVehicleInstanceCache(List<OfferDto> offers) {
+        Map<String, VehicleInstanceEntity> cache = new HashMap<>();
+        for (OfferDto offer : offers) {
+            VehicleInstanceDto dto = offer.getVehicleInstance();
+            String key = (dto.getPlate() + "|" + dto.getChassisNumber()).toLowerCase().trim();
+
+            if (!cache.containsKey(key)) {
+                cache.put(key, ensureVehicleInstanceExists(dto));
+            }
+        }
+        return cache;
+    }
+
+    private String modelKeyInstance(VehicleInstanceDto dto) {
+        return (dto.getPlate() + "|" + dto.getChassisNumber()).toLowerCase();
     }
 
     private List<String> extractAllRefs(List<OfferDto> offers) {
@@ -458,9 +491,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
 
     private String extractRef(ExternalIdInfoDto info) {
         if (info == null) return null;
-        if (info.getOwnerReference() != null) return info.getOwnerReference();
-        if (info.getDealerReference() != null) return info.getDealerReference();
-        return info.getChannelReference();
+        return buildCompositeKey(info.getOwnerReference(), info.getDealerReference(), info.getChannelReference());
     }
 
     private Map<String, OfferEntity> loadExistingOffers(UUID inventoryId, List<String> refs) {
@@ -468,11 +499,14 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         return offerSqlRepository.findByInventoryIdAndOwnerRefs(inventoryId, refs)
                 .stream()
                 .collect(Collectors.toMap(
-                        e -> e.getOwnerReference() != null ? e.getOwnerReference()
-                                : e.getDealerReference() != null ? e.getDealerReference()
-                                : e.getChannelReference(),
-                        e -> e
+                        e -> buildCompositeKey(e.getOwnerReference(), e.getDealerReference(), e.getChannelReference()),
+                        e -> e,
+                        (a, b) -> a
                 ));
+    }
+
+    private String buildCompositeKey(String owner, String dealer, String channel) {
+        return String.format("%s|%s|%s", owner, dealer, channel);
     }
 
     private void saveResourcesBatch(List<OfferEntity> offers, List<OfferDto> dtos) {
