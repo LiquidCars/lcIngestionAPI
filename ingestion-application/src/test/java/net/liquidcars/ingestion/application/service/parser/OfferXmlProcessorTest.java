@@ -1,13 +1,18 @@
 package net.liquidcars.ingestion.application.service.parser;
 
 import net.liquidcars.ingestion.application.service.batch.OfferStreamItemReader;
-import net.liquidcars.ingestion.application.service.parser.model.JSON.OfferJSONModel;
-import net.liquidcars.ingestion.application.service.parser.model.XML.ExternalIdInfoXMLModel;
-import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
-import net.liquidcars.ingestion.domain.model.batch.JobDeleteExternalIdsCollector;
 import net.liquidcars.ingestion.application.service.parser.mapper.OfferParserMapper;
 import net.liquidcars.ingestion.application.service.parser.model.XML.OfferXMLModel;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
+import net.liquidcars.ingestion.domain.model.batch.JobDeleteExternalIdsCollector;
+import net.liquidcars.ingestion.factory.TestDataFactory;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -16,27 +21,9 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
-
-import net.liquidcars.ingestion.domain.model.batch.IngestionFormat;
-import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserException;
-import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
-import net.liquidcars.ingestion.factory.TestDataFactory;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
-
 import static org.mockito.Mockito.*;
 
 
@@ -54,6 +41,8 @@ class OfferXmlProcessorTest {
 
     @Mock
     private OfferStreamItemReader offerReader;
+
+    private static final String STARTUP_FILE = "static/testFiles/MF_856b7d9a-cabd-4e86-aaca-b7a9641a9d0b_CC_2024_09_30_A.xml";
 
 
     @Test
@@ -150,9 +139,9 @@ class OfferXmlProcessorTest {
 
     @Test
     void parseAndProcess_ShouldAddErrorToQueue_WhenMapperFails() throws Exception {
-
-        File file = new File("../offersGenerators/motorflash_export.xml");
-        InputStream inputStream = new FileInputStream(file);
+        InputStream inputStream =
+                getClass().getClassLoader()
+                        .getResourceAsStream(STARTUP_FILE);
 
         when(offerParserMapper.toOfferDto(any(OfferXMLModel.class)))
                 .thenThrow(new RuntimeException("Mapping error"));
@@ -163,7 +152,7 @@ class OfferXmlProcessorTest {
                 deleteExternalIdsCollector
         );
 
-        verify(offerReader, times(20000)).addErrorToQueue(any());
+        verify(offerReader, times(169)).addErrorToQueue(any());
     }
 
     @Test
