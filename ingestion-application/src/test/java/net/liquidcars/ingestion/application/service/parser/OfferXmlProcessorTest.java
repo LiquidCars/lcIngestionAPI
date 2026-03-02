@@ -163,7 +163,7 @@ class OfferXmlProcessorTest {
                 deleteExternalIdsCollector
         );
 
-        verify(offerReader).addErrorToQueue(any());
+        verify(offerReader, times(20000)).addErrorToQueue(any());
     }
 
     @Test
