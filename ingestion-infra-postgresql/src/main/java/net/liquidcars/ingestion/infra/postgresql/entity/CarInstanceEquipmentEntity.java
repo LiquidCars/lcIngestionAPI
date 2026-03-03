@@ -18,7 +18,6 @@ import java.math.BigDecimal;
 public class CarInstanceEquipmentEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "cot_co_id")
     private Integer id;
 

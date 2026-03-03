@@ -92,26 +92,6 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     }
 
 
-    /**
-     * Funciones de soporte
-     */
-
-    private void saveOrUpdateEquipments(List<CarInstanceEquipmentDto> equipments, VehicleInstanceEntity vehicleInstance) {
-        if (equipments == null || equipments.isEmpty() || vehicleInstance == null) return;
-        carInstanceEquipmentEntityRepository.deleteByVehicleInstanceId(vehicleInstance.getId());
-        List<CarInstanceEquipmentEntity> entities = mapper.toCarInstanceEquipmentEntityList(equipments);
-        entities.forEach(entity -> {
-            entity.setVehicleInstance(vehicleInstance);
-            if(entity.getType() == null){
-                entity.setType(EquipmentTypeEntity.builder()
-                        .id("Other")
-                        .build());
-            }
-        });
-        carInstanceEquipmentEntityRepository.saveAll(entities);
-    }
-
-
     private CarOfferResourceEntity buildCarOfferResourceEntity(CarOfferResourceDto dto, OfferEntity offer) {
         ResourceTypeEntity type = ResourceTypeEntity.builder()
                 .id("UrlImage")
