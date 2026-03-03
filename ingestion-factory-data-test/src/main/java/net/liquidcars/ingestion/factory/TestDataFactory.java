@@ -8,6 +8,7 @@ import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserExceptio
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.infra.input.rest.model.IngestionReport;
 import net.liquidcars.ingestion.infra.output.kafka.model.*;
+import net.liquidcars.ingestion.infra.postgresql.entity.OfferEntity;
 import net.liquidcars.ingestion.infra.postgresql.entity.report.IngestionBatchReportEntity;
 import net.liquidcars.ingestion.infra.postgresql.entity.report.IngestionReportEntity;
 import org.instancio.Instancio;
@@ -620,5 +621,15 @@ public class TestDataFactory {
 
     public static IngestionReportPageDto createIngestionReportPageDto() {
         return org.instancio.Instancio.create(IngestionReportPageDto.class);
+    }
+
+    // ==================== IngestionReportPageDto Factory ====================
+
+    public static OfferEntity createOfferEntity() {
+        return Instancio.of(OfferEntity.class)
+                .set(field(OfferEntity::getId), UUID.randomUUID())
+                .set(field(OfferEntity::getLastUpdated), System.currentTimeMillis())
+                .ignore(field(OfferEntity::getHash))
+                .create();
     }
 }

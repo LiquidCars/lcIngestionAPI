@@ -18,9 +18,6 @@ public interface IOfferInfraSQLService {
     @Transactional
     long deleteOffersByInventoryIdAndReferences(UUID inventoryId, List<String> externalReferences);
 
-    @Transactional
-    void processOffer(OfferDto offer);
-
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     List<UUID> processBatch(List<OfferDto> offers, List<UUID> activeBookedOfferIds);
 
