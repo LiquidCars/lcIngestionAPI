@@ -64,11 +64,11 @@
             "body": {
               "mode": "file",
               "file": {
-                "src": "/C:/wksLiquidcars/lcIngestionAPI/offersGenerators/motorflash_export.xml"
+                "src": "/C:/wksLiquidcars/lcIngestionAPI/ingestion-boot/src/main/resources/static/testFiles/motorflash_export.xml"
               }
             },
             "url": {
-              "raw": "http://localhost:8890/v1/ingestion/stream?format=xml&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=INCREMENTAL",
+              "raw": "http://localhost:8890/v1/ingestion/stream?format=xml&inventoryId=856b7d9a-cabd-4e86-aaca-b7a9641a9d0b&dumpType=INCREMENTAL&externalPublicationId=localPub1%23",
               "protocol": "http",
               "host": [
                 "localhost"
@@ -91,6 +91,11 @@
                 {
                   "key": "dumpType",
                   "value": "INCREMENTAL"
+                },
+                {
+                  "key": "externalPublicationId",
+                  "value": "localPub1#",
+                  "type": "text"
                 }
               ]
             }
@@ -294,6 +299,173 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "New Folder",
+      "item": [
+        {
+          "name": "getUserToken B2E_LiquidCars_Employee summarized Copy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();\r",
+                  "pm.environment.set(\"AccessToken\", jsonData.access_token);\r",
+                  "pm.environment.set(\"RefreshToken\", jsonData.refresh_token);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"client\": \"alejandro@liquidcars.net\",\r\n    \"secret\": \".Liquidcars1\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{HOST}}/api/v1/security/login-summarized",
+              "host": [
+                "{{HOST}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "security",
+                "login-summarized"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "getUserToken B2E_LiquidCars_Employee summarized Copy",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();\r",
+              "pm.environment.set(\"AccessToken\", jsonData.access_token);\r",
+              "pm.environment.set(\"RefreshToken\", jsonData.refresh_token);"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"client\": \"alejandro@liquidcars.net\",\r\n    \"secret\": \".Liquidcars1\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{HOST}}/api/v1/security/login-summarized",
+          "host": [
+            "{{HOST}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "security",
+            "login-summarized"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "getUserToken B2E_LiquidCars_Employee summarized Copy",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();\r",
+              "pm.environment.set(\"AccessToken\", jsonData.access_token);\r",
+              "pm.environment.set(\"RefreshToken\", jsonData.refresh_token);"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"client\": \"alejandro@liquidcars.net\",\r\n    \"secret\": \".Liquidcars1\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{HOST}}/api/v1/security/login-summarized",
+          "host": [
+            "{{HOST}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "security",
+            "login-summarized"
+          ]
+        }
+      },
+      "response": []
     }
   ],
   "auth": {
