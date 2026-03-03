@@ -38,6 +38,7 @@ class OfferInfraSQLServiceImplTest {
     @Mock private CarOfferResourceRepository carOfferResourceRepository;
     @Mock private ParticipantAddressEntityRepository participantAddressEntityRepository;
     @Mock private CarInstanceEquipmentEntityRepository carInstanceEquipmentEntityRepository;
+    @Mock private  VehicleInstanceRepository vehicleInstanceRepository;
     @Mock private OfferInfraSQLMapper mapper;
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -118,23 +119,18 @@ class OfferInfraSQLServiceImplTest {
     @Test
     @DisplayName("deleteOffersByInventoryIdExcludingIds: Cobertura del bloque catch y handleDeletionError")
     void deleteOffersByInventoryIdExcludingIds_Catch_Coverage() {
-        // GIVEN
         UUID inventoryId = UUID.randomUUID();
         List<UUID> idsToKeep = List.of(UUID.randomUUID());
 
-        // Forzamos que la primera llamada del bloque try lance una excepción
         doThrow(new RuntimeException("SQL Execution Error"))
                 .when(offerSqlRepository).deleteCarloanPreviewByInventoryExcluding(any(), any());
 
-        // WHEN & THEN
-        // Verificamos que se lanza la excepción de dominio envuelta por el handler
         org.assertj.core.api.Assertions.assertThatThrownBy(() ->
                         offerService.deleteOffersByInventoryIdExcludingIds(inventoryId, idsToKeep))
                 .isInstanceOf(LCIngestionException.class)
                 .hasFieldOrPropertyWithValue("techCause", LCTechCauseEnum.DATABASE)
                 .hasMessageContaining("Database error during offer deletion");
 
-        // Verificamos que el log de error en handleDeletionError fue invocado (opcional)
         verify(offerSqlRepository, times(1)).deleteCarloanPreviewByInventoryExcluding(any(), any());
     }
 
