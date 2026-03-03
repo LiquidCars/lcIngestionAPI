@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -97,10 +96,8 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         ResourceTypeEntity type = ResourceTypeEntity.builder()
                 .id("UrlImage")
                 .build();
-        int id = ThreadLocalRandom.current().nextInt(100_000_000, Integer.MAX_VALUE);
         byte[] image = convertUrlToBytes(dto.getResource());
         return CarOfferResourceEntity.builder()
-                //.id(id)
                 .id(null)
                 .offer(offer)
                 .resourceType(type)
@@ -140,30 +137,27 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                         dto.getBrand(), dto.getModel(), dto.getVersion())
                 .orElseGet(() -> {
                     VehicleModelEntity model = mapper.toVehicleModelEntity(dto);
-                    //long id = ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999_999L);
-                    //model.setId(id);
                     model.setId(null);
-                    model.setEnabled(true); // Asegúrate de habilitarlo
+                    model.setEnabled(true);
                     return vehicleModelRepository.save(model);
                 });
     }
 
-    private VehicleInstanceEntity ensureVehicleInstanceExists(VehicleInstanceDto dto) {
+    private VehicleInstanceEntity ensureVehicleInstanceExists(VehicleInstanceDto dto, VehicleModelEntity model) {
         String plate = dto.getPlate();
         String chassis = dto.getChassisNumber();
         return vehicleInstanceRepository.findFirstByPlateIgnoreCaseAndChassisNumberIgnoreCase(plate, chassis)
                 .orElseGet(() -> {
-                    log.info("Coche no encontrado, creando: {}", plate);
+                    log.info("Vehicle not found, creating: {}", plate);
                     VehicleInstanceEntity entity = mapper.toVehicleInstanceEntity(dto);
                     entity.setId(null);
-                    //entity.setId(ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L));
                     entity.setPlate(plate);
                     entity.setChassisNumber(chassis);
                     entity.setEnabled(true);
+                    entity.setVehicleModel(model);
                     return vehicleInstanceRepository.saveAndFlush(entity);
                 });
     }
-
 
     /**
      * Optimized batch processing for promotion flow.
@@ -187,7 +181,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         try {
             // 1. Build vehicle model cache to avoid N queries to vehicle_model table
             Map<String, VehicleModelEntity> modelCache = buildModelCache(offers);
-            Map<String, VehicleInstanceEntity> instanceCache = buildVehicleInstanceCache(offers);
+            Map<String, VehicleInstanceEntity> instanceCache = buildVehicleInstanceCache(offers, modelCache);
 
             // 2. Resolve booked refs upfront to protect offers with active bookings
             Set<String> bookedRefs = activeBookedOfferIds.isEmpty()
@@ -257,11 +251,6 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                         mapper.updateVehicleInstanceFromDto(offer.getVehicleInstance(), instance);
                         instance.setVehicleModel(model);
                         newEntity.setVehicleInstance(instance);
-                        if (newEntity.getVehicleInstance().getId() == null || newEntity.getVehicleInstance().getId() == 0) {
-                            /*newEntity.getVehicleInstance().setId(
-                                    ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L)
-                            );*/
-                        }
                         newEntity.setJsonCarOffer(buildJsonEntity(offer));
                         toInsert.add(newEntity);
                         insertDtos.add(offer);
@@ -319,14 +308,17 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         return (dto.getBrand() + "|" + dto.getModel() + "|" + dto.getVersion()).toLowerCase();
     }
 
-    private Map<String, VehicleInstanceEntity> buildVehicleInstanceCache(List<OfferDto> offers) {
+    private Map<String, VehicleInstanceEntity> buildVehicleInstanceCache(
+            List<OfferDto> offers,
+            Map<String, VehicleModelEntity> modelCache) {
+
         Map<String, VehicleInstanceEntity> cache = new HashMap<>();
         for (OfferDto offer : offers) {
             VehicleInstanceDto dto = offer.getVehicleInstance();
-            String key = (dto.getPlate() + "|" + dto.getChassisNumber()).toLowerCase().trim();
-
+            String key = modelKeyInstance(dto);
             if (!cache.containsKey(key)) {
-                cache.put(key, ensureVehicleInstanceExists(dto));
+                VehicleModelEntity model = modelCache.get(modelKeyModel(dto.getVehicleModel()));
+                cache.put(key, ensureVehicleInstanceExists(dto, model));
             }
         }
         return cache;
