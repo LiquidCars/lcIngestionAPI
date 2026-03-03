@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -96,8 +97,11 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         ResourceTypeEntity type = ResourceTypeEntity.builder()
                 .id("UrlImage")
                 .build();
+        int id = ThreadLocalRandom.current().nextInt(100_000_000, Integer.MAX_VALUE);
         byte[] image = convertUrlToBytes(dto.getResource());
         return CarOfferResourceEntity.builder()
+                //.id(id)
+                .id(null)
                 .offer(offer)
                 .resourceType(type)
                 .resource(image)
@@ -136,6 +140,9 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                         dto.getBrand(), dto.getModel(), dto.getVersion())
                 .orElseGet(() -> {
                     VehicleModelEntity model = mapper.toVehicleModelEntity(dto);
+                    //long id = ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999_999L);
+                    //model.setId(id);
+                    model.setId(null);
                     model.setEnabled(true); // Asegúrate de habilitarlo
                     return vehicleModelRepository.save(model);
                 });
@@ -148,6 +155,8 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                 .orElseGet(() -> {
                     log.info("Coche no encontrado, creando: {}", plate);
                     VehicleInstanceEntity entity = mapper.toVehicleInstanceEntity(dto);
+                    entity.setId(null);
+                    //entity.setId(ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L));
                     entity.setPlate(plate);
                     entity.setChassisNumber(chassis);
                     entity.setEnabled(true);
@@ -248,6 +257,11 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                         mapper.updateVehicleInstanceFromDto(offer.getVehicleInstance(), instance);
                         instance.setVehicleModel(model);
                         newEntity.setVehicleInstance(instance);
+                        if (newEntity.getVehicleInstance().getId() == null || newEntity.getVehicleInstance().getId() == 0) {
+                            /*newEntity.getVehicleInstance().setId(
+                                    ThreadLocalRandom.current().nextLong(100_000_000L, 999_999_999L)
+                            );*/
+                        }
                         newEntity.setJsonCarOffer(buildJsonEntity(offer));
                         toInsert.add(newEntity);
                         insertDtos.add(offer);
