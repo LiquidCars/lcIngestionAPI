@@ -19,6 +19,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static net.liquidcars.ingestion.domain.service.OfferUtils.buildCompositeKey;
+import static net.liquidcars.ingestion.domain.service.OfferUtils.extractRef;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -115,7 +118,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                 .id("caroffer")
                 .build();
         JsonObjectEntity baseObject = JsonObjectEntity.builder()
-                .id(offer.getJsonCarOfferId() != null ? offer.getJsonCarOfferId() : UUID.randomUUID())
+                .id(UUID.randomUUID())
                 .jsonObjectType(type)
                 .createdAt(OffsetDateTime.now())
                 .build();
@@ -198,6 +201,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
             List<OfferDto> insertDtos = new ArrayList<>(); // Parallel list for resources/equipments post-save
             List<OfferDto> updateDtos = new ArrayList<>();
             List<UUID> processedIds = new ArrayList<>();
+            Set<UUID> insertedIdsInThisBatch = new HashSet<>(); // añadir antes del for
 
             for (OfferDto offer : offers) {
                 try {
@@ -246,15 +250,29 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                         processedIds.add(existing.getId());
 
                     } else {
-                        // Create logic - new offers are always inserted, even if a booking exists for a new ref
-                        OfferEntity newEntity = mapper.toEntity(offer);
-                        mapper.updateVehicleInstanceFromDto(offer.getVehicleInstance(), instance);
-                        instance.setVehicleModel(model);
-                        newEntity.setVehicleInstance(instance);
-                        newEntity.setJsonCarOffer(buildJsonEntity(offer));
-                        toInsert.add(newEntity);
-                        insertDtos.add(offer);
-                        processedIds.add(offer.getId());
+                        if (offer.getId() != null && existingById.containsKey(offer.getId())) {
+                            log.warn("Offer {} not found by ref but UUID exists in DB — treating as update", offer.getId());
+                            OfferEntity byIdFallback = existingById.get(offer.getId());
+                            toUpdate.add(byIdFallback);
+                            updateDtos.add(offer);
+                            processedIds.add(byIdFallback.getId());
+                        } else {
+                            if (insertedIdsInThisBatch.contains(offer.getId())) {
+                                log.warn("Duplicate offer in batch (same derived UUID {}), skipping: ref={}", offer.getId(), ref);
+                                processedIds.add(offer.getId());
+                                continue;
+                            }
+                            insertedIdsInThisBatch.add(offer.getId());
+                            // Create logic - new offers are always inserted, even if a booking exists for a new ref
+                            OfferEntity newEntity = mapper.toEntity(offer);
+                            mapper.updateVehicleInstanceFromDto(offer.getVehicleInstance(), instance);
+                            instance.setVehicleModel(model);
+                            newEntity.setVehicleInstance(instance);
+                            newEntity.setJsonCarOffer(buildJsonEntity(offer));
+                            toInsert.add(newEntity);
+                            insertDtos.add(offer);
+                            processedIds.add(offer.getId());
+                        }
                     }
                 } catch (Exception e) {
                     log.error("Error preparing offer {} in batch", offer.getId(), e);
@@ -263,6 +281,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
 
             // 4. Persist all inserts and updates in ONE flush (Hibernate batch_size from config applies here)
             List<OfferEntity> savedInserts = offerSqlRepository.saveAll(toInsert);
+            offerSqlRepository.flush();
             offerSqlRepository.saveAll(toUpdate);
 
             // 5. Resources in batch (delete all for affected offers, then re-insert)
@@ -328,33 +347,32 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         return (dto.getPlate() + "|" + dto.getChassisNumber()).toLowerCase();
     }
 
-
-    private String extractRef(ExternalIdInfoDto info) {
-        if (info == null) return buildCompositeKey(null, null, null);
-        return buildCompositeKey(info.getOwnerReference(), info.getDealerReference(), info.getChannelReference());
-    }
-
-
     private Map<String, OfferEntity> loadExistingOffers(UUID inventoryId, List<OfferDto> offers) {
         List<String> owners = offers.stream().map(o -> o.getExternalIdInfo().getOwnerReference()).filter(Objects::nonNull).toList();
         List<String> dealers = offers.stream().map(o -> o.getExternalIdInfo().getDealerReference()).filter(Objects::nonNull).toList();
         List<String> channels = offers.stream().map(o -> o.getExternalIdInfo().getChannelReference()).filter(Objects::nonNull).toList();
 
-        if (owners.isEmpty() && dealers.isEmpty() && channels.isEmpty()) return Map.of();
+        List<OfferEntity> byRef = (owners.isEmpty() && dealers.isEmpty() && channels.isEmpty())
+                ? List.of()
+                : offerSqlRepository.findExistingByAnyRef(inventoryId, owners, dealers, channels);
 
-        return offerSqlRepository.findExistingByAnyRef(inventoryId, owners, dealers, channels)
-                .stream()
-                .collect(Collectors.toMap(
-                        e -> buildCompositeKey(e.getOwnerReference(), e.getDealerReference(), e.getChannelReference()),
-                        e -> e,
-                        (existing, replacement) -> existing
-                ));
-    }
+        List<UUID> incomingIds = offers.stream().map(OfferDto::getId).filter(Objects::nonNull).toList();
 
-    private String buildCompositeKey(String owner, String dealer, String channel) {
-        return Stream.of(owner, dealer, channel)
-                .map(s -> s != null ?  s.trim() : "")
-                .collect(Collectors.joining("|"));
+        List<OfferEntity> byId = incomingIds.isEmpty()
+                ? List.of()
+                : offerSqlRepository.findAllById(incomingIds);
+
+        Map<String, OfferEntity> result = new HashMap<>();
+
+        byId.forEach(e -> result.put(
+                buildCompositeKey(e.getOwnerReference(), e.getDealerReference(), e.getChannelReference()), e
+        ));
+
+        byRef.forEach(e -> result.put(
+                buildCompositeKey(e.getOwnerReference(), e.getDealerReference(), e.getChannelReference()), e
+        ));
+
+        return result;
     }
 
     private void saveResourcesBatch(List<OfferEntity> offers, List<OfferDto> dtos) {

@@ -98,6 +98,10 @@ services:
             - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
             - OFFERS_TEST_URL=${OFFERS_TEST_URL}
             - SECURITY_MAX_BATCH_SIZE=${SECURITY_MAX_BATCH_SIZE}
+            - JDBC_BATCH_SIZE=${JDBC_BATCH_SIZE}
+            - BATCH_CHUNK_SIZE=${BATCH_CHUNK_SIZE}
+            - BATCH_SKIP_LIMIT=${BATCH_SKIP_LIMIT}
+            - BATCH_QUEUE_SIZE=${BATCH_QUEUE_SIZE}
         command: >
             java -jar /app/lcIngestionAPI.jar
             --spring.config.additional-location=file:/app/resources/

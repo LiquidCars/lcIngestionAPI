@@ -1,6 +1,7 @@
 package net.liquidcars.ingestion.infra.input.rest.mapper;
 
 import net.liquidcars.ingestion.domain.model.CarOfferSellerTypeEnumDto;
+import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
 import net.liquidcars.ingestion.domain.model.IngestionPayloadDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
@@ -11,6 +12,7 @@ import org.mapstruct.*;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
@@ -20,7 +22,7 @@ public interface IngestionControllerMapper {
     IngestionPayloadDto toIngestionPayloadDto(IngestionPayload ingestionPayload, UUID participantId, UUID inventoryId);
 
     @Named("toOfferDtoWithParticipant")
-    @Mapping(target = "id", expression = "java(java.util.UUID.randomUUID())")
+    @Mapping(target = "id", expression = "java(net.liquidcars.ingestion.domain.service.OfferUtils.deriveOfferId(offerRequest.getExternalIdInfo() != null ? offerRequest.getExternalIdInfo().getOwnerReference() : null, offerRequest.getExternalIdInfo() != null ? offerRequest.getExternalIdInfo().getDealerReference() : null, offerRequest.getExternalIdInfo() != null ? offerRequest.getExternalIdInfo().getChannelReference() : null))")
     @Mapping(target = "lastUpdated", expression = "java(System.currentTimeMillis())")
     @Mapping(target = "participantId", source = "participantId")
     @Mapping(target = "inventoryId", source = "inventoryId")
@@ -46,4 +48,5 @@ public interface IngestionControllerMapper {
     List<IngestionReport> toIngestionReportList(List<IngestionReportDto> ingestionReportDtoList);
 
     IngestionReportPage toIngestionReportPage(IngestionReportPageDto ingestionReportPageDto);
+
 }

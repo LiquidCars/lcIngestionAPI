@@ -9,15 +9,17 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
+import java.util.UUID;
+
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface OfferParserMapper {
 
-    @Mapping(target = "id", expression = "java(java.util.UUID.randomUUID())")
+    @Mapping(target = "id", expression = "java(net.liquidcars.ingestion.domain.service.OfferUtils.deriveOfferId(offerJSONModel.getExternalIdInfo() != null ? offerJSONModel.getExternalIdInfo().getOwnerReference() : null, offerJSONModel.getExternalIdInfo() != null ? offerJSONModel.getExternalIdInfo().getDealerReference() : null, offerJSONModel.getExternalIdInfo() != null ? offerJSONModel.getExternalIdInfo().getChannelReference() : null))")
     @Mapping(target = "lastUpdated", expression = "java(System.currentTimeMillis())")
     OfferDto toOfferDto(OfferJSONModel offerJSONModel);
 
-    @Mapping(target = "id", expression = "java(java.util.UUID.randomUUID())")
+    @Mapping(target = "id", expression = "java(net.liquidcars.ingestion.domain.service.OfferUtils.deriveOfferId(offerXMLModel.getExternalIdInfo() != null ? offerXMLModel.getExternalIdInfo().getOwnerReference() : null, offerXMLModel.getExternalIdInfo() != null ? offerXMLModel.getExternalIdInfo().getDealerReference() : null, offerXMLModel.getExternalIdInfo() != null ? offerXMLModel.getExternalIdInfo().getChannelReference() : null))")
     @Mapping(target = "lastUpdated", expression = "java(System.currentTimeMillis())")
     OfferDto toOfferDto(OfferXMLModel offerXMLModel);
 
