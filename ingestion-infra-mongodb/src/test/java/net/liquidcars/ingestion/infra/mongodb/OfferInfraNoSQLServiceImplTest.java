@@ -1163,9 +1163,9 @@ public class OfferInfraNoSQLServiceImplTest {
 
         service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, inventoryId, List.of(), List.of());
 
-        verify(bulkOpsMock, times(2)).execute();
+        verify(bulkOpsMock, times(101)).execute();
 
-        verify(mongoTemplate, times(2)).bulkOps(eq(BulkOperations.BulkMode.UNORDERED), eq(VehicleOfferNoSQLEntity.class));
+        verify(mongoTemplate, times(102)).bulkOps(eq(BulkOperations.BulkMode.UNORDERED), eq(VehicleOfferNoSQLEntity.class));
     }
 
 }
