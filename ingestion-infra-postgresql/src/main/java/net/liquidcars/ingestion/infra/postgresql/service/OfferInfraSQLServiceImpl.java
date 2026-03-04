@@ -201,6 +201,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
             List<OfferDto> insertDtos = new ArrayList<>(); // Parallel list for resources/equipments post-save
             List<OfferDto> updateDtos = new ArrayList<>();
             List<UUID> processedIds = new ArrayList<>();
+            Set<UUID> insertedIdsInThisBatch = new HashSet<>(); // añadir antes del for
 
             for (OfferDto offer : offers) {
                 try {
@@ -256,6 +257,12 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                             updateDtos.add(offer);
                             processedIds.add(byIdFallback.getId());
                         } else {
+                            if (insertedIdsInThisBatch.contains(offer.getId())) {
+                                log.warn("Duplicate offer in batch (same derived UUID {}), skipping: ref={}", offer.getId(), ref);
+                                processedIds.add(offer.getId());
+                                continue;
+                            }
+                            insertedIdsInThisBatch.add(offer.getId());
                             // Create logic - new offers are always inserted, even if a booking exists for a new ref
                             OfferEntity newEntity = mapper.toEntity(offer);
                             mapper.updateVehicleInstanceFromDto(offer.getVehicleInstance(), instance);
