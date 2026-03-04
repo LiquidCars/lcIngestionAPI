@@ -24,7 +24,6 @@ import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +35,6 @@ import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Application service for offer ingestion orchestration.
@@ -57,9 +55,6 @@ public class OfferIngestionProcessServiceImpl implements IOfferIngestionProcessS
     private final IOfferInfraSQLService offerInfraSQLService;
     private final IBatchReportInfraSQLService batchReportInfraSQLService;
     private final IReportInfraSQLService iReportInfraSQLService;
-
-    @Value("${ingestion.batch.chunk-size:10}")
-    private int chunkSize;
 
     @Transactional
     @Override

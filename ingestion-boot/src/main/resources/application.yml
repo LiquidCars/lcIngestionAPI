@@ -22,7 +22,7 @@ spring:
     password: postgres
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 10
+      maximum-pool-size: 25
       minimum-idle: 5
       connection-timeout: 30000
 
@@ -34,11 +34,10 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-        jdbc:
-          jdbc.batch_size: 100
-          order_inserts: true
-          order_updates: true
-          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+        jdbc.batch_size: ${JDBC_BATCH_SIZE:500}
+        jdbc.batch_versioned_data: true
 
   # Kafka Configuration
   kafka:
@@ -69,6 +68,7 @@ spring:
         spring.json.trusted.packages: "*"
         spring.json.type.mapping: >-
           net.liquidcars.lcAPI.entities.ingestion.IngestionReportActionMsg:net.liquidcars.ingestion.infra.output.kafka.model.IngestionReportActionMsg
+        max.poll.interval.ms: 600000
       # --- NON-BLOCKING RETRY CONFIGURATION ---
       # This section manages how the consumer behaves when your Service
       # throws the LCIngestionException during the cleanup process.
@@ -107,19 +107,7 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: ${security.security-profile-issuer}
-net:
-  liquidcars:
-    ingestion:
-      infra:
-        output:
-          kafka:
-            model:
-              IngestionReportActionMsg:net:
-                liquidcars:
-                  lcAPI:
-                    entities:
-                      ingestion:
-                        IngestionReportActionMsg:
+
 #Liquibase Mongo config
 liquibase:
   mongodb:
@@ -203,9 +191,9 @@ logging:
 # Custom Application Properties
 ingestion:
   batch:
-    chunk-size: 10
-    skip-limit: 2
-    queue-size: 5000
+    chunk-size: ${BATCH_CHUNK_SIZE:500}
+    skip-limit: ${BATCH_SKIP_LIMIT:10}
+    queue-size: ${BATCH_QUEUE_SIZE:5000}
   purgeScheduler:
     enabled: true
     cron: "0 0 3 * * SUN" # Every Sunday at 3 AM

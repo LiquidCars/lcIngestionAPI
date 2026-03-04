@@ -21,6 +21,7 @@ import net.liquidcars.ingestion.infra.mongodb.repository.DraftOfferNoSqlReposito
 import net.liquidcars.ingestion.infra.mongodb.repository.VehicleOfferNoSqlRepository;
 import net.liquidcars.ingestion.infra.mongodb.service.mapper.OfferInfraNoSQLMapper;
 import org.bson.Document;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -53,6 +54,9 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     private final TransactionTemplate transactionTemplate;
 
     private final IReportInfraSQLService reportInfraSQLService;
+
+    @Value("${spring.jpa.properties.hibernate.jdbc.batch_size:100}")
+    private int batchSize;
 
     @Override
     @Transactional
@@ -196,7 +200,6 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         List<UUID> promotedIds = new ArrayList<>();
 
         // 2. Define batch size for Bulk operations (e.g., every 100 records) for better performance
-        int batchSize = 100;
         int count = 0;
         int totalPromoted = 0;
         int totalErrors = 0;
@@ -376,7 +379,6 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
 
         Query draftQuery = new Query(Criteria.where("ingestion_report_id").is(ingestionReportId));
 
-        int batchSize = 100; // Process 100 offers per SQL transaction
         int totalProcessed = 0;
         int totalErrors = 0;
         List<UUID> allPromotedIds = new ArrayList<>();
