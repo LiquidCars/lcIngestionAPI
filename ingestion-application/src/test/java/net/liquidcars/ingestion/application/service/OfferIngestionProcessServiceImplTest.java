@@ -71,7 +71,6 @@ class OfferIngestionProcessServiceImplTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(service, "parsers", List.of(parserService));
-        ReflectionTestUtils.setField(service, "chunkSize", 10);
     }
 
     @Test
