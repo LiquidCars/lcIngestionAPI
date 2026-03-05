@@ -1,5 +1,6 @@
 package net.liquidcars.ingestion.domain.service.infra.postgresql;
 
+import net.liquidcars.ingestion.domain.model.AgreementDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,4 +25,7 @@ public interface IOfferInfraSQLService {
     List<UUID> findActiveBookedOfferIds(UUID inventoryId);
 
     Set<String> findExternalRefsByOfferIds(List<UUID> offerIds);
+
+    List<AgreementDto> findAgreementsByInventoryId(UUID inventoryId);
+
 }

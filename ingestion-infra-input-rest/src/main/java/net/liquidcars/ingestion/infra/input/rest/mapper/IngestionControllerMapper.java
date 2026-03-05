@@ -22,7 +22,7 @@ public interface IngestionControllerMapper {
     IngestionPayloadDto toIngestionPayloadDto(IngestionPayload ingestionPayload, UUID participantId, UUID inventoryId);
 
     @Named("toOfferDtoWithParticipant")
-    @Mapping(target = "id", expression = "java(net.liquidcars.ingestion.domain.service.OfferUtils.deriveOfferId(offerRequest.getExternalIdInfo() != null ? offerRequest.getExternalIdInfo().getOwnerReference() : null, offerRequest.getExternalIdInfo() != null ? offerRequest.getExternalIdInfo().getDealerReference() : null, offerRequest.getExternalIdInfo() != null ? offerRequest.getExternalIdInfo().getChannelReference() : null))")
+    @Mapping(target = "id", expression = "java(net.liquidcars.ingestion.domain.service.utils.OfferUtils.deriveOfferId(offerRequest.getExternalIdInfo() != null ? offerRequest.getExternalIdInfo().getOwnerReference() : null, offerRequest.getExternalIdInfo() != null ? offerRequest.getExternalIdInfo().getDealerReference() : null, offerRequest.getExternalIdInfo() != null ? offerRequest.getExternalIdInfo().getChannelReference() : null))")
     @Mapping(target = "lastUpdated", expression = "java(System.currentTimeMillis())")
     @Mapping(target = "participantId", source = "participantId")
     @Mapping(target = "inventoryId", source = "inventoryId")

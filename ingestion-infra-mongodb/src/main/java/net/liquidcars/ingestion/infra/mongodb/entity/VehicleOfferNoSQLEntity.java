@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.util.List;
 import java.util.UUID;
 
 @EqualsAndHashCode(callSuper = true)
@@ -23,6 +24,12 @@ public class VehicleOfferNoSQLEntity extends OfferNoSQLEntity{
 
     @Id
     private UUID id;
+
+    @Field("agreements")
+    private List<AgreementNoSQLEntity> agreements;
+
+    @Field("tiny_locators")
+    private List<String> tinyLocators;
 
 }
 

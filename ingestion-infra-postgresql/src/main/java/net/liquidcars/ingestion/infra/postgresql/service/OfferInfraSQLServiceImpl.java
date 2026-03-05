@@ -19,8 +19,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static net.liquidcars.ingestion.domain.service.OfferUtils.buildCompositeKey;
-import static net.liquidcars.ingestion.domain.service.OfferUtils.extractRef;
+import static net.liquidcars.ingestion.domain.service.utils.OfferUtils.buildCompositeKey;
+import static net.liquidcars.ingestion.domain.service.utils.OfferUtils.extractRef;
 
 @Slf4j
 @Service
@@ -35,6 +35,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     private final OfferInfraSQLMapper mapper;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final VehicleInstanceRepository vehicleInstanceRepository;
+    private final AgreementRepository agreementRepository;
 
     @Transactional
     @Override
@@ -476,4 +477,20 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                     .build();
         }
     }
+
+    @Override
+    public List<AgreementDto> findAgreementsByInventoryId(UUID inventoryId){
+        log.info("Find agreements by inventoryID: {}", inventoryId);
+        try {
+            return mapper.toAgreementDtoList(agreementRepository.findByInventoryId(inventoryId));
+        } catch (Exception e) {
+            log.error("Error finding agreements by inventoryId: {}", inventoryId, e);
+            throw LCIngestionException.builder()
+                    .techCause(LCTechCauseEnum.DATABASE)
+                    .message("Error finding agreements by inventoryId: " + inventoryId)
+                    .cause(e)
+                    .build();
+        }
+    }
+
 }

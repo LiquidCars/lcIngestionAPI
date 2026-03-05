@@ -1,7 +1,10 @@
 package net.liquidcars.ingestion.infra.mongodb.service.mapper;
 
+import net.liquidcars.ingestion.domain.model.AgreementDto;
+import net.liquidcars.ingestion.domain.model.ChannelDto;
 import net.liquidcars.ingestion.domain.model.KeyValueDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.infra.mongodb.entity.AgreementNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.DraftOfferNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.KeyValueNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.VehicleOfferNoSQLEntity;
@@ -12,6 +15,7 @@ import org.mapstruct.ReportingPolicy;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface OfferInfraNoSQLMapper {
@@ -23,7 +27,13 @@ public interface OfferInfraNoSQLMapper {
     @Mapping(target = "lastUpdated", expression = "java(System.currentTimeMillis())")
     DraftOfferNoSQLEntity toEntity(OfferDto offerDto);
 
-    VehicleOfferNoSQLEntity toVehicleOfferNoSQLEntity(DraftOfferNoSQLEntity draftOfferNoSQLEntity);
+    @Mapping(target = "agreements", source = "agreements")
+    @Mapping(target = "tinyLocators", source = "tinyLocators")
+    VehicleOfferNoSQLEntity toVehicleOfferNoSQLEntity(
+            DraftOfferNoSQLEntity draft,
+            List<AgreementDto> agreements,
+            List<String> tinyLocators
+    );
 
     @Mapping(target = "externalIdInfo.ownerReference", source = "ownerReference")
     @Mapping(target = "externalIdInfo.dealerReference", source = "dealerReference")
@@ -59,5 +69,17 @@ public interface OfferInfraNoSQLMapper {
 
     default UUID mapToUuid(String value) {
         return value != null ? UUID.fromString(value) : null;
+    }
+
+    default List<AgreementNoSQLEntity> toAgreementNoSQLEntityList(List<AgreementDto> dtos) {
+        if (dtos == null) return null;
+        return dtos.stream()
+                .map(dto -> AgreementNoSQLEntity.builder()
+                        .id(dto.getId())
+                        .vehicleSellerId(dto.getVehicleSeller() != null ? dto.getVehicleSeller().getId() : null)
+                        .channelIds(dto.getChannels() != null ?
+                                dto.getChannels().stream().map(ChannelDto::getId).toList() : List.of())
+                        .build())
+                .toList();
     }
 }
