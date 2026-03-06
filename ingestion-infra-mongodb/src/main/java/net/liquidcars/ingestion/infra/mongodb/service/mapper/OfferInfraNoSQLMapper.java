@@ -2,8 +2,11 @@ package net.liquidcars.ingestion.infra.mongodb.service.mapper;
 
 import net.liquidcars.ingestion.domain.model.KeyValueDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.TinyLocatorDto;
+import net.liquidcars.ingestion.domain.model.VehicleOfferDto;
 import net.liquidcars.ingestion.infra.mongodb.entity.DraftOfferNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.KeyValueNoSQLEntity;
+import net.liquidcars.ingestion.infra.mongodb.entity.TinyLocatorNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.VehicleOfferNoSQLEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -12,6 +15,7 @@ import org.mapstruct.ReportingPolicy;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface OfferInfraNoSQLMapper {
@@ -23,15 +27,20 @@ public interface OfferInfraNoSQLMapper {
     @Mapping(target = "lastUpdated", expression = "java(System.currentTimeMillis())")
     DraftOfferNoSQLEntity toEntity(OfferDto offerDto);
 
-    VehicleOfferNoSQLEntity toVehicleOfferNoSQLEntity(DraftOfferNoSQLEntity draftOfferNoSQLEntity);
+    @Mapping(target = "tinyLocators", source = "tinyLocators")
+    VehicleOfferNoSQLEntity toVehicleOfferNoSQLEntity(
+            DraftOfferNoSQLEntity draft,
+            List<TinyLocatorNoSQLEntity> tinyLocators
+    );
+
+    TinyLocatorNoSQLEntity toTinyLocatorNoSQLEntity(TinyLocatorDto tinyLocatorDto);
+
 
     @Mapping(target = "externalIdInfo.ownerReference", source = "ownerReference")
     @Mapping(target = "externalIdInfo.dealerReference", source = "dealerReference")
     @Mapping(target = "externalIdInfo.channelReference", source = "channelReference")
-    OfferDto toDto(DraftOfferNoSQLEntity offerNoSQLEntity);
-
-    // --- Métodos de ayuda existentes ---
-
+    VehicleOfferDto toVehicleOfferDto(VehicleOfferNoSQLEntity offerNoSQLEntity);
+    
     default Instant map(OffsetDateTime value) {
         return value == null ? null : value.toInstant();
     }

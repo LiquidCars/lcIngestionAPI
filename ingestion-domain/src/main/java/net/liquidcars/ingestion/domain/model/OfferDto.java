@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.io.Serializable;
@@ -17,7 +18,7 @@ import java.util.UUID;
  * This is a pure domain object with no infrastructure dependencies.
  */
 @Data
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(title="The VehicleOffer DTO object", description="This object represents a commercial offer based con a specific vehicle unit, or VehicleInstance" )

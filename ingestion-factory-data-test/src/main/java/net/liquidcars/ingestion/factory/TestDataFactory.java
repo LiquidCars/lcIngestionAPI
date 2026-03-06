@@ -7,6 +7,9 @@ import net.liquidcars.ingestion.domain.model.batch.*;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionParserException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 import net.liquidcars.ingestion.infra.input.rest.model.IngestionReport;
+import net.liquidcars.ingestion.infra.mongodb.entity.DraftOfferNoSQLEntity;
+import net.liquidcars.ingestion.infra.mongodb.entity.OfferNoSQLEntity;
+import net.liquidcars.ingestion.infra.mongodb.entity.TinyLocatorNoSQLEntity;
 import net.liquidcars.ingestion.infra.output.kafka.model.*;
 import net.liquidcars.ingestion.infra.postgresql.entity.OfferEntity;
 import net.liquidcars.ingestion.infra.postgresql.entity.report.IngestionBatchReportEntity;
@@ -632,4 +635,26 @@ public class TestDataFactory {
                 .ignore(field(OfferEntity::getHash))
                 .create();
     }
+
+    // ==================== TinyLocatorNoSQLEntity Factory ====================
+
+    public static List<TinyLocatorNoSQLEntity> createTinyLocatorNoSQLEntityList(int count) {
+        return Instancio.ofList(TinyLocatorNoSQLEntity.class)
+                .size(count)
+                .create();
+    }
+
+    // ==================== DraftOfferNoSQLEntity Factory ====================
+
+    public static DraftOfferNoSQLEntity createDraftOfferNoSQLEntity() {
+        return Instancio.of(DraftOfferNoSQLEntity.class)
+                .set(field(DraftOfferNoSQLEntity::getId), UUID.randomUUID())
+                .set(field(DraftOfferNoSQLEntity::getJobIdentifier), UUID.randomUUID())
+                .set(field(DraftOfferNoSQLEntity::getIngestionReportId), UUID.randomUUID())
+                // These String fields are mapped through mapToUuid() by MapStruct
+                .set(field(OfferNoSQLEntity::getPrivateOwnerRegisteredUserId), UUID.randomUUID().toString())
+                .set(field(OfferNoSQLEntity::getJsonCarOfferId), UUID.randomUUID().toString())
+                .create();
+    }
+
 }

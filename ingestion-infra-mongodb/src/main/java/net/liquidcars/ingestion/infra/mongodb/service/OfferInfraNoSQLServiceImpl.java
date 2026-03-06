@@ -2,27 +2,22 @@ package net.liquidcars.ingestion.infra.mongodb.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
-import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.domain.model.SortDirection;
+import net.liquidcars.ingestion.domain.model.*;
 import net.liquidcars.ingestion.domain.model.batch.IngestionDumpType;
-import net.liquidcars.ingestion.domain.model.batch.IngestionReportDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionReportFilterDto;
-import net.liquidcars.ingestion.domain.model.batch.IngestionReportSortField;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
-import net.liquidcars.ingestion.domain.service.application.IOfferIngestionProcessService;
 import net.liquidcars.ingestion.domain.service.infra.mongodb.IOfferInfraNoSQLService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IOfferInfraSQLService;
 import net.liquidcars.ingestion.domain.service.infra.postgresql.IReportInfraSQLService;
+import net.liquidcars.ingestion.domain.service.utils.OfferUtils;
 import net.liquidcars.ingestion.infra.mongodb.entity.DraftOfferNoSQLEntity;
+import net.liquidcars.ingestion.infra.mongodb.entity.TinyLocatorNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.VehicleOfferNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.repository.DraftOfferNoSqlRepository;
 import net.liquidcars.ingestion.infra.mongodb.repository.VehicleOfferNoSqlRepository;
 import net.liquidcars.ingestion.infra.mongodb.service.mapper.OfferInfraNoSQLMapper;
 import org.bson.Document;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -33,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -173,21 +167,24 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
     public void promoteDraftOffersToVehicleOffers(UUID ingestionReportId, IngestionDumpType dumpType, UUID inventoryId, List<String> externalIdsToDelete, List<UUID> activeBookedOfferIds) {
         log.info("Starting promotion for ingestionReportId: {}", ingestionReportId);
 
-        // 1. Promote to NoSQL (vehicle offers collection)
-        List<UUID> promotedNoSQLIds = promoteDraftOffersAndGetsPromoted(ingestionReportId, inventoryId, activeBookedOfferIds);
+        // 1. Obtain agreements involved in process
+        List<AgreementDto> agreements = offerInfraSQLService.findAgreementsByInventoryId(inventoryId);
 
-        // 2. Promote to SQL (PostgreSQL) and get promoted IDs
+        // 2. Promote to NoSQL (vehicle offers collection)
+        List<UUID> promotedNoSQLIds = promoteDraftOffersAndGetsPromoted(ingestionReportId, inventoryId, activeBookedOfferIds, agreements);
+
+        // 3. Promote to SQL (PostgreSQL) and get promoted IDs
         List<UUID> promotedSQLIds = promoteDraftOffersToSQL(ingestionReportId, activeBookedOfferIds);
 
-        // 3. REPLACEMENT logic for both databases
+        // 4. REPLACEMENT logic for both databases
         replaceOffers(dumpType, inventoryId, promotedNoSQLIds, promotedSQLIds, activeBookedOfferIds);
 
-        // 4. Process explicit deletions (offersToDelete from JSON) in both databases
+        // 5. Process explicit deletions (offersToDelete from JSON) in both databases
         deleteOffersInPromotion(inventoryId, externalIdsToDelete, activeBookedOfferIds);
     }
 
     private List<UUID> promoteDraftOffersAndGetsPromoted(UUID ingestionReportId, UUID inventoryId,
-                                                         List<UUID> activeBookedOfferIds) {
+                                                         List<UUID> activeBookedOfferIds, List<AgreementDto> agreements) {
         // 1. Use a Stream to avoid loading the entire list into memory and prevent OOM
         Query draftQuery = new Query(Criteria.where("ingestion_report_id").is(ingestionReportId));
 
@@ -229,8 +226,8 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
                         totalSkipped++;
                         continue;
                     }
-
-                    VehicleOfferNoSQLEntity productionEntity = offerInfraNoSQLMapper.toVehicleOfferNoSQLEntity(draft);
+                    List<TinyLocatorNoSQLEntity> tinyLocators = getOfferTinyLocators(draft.getId(), inventoryId, agreements);
+                    VehicleOfferNoSQLEntity productionEntity = offerInfraNoSQLMapper.toVehicleOfferNoSQLEntity(draft, tinyLocators);
 
                     String ref = buildCompositeKey(draft.getOwnerReference(), draft.getDealerReference(), draft.getChannelReference());
 
@@ -383,14 +380,14 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         int totalErrors = 0;
         List<UUID> allPromotedIds = new ArrayList<>();
 
-        try (Stream<DraftOfferNoSQLEntity> draftStream = mongoTemplate.stream(draftQuery, DraftOfferNoSQLEntity.class)) {
+        try (Stream<VehicleOfferNoSQLEntity> draftStream = mongoTemplate.stream(draftQuery, VehicleOfferNoSQLEntity.class)) {
 
-            List<OfferDto> batch = new ArrayList<>();
+            List<VehicleOfferDto> batch = new ArrayList<>();
             var iterator = draftStream.iterator();
 
             while (iterator.hasNext()) {
-                DraftOfferNoSQLEntity draft = iterator.next();
-                OfferDto offerDto = offerInfraNoSQLMapper.toDto(draft);
+                VehicleOfferNoSQLEntity draft = iterator.next();
+                VehicleOfferDto offerDto = offerInfraNoSQLMapper.toVehicleOfferDto(draft);
                 batch.add(offerDto);
 
                 // When batch is full or stream ends, process the entire batch
@@ -436,7 +433,7 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         }
     }
 
-    private List<UUID> processBatchToSQL(List<OfferDto> offers, List<UUID> activeBookedOfferIds) {
+    private List<UUID> processBatchToSQL(List<VehicleOfferDto> offers, List<UUID> activeBookedOfferIds) {
         try {
             return offerInfraSQLService.processBatch(offers, activeBookedOfferIds);
         } catch (Exception e) {
@@ -563,5 +560,28 @@ public class OfferInfraNoSQLServiceImpl implements IOfferInfraNoSQLService {
         log.info("Deleted: {} offers with ingestionReportId: {}", deletedCount, ingestionReportId);
     }
 
+    private List<TinyLocatorNoSQLEntity> getOfferTinyLocators(UUID offerId, UUID inventoryId, List<AgreementDto> agreements) {
+        List<TinyLocatorNoSQLEntity> result = new ArrayList<>();
+        for(AgreementDto agreement:agreements){
+            for(ChannelDto channel:agreement.getChannels()) {
+                result.add(getOfferTinyLocator(offerId, inventoryId, agreement, channel.getId()));
+            }
+        }
+        return result;
+    }
 
+    private TinyLocatorNoSQLEntity getOfferTinyLocator(UUID offerId, UUID inventoryId, AgreementDto agreement, UUID channelId) {
+        log.info("Generating tinyLocator for ids: offer: {} (Inventory: {}, Agreement: {}, Channel: {})",
+                offerId, inventoryId, agreement.getId(), channelId);
+        TinyLocatorDto tinyLocator =  OfferUtils.generateTinyLocator(
+                offerId,
+                inventoryId,
+                agreement.getId(),
+                channelId,
+                agreement.getVehicleSeller().getId()
+        );
+        log.info("Generated tinyLocator: {} for ids: offer: {} (Inventory: {}, Agreement: {}, Channel: {})",
+                tinyLocator, offerId, inventoryId, agreement.getId(), channelId);
+        return offerInfraNoSQLMapper.toTinyLocatorNoSQLEntity(tinyLocator);
+    }
 }
