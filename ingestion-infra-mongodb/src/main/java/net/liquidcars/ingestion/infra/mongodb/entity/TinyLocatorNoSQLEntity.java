@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -31,5 +30,5 @@ public class TinyLocatorNoSQLEntity {
     private UUID channelId;
 
     @Field("vehicle_seller_id")
-    private UUID vehicleShellerId;
+    private UUID vehicleSellerId;
 }

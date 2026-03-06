@@ -53,7 +53,7 @@ public class OfferUtils {
                     .inventoryId(inventoryId)
                     .agreementId(agreementId)
                     .channelId(channelId)
-                    .vehicleShellerId(vehicleShellerId)
+                    .vehicleSellerId(vehicleShellerId)
                     .build();
 
         } catch (NoSuchAlgorithmException e) {
