@@ -1,6 +1,7 @@
 package net.liquidcars.ingestion.domain.service.utils;
 
 import net.liquidcars.ingestion.domain.model.ExternalIdInfoDto;
+import net.liquidcars.ingestion.domain.model.TinyLocatorDto;
 import net.liquidcars.ingestion.domain.model.exception.LCIngestionException;
 import net.liquidcars.ingestion.domain.model.exception.LCTechCauseEnum;
 
@@ -31,9 +32,9 @@ public class OfferUtils {
                 .collect(Collectors.joining("|"));
     }
 
-    public static String generateTinyLocator(UUID offer, UUID inventory, UUID agreement, UUID ocp, UUID vsel) {
+    public static TinyLocatorDto generateTinyLocator(UUID offerId, UUID inventoryId, UUID agreementId, UUID channelId, UUID vehicleShellerId) {
         try {
-            String seed = Stream.of(offer, inventory, agreement, ocp, vsel)
+            String seed = Stream.of(offerId, inventoryId, agreementId, channelId, vehicleShellerId)
                     .map(id -> id == null ? "" : id.toString())
                     .collect(Collectors.joining());
 
@@ -44,8 +45,16 @@ public class OfferUtils {
             for (int i = 0; i < 8; i++) {
                 hashValue = (hashValue << 8) | (hashBytes[i] & 0xFF);
             }
+            String tinyLocator = encodeBase62(Math.abs(hashValue)).substring(0, 8);
 
-            return encodeBase62(Math.abs(hashValue)).substring(0, 8);
+            return TinyLocatorDto.builder()
+                    .tinyLocatorId(tinyLocator)
+                    .offerId(offerId)
+                    .inventoryId(inventoryId)
+                    .agreementId(agreementId)
+                    .channelId(channelId)
+                    .vehicleShellerId(vehicleShellerId)
+                    .build();
 
         } catch (NoSuchAlgorithmException e) {
             throw LCIngestionException.builder()

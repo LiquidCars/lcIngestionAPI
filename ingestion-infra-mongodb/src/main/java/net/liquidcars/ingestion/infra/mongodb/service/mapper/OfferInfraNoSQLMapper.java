@@ -1,12 +1,12 @@
 package net.liquidcars.ingestion.infra.mongodb.service.mapper;
 
-import net.liquidcars.ingestion.domain.model.AgreementDto;
-import net.liquidcars.ingestion.domain.model.ChannelDto;
 import net.liquidcars.ingestion.domain.model.KeyValueDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
-import net.liquidcars.ingestion.infra.mongodb.entity.AgreementNoSQLEntity;
+import net.liquidcars.ingestion.domain.model.TinyLocatorDto;
+import net.liquidcars.ingestion.domain.model.VehicleOfferDto;
 import net.liquidcars.ingestion.infra.mongodb.entity.DraftOfferNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.KeyValueNoSQLEntity;
+import net.liquidcars.ingestion.infra.mongodb.entity.TinyLocatorNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.VehicleOfferNoSQLEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -27,21 +27,20 @@ public interface OfferInfraNoSQLMapper {
     @Mapping(target = "lastUpdated", expression = "java(System.currentTimeMillis())")
     DraftOfferNoSQLEntity toEntity(OfferDto offerDto);
 
-    @Mapping(target = "agreements", source = "agreements")
     @Mapping(target = "tinyLocators", source = "tinyLocators")
     VehicleOfferNoSQLEntity toVehicleOfferNoSQLEntity(
             DraftOfferNoSQLEntity draft,
-            List<AgreementDto> agreements,
-            List<String> tinyLocators
+            List<TinyLocatorNoSQLEntity> tinyLocators
     );
+
+    TinyLocatorNoSQLEntity toTinyLocatorNoSQLEntity(TinyLocatorDto tinyLocatorDto);
+
 
     @Mapping(target = "externalIdInfo.ownerReference", source = "ownerReference")
     @Mapping(target = "externalIdInfo.dealerReference", source = "dealerReference")
     @Mapping(target = "externalIdInfo.channelReference", source = "channelReference")
-    OfferDto toDto(DraftOfferNoSQLEntity offerNoSQLEntity);
-
-    // --- Métodos de ayuda existentes ---
-
+    VehicleOfferDto toVehicleOfferDto(VehicleOfferNoSQLEntity offerNoSQLEntity);
+    
     default Instant map(OffsetDateTime value) {
         return value == null ? null : value.toInstant();
     }
@@ -69,17 +68,5 @@ public interface OfferInfraNoSQLMapper {
 
     default UUID mapToUuid(String value) {
         return value != null ? UUID.fromString(value) : null;
-    }
-
-    default List<AgreementNoSQLEntity> toAgreementNoSQLEntityList(List<AgreementDto> dtos) {
-        if (dtos == null) return null;
-        return dtos.stream()
-                .map(dto -> AgreementNoSQLEntity.builder()
-                        .id(dto.getId())
-                        .vehicleSellerId(dto.getVehicleSeller() != null ? dto.getVehicleSeller().getId() : null)
-                        .channelIds(dto.getChannels() != null ?
-                                dto.getChannels().stream().map(ChannelDto::getId).toList() : List.of())
-                        .build())
-                .toList();
     }
 }

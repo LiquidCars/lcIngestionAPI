@@ -25,11 +25,11 @@ public class VehicleOfferNoSQLEntity extends OfferNoSQLEntity{
     @Id
     private UUID id;
 
-    @Field("agreements")
-    private List<AgreementNoSQLEntity> agreements;
+    @Field("ingestion_report_id")
+    private UUID ingestionReportId;
 
     @Field("tiny_locators")
-    private List<String> tinyLocators;
+    private List<TinyLocatorNoSQLEntity> tinyLocators;
 
 }
 

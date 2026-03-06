@@ -133,7 +133,7 @@ public class OfferInfraNoSQLServiceImplTest {
                 .thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
 
         when(mapper.toVehicleOfferNoSQLEntity(draft)).thenReturn(vehicleEntity);
-        when(mapper.toDto(draft)).thenReturn(offerDto);
+        when(mapper.toVehicleOfferDto(draft)).thenReturn(offerDto);
 
         service.promoteDraftOffersToVehicleOffers(
                 reportId,
@@ -182,7 +182,7 @@ public class OfferInfraNoSQLServiceImplTest {
         OfferDto offerDto = new OfferDto();
         offerDto.setId(offerId);
         when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(new VehicleOfferNoSQLEntity());
-        when(mapper.toDto(any())).thenReturn(offerDto);
+        when(mapper.toVehicleOfferDto(any())).thenReturn(offerDto);
 
         when(offerInfraSQLService.processBatch(anyList(), anyList())).thenReturn(List.of(offerId));
 
@@ -321,7 +321,7 @@ public class OfferInfraNoSQLServiceImplTest {
 
         OfferDto dto = new OfferDto();
         dto.setId(draft.getId());
-        when(mapper.toDto(any())).thenReturn(dto);
+        when(mapper.toVehicleOfferDto(any())).thenReturn(dto);
 
         doThrow(new RuntimeException("SQL Connection Error"))
                 .when(offerInfraSQLService).processBatch(anyList(), anyList());
@@ -381,7 +381,7 @@ public class OfferInfraNoSQLServiceImplTest {
 
         OfferDto dto = new OfferDto();
         dto.setId(draft.getId());
-        when(mapper.toDto(any())).thenReturn(dto);
+        when(mapper.toVehicleOfferDto(any())).thenReturn(dto);
 
         doThrow(new RuntimeException("Generic SQL Error"))
                 .when(offerInfraSQLService).processBatch(anyList(), anyList());
@@ -503,7 +503,7 @@ public class OfferInfraNoSQLServiceImplTest {
         when(mongoTemplate.bulkOps(any(), eq(VehicleOfferNoSQLEntity.class))).thenReturn(bulkOps);
         when(bulkOps.execute()).thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
 
-        when(mapper.toDto(any())).thenReturn(new OfferDto());
+        when(mapper.toVehicleOfferDto(any())).thenReturn(new OfferDto());
 
         doThrow(new RuntimeException("SQL Crash"))
                 .when(offerInfraSQLService).processBatch(anyList(), anyList());
@@ -564,7 +564,7 @@ public class OfferInfraNoSQLServiceImplTest {
 
         OfferDto dto = new OfferDto();
         dto.setId(draft.getId());
-        when(mapper.toDto(any())).thenReturn(dto);
+        when(mapper.toVehicleOfferDto(any())).thenReturn(dto);
 
         doThrow(new RuntimeException("SQL Critical Failure"))
                 .when(offerInfraSQLService).processBatch(anyList(), anyList());
@@ -661,7 +661,7 @@ public class OfferInfraNoSQLServiceImplTest {
 
         OfferDto dto = new OfferDto();
         dto.setId(draft.getId());
-        when(mapper.toDto(any())).thenReturn(dto);
+        when(mapper.toVehicleOfferDto(any())).thenReturn(dto);
 
         LCIngestionException domainEx = LCIngestionException.builder()
                 .message("Batch domain error")
@@ -751,7 +751,7 @@ public class OfferInfraNoSQLServiceImplTest {
         VehicleOfferNoSQLEntity productionEntity = new VehicleOfferNoSQLEntity();
         productionEntity.setId(draftWithNulls.getId());
         when(mapper.toVehicleOfferNoSQLEntity(draftWithNulls)).thenReturn(productionEntity);
-        when(mapper.toDto(any())).thenReturn(new OfferDto());
+        when(mapper.toVehicleOfferDto(any())).thenReturn(new OfferDto());
 
         Document docWithNull = new Document("field1", "value1").append("field2", null);
         MongoConverter mockConverter = mock(MongoConverter.class);
@@ -1024,7 +1024,7 @@ public class OfferInfraNoSQLServiceImplTest {
         when(bulkOps.execute()).thenReturn(mock(com.mongodb.bulk.BulkWriteResult.class));
 
         when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(new VehicleOfferNoSQLEntity());
-        when(mapper.toDto(any())).thenReturn(new OfferDto());
+        when(mapper.toVehicleOfferDto(any())).thenReturn(new OfferDto());
         when(offerInfraSQLService.processBatch(anyList(), anyList())).thenReturn(List.of());
 
         service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, inventoryId, List.of(), List.of());
@@ -1050,13 +1050,13 @@ public class OfferInfraNoSQLServiceImplTest {
         lenient().when(mongoTemplate.find(any(), any())).thenReturn(List.of());
         when(mongoTemplate.findOne(any(), eq(VehicleOfferNoSQLEntity.class))).thenReturn(new VehicleOfferNoSQLEntity());
 
-        lenient().when(mapper.toDto(any())).thenReturn(new OfferDto());
+        lenient().when(mapper.toVehicleOfferDto(any())).thenReturn(new OfferDto());
 
         service.promoteDraftOffersToVehicleOffers(UUID.randomUUID(), IngestionDumpType.INCREMENTAL, inventoryId, List.of(), List.of(UUID.randomUUID()));
 
         verify(mapper, never()).toVehicleOfferNoSQLEntity(any());
 
-        verify(mapper, atLeastOnce()).toDto(any());
+        verify(mapper, atLeastOnce()).toVehicleOfferDto(any());
 
         verify(mongoTemplate).findOne(any(Query.class), eq(VehicleOfferNoSQLEntity.class));
     }
@@ -1158,7 +1158,7 @@ public class OfferInfraNoSQLServiceImplTest {
         when(bulkOpsMock.execute()).thenReturn(mockResult);
 
         when(mapper.toVehicleOfferNoSQLEntity(any())).thenReturn(new VehicleOfferNoSQLEntity());
-        when(mapper.toDto(any())).thenReturn(new OfferDto());
+        when(mapper.toVehicleOfferDto(any())).thenReturn(new OfferDto());
         when(offerInfraSQLService.processBatch(anyList(), anyList())).thenReturn(List.of());
 
         service.promoteDraftOffersToVehicleOffers(reportId, IngestionDumpType.INCREMENTAL, inventoryId, List.of(), List.of());

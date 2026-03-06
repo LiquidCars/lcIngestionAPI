@@ -36,6 +36,8 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final VehicleInstanceRepository vehicleInstanceRepository;
     private final AgreementRepository agreementRepository;
+    private final TinyLocatorRepository tinyLocatorRepository;
+
 
     @Transactional
     @Override
@@ -114,7 +116,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         return url.getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
-    private JsonOfferEntity buildJsonEntity(OfferDto offer) {
+    private JsonOfferEntity buildJsonEntity(VehicleOfferDto offer) {
         JsonObjectTypeEntity type = JsonObjectTypeEntity.builder()
                 .id("caroffer")
                 .build();
@@ -176,10 +178,10 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
      */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public List<UUID> processBatch(List<OfferDto> offers, List<UUID> activeBookedOfferIds) {
+    public List<UUID> processBatch(List<VehicleOfferDto> offers, List<UUID> activeBookedOfferIds) {
         if (offers.isEmpty()) return List.of();
 
-        UUID inventoryId = offers.get(0).getInventoryId();
+        UUID inventoryId = offers.getFirst().getInventoryId();
         log.info("Processing SQL batch of {} offers for inventoryId: {}", offers.size(), inventoryId);
 
         try {
@@ -199,12 +201,12 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
 
             List<OfferEntity> toInsert = new ArrayList<>();
             List<OfferEntity> toUpdate = new ArrayList<>();
-            List<OfferDto> insertDtos = new ArrayList<>(); // Parallel list for resources/equipments post-save
-            List<OfferDto> updateDtos = new ArrayList<>();
+            List<VehicleOfferDto> insertDtos = new ArrayList<>(); // Parallel list for resources/equipments post-save
+            List<VehicleOfferDto> updateDtos = new ArrayList<>();
             List<UUID> processedIds = new ArrayList<>();
             Set<UUID> insertedIdsInThisBatch = new HashSet<>(); // añadir antes del for
 
-            for (OfferDto offer : offers) {
+            for (VehicleOfferDto offer : offers) {
                 try {
                     String ref = extractRef(offer.getExternalIdInfo());
                     VehicleModelEntity model = modelCache.get(modelKeyModel(offer.getVehicleInstance().getVehicleModel()));
@@ -296,6 +298,10 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
             // 7. Addresses in batch
             saveAddressesBatch(offers);
 
+            //8. Tiny locators in batch
+            saveTinyLocatorsBatch(savedInserts, insertDtos);
+            saveTinyLocatorsBatch(toUpdate, updateDtos);
+
             log.info("SQL batch completed for inventoryId: {}. Inserts: {}, Updates: {}, ProcessedIds: {}",
                     inventoryId, toInsert.size(), toUpdate.size(), processedIds.size());
 
@@ -314,9 +320,9 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
 
 // --- Métodos de soporte batch ---
 
-    private Map<String, VehicleModelEntity> buildModelCache(List<OfferDto> offers) {
+    private Map<String, VehicleModelEntity> buildModelCache(List<VehicleOfferDto> offers) {
         Map<String, VehicleModelEntity> cache = new HashMap<>();
-        for (OfferDto offer : offers) {
+        for (VehicleOfferDto offer : offers) {
             VehicleModelDto dto = offer.getVehicleInstance().getVehicleModel();
             String key = modelKeyModel(dto);
             cache.computeIfAbsent(key, k -> ensureVehicleModelExists(dto));
@@ -329,11 +335,11 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
     }
 
     private Map<String, VehicleInstanceEntity> buildVehicleInstanceCache(
-            List<OfferDto> offers,
+            List<VehicleOfferDto> offers,
             Map<String, VehicleModelEntity> modelCache) {
 
         Map<String, VehicleInstanceEntity> cache = new HashMap<>();
-        for (OfferDto offer : offers) {
+        for (VehicleOfferDto offer : offers) {
             VehicleInstanceDto dto = offer.getVehicleInstance();
             String key = modelKeyInstance(dto);
             if (!cache.containsKey(key)) {
@@ -348,7 +354,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         return (dto.getPlate() + "|" + dto.getChassisNumber()).toLowerCase();
     }
 
-    private Map<String, OfferEntity> loadExistingOffers(UUID inventoryId, List<OfferDto> offers) {
+    private Map<String, OfferEntity> loadExistingOffers(UUID inventoryId, List<VehicleOfferDto> offers) {
         List<String> owners = offers.stream().map(o -> o.getExternalIdInfo().getOwnerReference()).filter(Objects::nonNull).toList();
         List<String> dealers = offers.stream().map(o -> o.getExternalIdInfo().getDealerReference()).filter(Objects::nonNull).toList();
         List<String> channels = offers.stream().map(o -> o.getExternalIdInfo().getChannelReference()).filter(Objects::nonNull).toList();
@@ -357,7 +363,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
                 ? List.of()
                 : offerSqlRepository.findExistingByAnyRef(inventoryId, owners, dealers, channels);
 
-        List<UUID> incomingIds = offers.stream().map(OfferDto::getId).filter(Objects::nonNull).toList();
+        List<UUID> incomingIds = offers.stream().map(VehicleOfferDto::getId).filter(Objects::nonNull).toList();
 
         List<OfferEntity> byId = incomingIds.isEmpty()
                 ? List.of()
@@ -376,7 +382,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         return result;
     }
 
-    private void saveResourcesBatch(List<OfferEntity> offers, List<OfferDto> dtos) {
+    private void saveResourcesBatch(List<OfferEntity> offers, List<VehicleOfferDto> dtos) {
         if (offers.isEmpty()) return;
 
         // Borrar todos los recursos de estas ofertas en UNA query
@@ -386,7 +392,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         // Construir todos los recursos de golpe
         List<CarOfferResourceEntity> allResources = new ArrayList<>();
         for (int i = 0; i < offers.size(); i++) {
-            OfferDto dto = dtos.get(i);
+            VehicleOfferDto dto = dtos.get(i);
             OfferEntity entity = offers.get(i);
             if (dto.getResources() != null) {
                 dto.getResources().forEach(r -> allResources.add(buildCarOfferResourceEntity(r, entity)));
@@ -397,7 +403,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         }
     }
 
-    private void saveEquipmentsBatch(List<OfferEntity> offers, List<OfferDto> dtos) {
+    private void saveEquipmentsBatch(List<OfferEntity> offers, List<VehicleOfferDto> dtos) {
         if (offers.isEmpty()) return;
 
         List<Long> vehicleInstanceIds = offers.stream()
@@ -409,7 +415,7 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
 
         List<CarInstanceEquipmentEntity> allEquipments = new ArrayList<>();
         for (int i = 0; i < offers.size(); i++) {
-            OfferDto dto = dtos.get(i);
+            VehicleOfferDto dto = dtos.get(i);
             OfferEntity entity = offers.get(i);
             if (dto.getVehicleInstance().getEquipments() != null && entity.getVehicleInstance() != null) {
                 List<CarInstanceEquipmentEntity> entities = mapper.toCarInstanceEquipmentEntityList(
@@ -429,9 +435,9 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         }
     }
 
-    private void saveAddressesBatch(List<OfferDto> offers) {
+    private void saveAddressesBatch(List<VehicleOfferDto> offers) {
         List<ParticipantAddressEntity> toSave = new ArrayList<>();
-        for (OfferDto offer : offers) {
+        for (VehicleOfferDto offer : offers) {
             if (offer.getPickUpAddress() != null && offer.getParticipantId() != null) {
                 ParticipantAddressEntity addr = mapper.toParticipantAddressEntity(offer.getPickUpAddress());
                 addr.setId(offer.getParticipantId());
@@ -440,6 +446,34 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         }
         if (!toSave.isEmpty()) {
             participantAddressEntityRepository.saveAll(toSave);
+        }
+    }
+
+    private void saveTinyLocatorsBatch(List<OfferEntity> offers, List<VehicleOfferDto> dtos) {
+        if (offers.isEmpty()) return;
+
+        List<UUID> offerIds = offers.stream()
+                .map(OfferEntity::getId)
+                .toList();
+        tinyLocatorRepository.deleteByOfferIdIn(offerIds);
+
+        // Build all tiny locators at once
+        List<TinyLocatorEntity> allLocators = new ArrayList<>();
+        for (int i = 0; i < offers.size(); i++) {
+            VehicleOfferDto dto = dtos.get(i);
+            OfferEntity entity = offers.get(i);
+            if (dto.getTinyLocators() != null) {
+                dto.getTinyLocators().forEach(tl -> {
+                    TinyLocatorEntity locatorEntity = mapper.toTinyLocatorEntity(tl);
+                    // Ensure the offerId is consistent with the saved entity
+                    locatorEntity.setOfferId(entity.getId());
+                    allLocators.add(locatorEntity);
+                });
+            }
+        }
+
+        if (!allLocators.isEmpty()) {
+            tinyLocatorRepository.saveAll(allLocators);
         }
     }
 

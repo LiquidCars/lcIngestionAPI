@@ -2,7 +2,6 @@ package net.liquidcars.ingestion.infra.mongodb.mapper;
 
 import net.liquidcars.ingestion.domain.model.*;
 import net.liquidcars.ingestion.factory.OfferDtoFactory;
-import net.liquidcars.ingestion.factory.TestDataFactory;
 import net.liquidcars.ingestion.infra.mongodb.entity.DraftOfferNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.KeyValueNoSQLEntity;
 import net.liquidcars.ingestion.infra.mongodb.entity.VehicleOfferNoSQLEntity;
@@ -12,14 +11,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.UUID;
 
-import static net.liquidcars.ingestion.domain.model.AddressTypeDto.B_PICKUP;
 import static org.assertj.core.api.Assertions.assertThat;
 
 
@@ -65,7 +61,7 @@ public class OfferInfraNoSQLMapperTest {
     class ToDtoTests {
 
         @Test
-        @DisplayName("toDto: Debe reconstruir el ExternalIdDto desde los campos planos de la entidad")
+        @DisplayName("toVehicleOfferDto: Debe reconstruir el ExternalIdDto desde los campos planos de la entidad")
         void toDto_ShouldMapFlattenedFieldsToExternalIdInfo() {
             // GIVEN
             DraftOfferNoSQLEntity entity = new DraftOfferNoSQLEntity();
@@ -74,7 +70,7 @@ public class OfferInfraNoSQLMapperTest {
             entity.setChannelReference("C1");
 
             // WHEN
-            OfferDto dto = mapper.toDto(entity);
+            OfferDto dto = mapper.toVehicleOfferDto(entity);
 
             // THEN
             assertThat(dto.getExternalIdInfo()).isNotNull();
@@ -160,7 +156,7 @@ public class OfferInfraNoSQLMapperTest {
         assertThat(vehicleOffer.getVehicleInstance().getVehicleModel().getBrand()).isNotNull();
 
         // 4. Mapeo de vuelta a DTO (Cubre todos los métodos ToDto inversos)
-        OfferDto backDto = mapper.toDto(entity);
+        OfferDto backDto = mapper.toVehicleOfferDto(entity);
 
     }
 

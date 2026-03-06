@@ -115,6 +115,9 @@ public interface OfferInfraSQLMapper {
 
     List<AgreementEntity> toAgreementEntityList(List<AgreementDto> dtoList);
 
+    @Mapping(target = "id", source = "tinyLocatorId")
+    TinyLocatorEntity toTinyLocatorEntity(TinyLocatorDto dto);
+
     @Named("currencyReference")
     default CurrencyEntity currencyReference(String currencyCode) {
         if (currencyCode == null) return null;
