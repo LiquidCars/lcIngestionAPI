@@ -107,6 +107,17 @@ public interface OfferInfraSQLMapper {
     @Mapping(target = "environmentalBadge", source = "environmentalBadge", qualifiedByName = "environmentalBadgeReference")
     VehicleModelEntity toVehicleModelEntity(VehicleModelDto dto);
 
+    AgreementDto toAgreementDto(AgreementEntity entity);
+
+    List<AgreementDto> toAgreementDtoList(List<AgreementEntity> entityList);
+
+    AgreementEntity toAgreementEntity(AgreementDto dto);
+
+    List<AgreementEntity> toAgreementEntityList(List<AgreementDto> dtoList);
+
+    @Mapping(target = "id", source = "tinyLocatorId")
+    TinyLocatorEntity toTinyLocatorEntity(TinyLocatorDto dto);
+
     @Named("currencyReference")
     default CurrencyEntity currencyReference(String currencyCode) {
         if (currencyCode == null) return null;

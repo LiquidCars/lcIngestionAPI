@@ -1,6 +1,8 @@
 package net.liquidcars.ingestion.domain.service.infra.postgresql;
 
+import net.liquidcars.ingestion.domain.model.AgreementDto;
 import net.liquidcars.ingestion.domain.model.OfferDto;
+import net.liquidcars.ingestion.domain.model.VehicleOfferDto;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,9 +21,12 @@ public interface IOfferInfraSQLService {
     long deleteOffersByInventoryIdAndReferences(UUID inventoryId, List<String> externalReferences);
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    List<UUID> processBatch(List<OfferDto> offers, List<UUID> activeBookedOfferIds);
+    List<UUID> processBatch(List<VehicleOfferDto> offers, List<UUID> activeBookedOfferIds);
 
     List<UUID> findActiveBookedOfferIds(UUID inventoryId);
 
     Set<String> findExternalRefsByOfferIds(List<UUID> offerIds);
+
+    List<AgreementDto> findAgreementsByInventoryId(UUID inventoryId);
+
 }
