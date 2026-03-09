@@ -299,8 +299,8 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
             saveAddressesBatch(offers);
 
             //8. Tiny locators in batch
-            saveTinyLocatorsBatch(savedInserts, insertDtos);
-            saveTinyLocatorsBatch(toUpdate, updateDtos);
+            saveTinyLocatorsBatch(savedInserts, insertDtos, activeBookedOfferIds);
+            saveTinyLocatorsBatch(toUpdate, updateDtos, activeBookedOfferIds);
 
             log.info("SQL batch completed for inventoryId: {}. Inserts: {}, Updates: {}, ProcessedIds: {}",
                     inventoryId, toInsert.size(), toUpdate.size(), processedIds.size());
@@ -449,29 +449,45 @@ public class OfferInfraSQLServiceImpl implements IOfferInfraSQLService {
         }
     }
 
-    private void saveTinyLocatorsBatch(List<OfferEntity> offers, List<VehicleOfferDto> dtos) {
+    private void saveTinyLocatorsBatch(List<OfferEntity> offers, List<VehicleOfferDto> dtos, List<UUID> activeBookedOfferIds) {
         if (offers.isEmpty()) return;
+        // Convert to Set for O(1) lookup performance during filtering
+        Set<UUID> excludedIds = new HashSet<>(activeBookedOfferIds);
 
-        List<UUID> offerIds = offers.stream()
+        // 1. Identify offer IDs to delete, excluding those in activeBookedOfferIds
+        List<UUID> offerIdsToDelete = offers.stream()
                 .map(OfferEntity::getId)
+                .filter(id -> !excludedIds.contains(id))
                 .toList();
-        tinyLocatorRepository.deleteByOfferIdIn(offerIds);
 
-        // Build all tiny locators at once
+        // Only perform deletion if there are IDs that are not excluded
+        if (!offerIdsToDelete.isEmpty()) {
+            tinyLocatorRepository.deleteByOfferIdIn(offerIdsToDelete);
+        }
+
+        // 2. Build the list of new tiny locators, skipping excluded offers
         List<TinyLocatorEntity> allLocators = new ArrayList<>();
         for (int i = 0; i < offers.size(); i++) {
-            VehicleOfferDto dto = dtos.get(i);
             OfferEntity entity = offers.get(i);
+            UUID currentOfferId = entity.getId();
+
+            // Skip processing if the offer is in the excluded list
+            if (excludedIds.contains(currentOfferId)) {
+                continue;
+            }
+
+            VehicleOfferDto dto = dtos.get(i);
             if (dto.getTinyLocators() != null) {
                 dto.getTinyLocators().forEach(tl -> {
                     TinyLocatorEntity locatorEntity = mapper.toTinyLocatorEntity(tl);
-                    // Ensure the offerId is consistent with the saved entity
-                    locatorEntity.setOfferId(entity.getId());
+                    // Ensure the link between the locator and the specific offer
+                    locatorEntity.setOfferId(currentOfferId);
                     allLocators.add(locatorEntity);
                 });
             }
         }
 
+        // 3. Batch save the filtered locators
         if (!allLocators.isEmpty()) {
             tinyLocatorRepository.saveAll(allLocators);
         }
