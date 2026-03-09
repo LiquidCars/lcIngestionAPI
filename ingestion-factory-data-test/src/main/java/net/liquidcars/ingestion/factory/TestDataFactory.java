@@ -21,6 +21,7 @@ import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -655,6 +656,35 @@ public class TestDataFactory {
                 .set(field(OfferNoSQLEntity::getPrivateOwnerRegisteredUserId), UUID.randomUUID().toString())
                 .set(field(OfferNoSQLEntity::getJsonCarOfferId), UUID.randomUUID().toString())
                 .create();
+    }
+
+    public static VehicleOfferDto createVehicleOfferDto(UUID id, UUID inventoryId, String reference) {
+        UUID agreementId = UUID.randomUUID();
+        UUID channelId = UUID.randomUUID();
+
+        return VehicleOfferDto.builder()
+                .id(id)
+                .inventoryId(inventoryId)
+                .externalIdInfo(ExternalIdInfoDto.builder()
+                        .ownerReference(reference)
+                        .dealerReference(reference + "_DLR")
+                        .channelReference(reference + "_CHN")
+                        .build())
+                .vehicleInstance(createVehicleInstanceDto())
+                .pickUpAddress(createParticipantAddressDto())
+                .participantId(UUID.randomUUID())
+                .lastUpdated(System.currentTimeMillis())
+                .tinyLocators(List.of(
+                        TinyLocatorDto.builder()
+                                .tinyLocatorId("TINY-" + reference)
+                                .offerId(id)
+                                .inventoryId(inventoryId)
+                                .agreementId(agreementId)
+                                .channelId(channelId)
+                                .vehicleSellerId(UUID.randomUUID())
+                                .build()
+                ))
+                .build();
     }
 
 }
