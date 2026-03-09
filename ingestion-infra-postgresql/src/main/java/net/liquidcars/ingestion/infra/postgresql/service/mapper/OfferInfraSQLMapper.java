@@ -80,7 +80,7 @@ public interface OfferInfraSQLMapper {
     @Mapping(target = "ownerReference", source = "externalIdInfo.ownerReference")
     @Mapping(target = "dealerReference", source = "externalIdInfo.dealerReference")
     @Mapping(target = "channelReference", source = "externalIdInfo.channelReference")
-    @Mapping(target = "hash", expression = "java(offer.hashCode())")
+    @Mapping(target = "hash", source = "hash")
     @Mapping(target = "enabled", constant = "true")
     OfferEntity toEntity(OfferDto offer);
 
