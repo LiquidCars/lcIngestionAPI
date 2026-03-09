@@ -93,7 +93,6 @@ public class OfferEntity {
     @JoinColumn(name = "obj_co_jsoncaroffer_id", referencedColumnName = "obj_co_id")
     private JsonOfferEntity jsonCarOffer;
 
-    // añadido
     @Column(name = "ofr_bo_enabled")
     private boolean enabled;
 
