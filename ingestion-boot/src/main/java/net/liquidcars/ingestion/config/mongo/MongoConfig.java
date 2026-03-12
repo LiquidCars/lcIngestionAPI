@@ -33,6 +33,10 @@ public class MongoConfig {
     @Value("${liquibase.mongodb.change-log}")
     private String changeLog;
 
+    @Value("${liquibase.mongodb.database-change-log-table}")
+    private String changelogTable;
+
+
     @Bean
     //@DependsOn("liquibase") // Ejecuta después de Liquibase de PostgreSQL
     public Liquibase mongoLiquibase() throws Exception {
@@ -46,6 +50,9 @@ public class MongoConfig {
         MongoLiquibaseDatabase database = (MongoLiquibaseDatabase) DatabaseFactory
                 .getInstance()
                 .openDatabase(url, user, password, null, classLoaderAccessor);
+
+        database.setDatabaseChangeLogTableName(changelogTable);
+        database.setDatabaseChangeLogLockTableName(changelogTable + "_lock");
 
         Liquibase liquibase = new Liquibase(changeLogPath, classLoaderAccessor, database);
 

@@ -22,7 +22,11 @@ configData:
   # Mapeo de variables del .env a Spring Boot
   SERVER_PORT: "8890"
   APP_SERVER_PORT: "8890"
+  SPRING_MONGO_URL: mongodb://ingestion_service:mongo@mongodb:27017/ingestion_service?authSource=admin
   LIQUIBASE_MONGO_URL: mongodb://mongodb:27017/ingestion_service?authSource=admin
+  MONGO_ROOT_USERNAME: admin
+  MONGO_ROOT_PASSWORD: mongo
+  MONGO_DATABASE: admin
   SPRING_KAFKA_BOOTSTRAP_SERVERS: "{{ .Release.Name }}-kafka-kafka-bootstrap:9092"
   SPRING_DATA_MONGODB_URI: "mongodb://myuser:mypassword@{{ .Release.Name }}-mongodb-svc:27017/ingestion_service?replicaSet=mongodb&authSource=admin"
   ##SPRING_DATA_MONGODB_URI: mongodb://ingestion_service:mongo@mongodb:27017/ingestion_service?authSource=admin
@@ -40,6 +44,11 @@ configData:
   SPRING_RABBITMQ_USERNAME: default_user_75bypzf15tXzx4368Cg
   SPRING_RABBITMQ_PASSWORD: n0aCgqAyKRvjj7HcWr57oZcYGV-FxVJS
   SPRING_RABBITMQ_VIRTUAL_HOST: /liquidcars-dev
+  # --- App Specific (Ingestion) ---
+  JDBC_BATCH_SIZE: 500
+  BATCH_CHUNK_SIZE: 500
+  BATCH_SKIP_LIMIT: 10
+  BATCH_QUEUE_SIZE: 5000
 
 # Kafka (Strimzi)
 kafka:

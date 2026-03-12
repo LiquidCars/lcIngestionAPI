@@ -1,5 +1,5 @@
 db.getSiblingDB('admin').createUser({
-    user: 'ingestion_service',
+    user: 'liquidcars_service',
     pwd: 'mongo',
     roles: [{ role: 'root', db: 'admin' }]
 });

@@ -1,4 +1,4 @@
 -- Create db
-CREATE DATABASE ingestion_db;
+CREATE DATABASE liquidcars_db;
 
 
